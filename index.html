@@ -79,7 +79,7 @@ html,body{
   min-height:100vh;min-height:100dvh;
   background:var(--deep);color:var(--text);
   font-family:'Crimson Text',Georgia,serif;
-  overscroll-behavior:none;overflow-x:hidden;
+  overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch;
 }
 button{cursor:pointer;border:none;font-family:'Crimson Text',Georgia,serif;
   transition:all 0.16s;outline:none;-webkit-tap-highlight-color:transparent;}
@@ -119,8 +119,8 @@ select{font-family:'Crimson Text',Georgia,serif;}
 /* Layout */
 .screen{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;
   align-items:center;padding:16px;width:100%;max-width:var(--max-w);margin:0 auto;}
-.center{display:flex;flex-direction:column;align-items:center;justify-content:safe center;
-  min-height:100vh;min-height:100dvh;padding:0 16px;}
+.center{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;
+  min-height:100vh;min-height:100dvh;padding:0 16px calc(28px + env(safe-area-inset-bottom,0px));}
 .w100{width:100%;max-width:var(--max-w);}
 /* Desktop : fond avec motif autour du panneau de jeu */
 @media(min-width:900px){
@@ -1043,7 +1043,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v79";
+const BUILD_TAG="v81";
 const PILIER={
   Spiritualité:{bg:"#2D1B69",accent:"#9B59B6",icon:"🕯️",cit:"L'équilibre intérieur est la source de toute force."},
   Amour:       {bg:"#6B0F2A",accent:"#E74C3C",icon:"❤️", cit:"L'amour est la réponse, quelle que soit la question."},
@@ -6676,7 +6676,7 @@ function renderCampagne(app){
       +'</div>';
   }).join("");
   app.innerHTML=`
-  <div class="center" style="padding:0 0 34px;min-height:100dvh;background:radial-gradient(ellipse at top,#1a0a35 0%,#070514 62%)">
+  <div class="center" style="padding:0 0 calc(48px + env(safe-area-inset-bottom,0px));min-height:100dvh;background:radial-gradient(ellipse at top,#1a0a35 0%,#070514 62%)">
     <div class="w100" style="max-width:520px">
       <div style="display:flex;align-items:center;gap:10px;padding:18px 16px 6px">
         <button class="btn-ghost" style="width:auto;padding:8px 14px" onclick="S.ecran='menu';render()">←</button>
@@ -6789,7 +6789,7 @@ function renderConfidentialite(app){
       +'<div style="font-size:12.5px;color:#d8d0e8;line-height:1.65">'+corps+'</div></div>';
   };
   app.innerHTML=`
-  <div class="center" style="padding:0 0 34px;min-height:100dvh;background:radial-gradient(ellipse at top,#1a0a35 0%,#070514 62%)">
+  <div class="center" style="padding:0 0 calc(48px + env(safe-area-inset-bottom,0px));min-height:100dvh;background:radial-gradient(ellipse at top,#1a0a35 0%,#070514 62%)">
     <div class="w100" style="max-width:520px">
       <div style="display:flex;align-items:center;gap:10px;padding:18px 16px 6px">
         <button class="btn-ghost" style="width:auto;padding:8px 14px" onclick="S.ecran='apropos';render()">←</button>
@@ -6814,7 +6814,7 @@ function renderApropos(app){
     return '<div style="text-align:center;min-width:60px">'+((typeof EMBLEME_IMG!=="undefined"&&EMBLEME_IMG[p])?'<img src="'+EMBLEME_IMG[p]+'" alt="" style="width:46px;height:46px;border-radius:50%;box-shadow:0 0 11px '+st.accent+'99">':'<div style="font-size:28px;filter:drop-shadow(0 0 8px '+st.accent+'88)">'+st.icon+'</div>')+'<div style="font-size:10px;color:'+st.accent+';font-weight:700;margin-top:4px;font-family:Cinzel,serif">'+p+'</div></div>';
   }).join("");
   app.innerHTML=`
-  <div class="center" style="padding:0 0 34px;min-height:100dvh;background:radial-gradient(ellipse at top,#1a0a35 0%,#070514 62%)">
+  <div class="center" style="padding:0 0 calc(48px + env(safe-area-inset-bottom,0px));min-height:100dvh;background:radial-gradient(ellipse at top,#1a0a35 0%,#070514 62%)">
     <div class="w100" style="max-width:520px;display:flex;flex-direction:column">
       <div style="display:flex;align-items:center;gap:10px;padding:18px 16px 6px">
         <button class="btn-ghost" style="width:auto;padding:8px 14px" onclick="S.ecran='menu';render()">←</button>
