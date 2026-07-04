@@ -119,7 +119,7 @@ select{font-family:'Crimson Text',Georgia,serif;}
 /* Layout */
 .screen{min-height:100vh;min-height:100dvh;display:flex;flex-direction:column;
   align-items:center;padding:16px;width:100%;max-width:var(--max-w);margin:0 auto;}
-.center{display:flex;flex-direction:column;align-items:center;justify-content:center;
+.center{display:flex;flex-direction:column;align-items:center;justify-content:safe center;
   min-height:100vh;min-height:100dvh;padding:0 16px;}
 .w100{width:100%;max-width:var(--max-w);}
 /* Desktop : fond avec motif autour du panneau de jeu */
@@ -1043,7 +1043,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v78";
+const BUILD_TAG="v79";
 const PILIER={
   Spiritualité:{bg:"#2D1B69",accent:"#9B59B6",icon:"🕯️",cit:"L'équilibre intérieur est la source de toute force."},
   Amour:       {bg:"#6B0F2A",accent:"#E74C3C",icon:"❤️", cit:"L'amour est la réponse, quelle que soit la question."},
@@ -4430,7 +4430,7 @@ function renderDuelMenu(app){
     +'<div style="position:fixed;top:12px;right:12px;z-index:500">'
     +'<button onclick="S.ecran=\'menu\';render()" style="background:rgba(7,5,20,0.88);border:1.5px solid rgba(212,175,55,0.35);border-radius:10px;padding:7px 14px;color:#e05555;font-size:12px;font-weight:700;cursor:pointer;">🏠 Menu</button></div>'
 
-    +'<div class="center fade" style="padding:16px;min-height:100vh;background:radial-gradient(ellipse at top,#2a0520 0%,#070514 70%);">'
+    +'<div class="center fade" style="padding:16px;min-height:100dvh;background:radial-gradient(ellipse at top,#2a0520 0%,#070514 70%);">'
     +'<div class="w100" style="display:flex;flex-direction:column;gap:16px;padding-top:60px">'
 
     // Bannière
@@ -4503,7 +4503,7 @@ function renderDuelLobby(app){
     +'<div style="position:fixed;top:12px;right:12px;z-index:500">'
     +'<button onclick="DUEL.quitter()" style="background:rgba(7,5,20,0.88);border:1.5px solid rgba(212,175,55,0.35);border-radius:10px;padding:7px 14px;color:#e05555;font-size:12px;font-weight:700;cursor:pointer;">🏠 Menu</button></div>'
 
-    +'<div class="center fade" style="padding:16px;min-height:100vh;background:radial-gradient(ellipse at top,#2a0520 0%,#070514 70%);">'
+    +'<div class="center fade" style="padding:16px;min-height:100dvh;background:radial-gradient(ellipse at top,#2a0520 0%,#070514 70%);">'
     +'<div class="w100" style="display:flex;flex-direction:column;gap:16px;padding-top:60px">'
 
     // Statut connexion
@@ -4866,7 +4866,7 @@ function renderDuelJeu(app){
       });
       groupesHtml+='</div></div>';
     });
-    app.innerHTML='<div class="screen" style="padding:0;min-height:100vh;background:radial-gradient(ellipse at top,#1a0535,#070514)">'
+    app.innerHTML='<div class="screen" style="padding:0;min-height:100dvh;background:radial-gradient(ellipse at top,#1a0535,#070514)">'
       +'<div style="position:sticky;top:0;z-index:100;background:rgba(7,5,20,0.95);border-bottom:1px solid rgba(212,175,55,0.2);padding:10px 16px;display:flex;align-items:center;justify-content:space-between">'
       +'<div style="font-family:Cinzel,serif;font-size:13px;font-weight:700;color:var(--goldL)">⚔️ Sélectionnez vos 10 cartes</div>'
       +'<div style="font-size:14px;font-weight:900;font-family:Cinzel,serif;color:'+(selN>=10?"#45c97a":"var(--gold)")+'">'+selN+'/10</div>'
@@ -4884,7 +4884,7 @@ function renderDuelJeu(app){
 
   // ══ Phase attente adversaire : écran propre centré ══
   if(phase==="selAttente"){
-    app.innerHTML='<div class="screen fade" style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:24px;background:radial-gradient(ellipse at top,#1a0535,#070514)">'
+    app.innerHTML='<div class="screen fade" style="min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:24px;background:radial-gradient(ellipse at top,#1a0535,#070514)">'
       +'<div style="text-align:center;padding:32px 20px;border-radius:20px;background:linear-gradient(135deg,rgba(45,27,105,0.5),rgba(26,13,61,0.5));border:1.5px solid rgba(212,175,55,0.3);max-width:360px">'
       +'<div style="font-size:52px;margin-bottom:16px;animation:trophyPop 0.5s ease both">✅</div>'
       +'<div style="font-family:Cinzel,serif;font-size:16px;font-weight:900;color:var(--goldL);margin-bottom:8px">Sélection confirmée !</div>'
@@ -4897,7 +4897,7 @@ function renderDuelJeu(app){
     return;
   }
 
-  var html='<div style="min-height:100vh;padding:min(10px,2.5vw);display:flex;flex-direction:column;gap:min(8px,2vw);max-width:600px;margin:0 auto">'
+  var html='<div style="min-height:100dvh;padding:min(10px,2.5vw);display:flex;flex-direction:column;gap:min(8px,2vw);max-width:600px;margin:0 auto">'
     // Nav
     +'<div style="display:flex;justify-content:space-between;align-items:center">'
     +'<div style="font-size:12px;font-weight:700;color:var(--goldL);font-family:Cinzel,serif">⚔️ DUEL</div>'
@@ -5239,7 +5239,7 @@ function renderDuelResultat(app){
   var egal=monScore===advScore;
   var advNom=(DUEL.adversaire&&DUEL.adversaire.nom)||"Adversaire";
 
-  app.innerHTML='<div class="center fade" style="padding:16px;min-height:100vh">'
+  app.innerHTML='<div class="center fade" style="padding:16px;min-height:100dvh">'
     +'<div class="w100" style="display:flex;flex-direction:column;gap:14px;max-width:500px">'
 
     +'<div style="text-align:center;padding:32px 16px;background:linear-gradient(135deg,'+(gagne?"rgba(212,175,55,0.15)":egal?"rgba(255,255,255,0.05)":"rgba(224,85,85,0.1)")+');border-radius:20px;border:2px solid '+(gagne?"var(--gold)":egal?"rgba(255,255,255,0.15)":"rgba(224,85,85,0.3)")+';">'
@@ -6637,7 +6637,7 @@ function renderGardienIntro(app){
   var st=PILIER[g.pilier]||{accent:"#D4AF37",bg:"#1a0a35",icon:""};
   var dejaVaincu=i<(S.campagne.progres||0);
   app.innerHTML=`
-  <div class="center" style="min-height:100vh;display:flex;align-items:center;justify-content:center;padding:22px;background:radial-gradient(ellipse at center,${st.bg||'#1a0a35'} 0%,#070514 72%)">
+  <div class="center" style="min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:22px;background:radial-gradient(ellipse at center,${st.bg||'#1a0a35'} 0%,#070514 72%)">
     <div class="w100" style="max-width:440px;text-align:center">
       <div style="font-size:11px;color:var(--muted);letter-spacing:3px;margin-bottom:12px">UN GARDIEN SE DRESSE DEVANT TOI</div>
       <div style="font-size:82px;filter:drop-shadow(0 0 26px ${st.accent}aa);animation:celebFloat 3s ease-in-out infinite">${g.icon}</div>
@@ -6676,7 +6676,7 @@ function renderCampagne(app){
       +'</div>';
   }).join("");
   app.innerHTML=`
-  <div class="center" style="padding:0 0 34px;min-height:100vh;background:radial-gradient(ellipse at top,#1a0a35 0%,#070514 62%)">
+  <div class="center" style="padding:0 0 34px;min-height:100dvh;background:radial-gradient(ellipse at top,#1a0a35 0%,#070514 62%)">
     <div class="w100" style="max-width:520px">
       <div style="display:flex;align-items:center;gap:10px;padding:18px 16px 6px">
         <button class="btn-ghost" style="width:auto;padding:8px 14px" onclick="S.ecran='menu';render()">←</button>
@@ -6717,7 +6717,7 @@ function renderThemes(app){
       +'</div></div>';
   }).join("");
   app.innerHTML=`
-  <div class="center" style="padding:0 0 32px;min-height:100vh">
+  <div class="center" style="padding:0 0 32px;min-height:100dvh">
     <div class="w100" style="max-width:520px">
       <div style="display:flex;align-items:center;gap:10px;padding:18px 16px 6px">
         <button class="btn-ghost" style="width:auto;padding:8px 14px" onclick="S.ecran='menu';render()">←</button>
@@ -6762,7 +6762,7 @@ function renderCollection(app){
       +'</div>';
   }).join("");
   app.innerHTML=`
-  <div class="center" style="padding:0 0 32px;min-height:100vh;background:radial-gradient(ellipse at top,#1a0a35 0%,#070514 62%)">
+  <div class="center" style="padding:0 0 32px;min-height:100dvh;background:radial-gradient(ellipse at top,#1a0a35 0%,#070514 62%)">
     <div class="w100" style="max-width:520px">
       <div style="display:flex;align-items:center;gap:10px;padding:18px 16px 6px">
         <button class="btn-ghost" style="width:auto;padding:8px 14px" onclick="S.ecran='menu';render()">←</button>
@@ -6789,7 +6789,7 @@ function renderConfidentialite(app){
       +'<div style="font-size:12.5px;color:#d8d0e8;line-height:1.65">'+corps+'</div></div>';
   };
   app.innerHTML=`
-  <div class="center" style="padding:0 0 34px;min-height:100vh;background:radial-gradient(ellipse at top,#1a0a35 0%,#070514 62%)">
+  <div class="center" style="padding:0 0 34px;min-height:100dvh;background:radial-gradient(ellipse at top,#1a0a35 0%,#070514 62%)">
     <div class="w100" style="max-width:520px">
       <div style="display:flex;align-items:center;gap:10px;padding:18px 16px 6px">
         <button class="btn-ghost" style="width:auto;padding:8px 14px" onclick="S.ecran='apropos';render()">←</button>
@@ -6814,7 +6814,7 @@ function renderApropos(app){
     return '<div style="text-align:center;min-width:60px">'+((typeof EMBLEME_IMG!=="undefined"&&EMBLEME_IMG[p])?'<img src="'+EMBLEME_IMG[p]+'" alt="" style="width:46px;height:46px;border-radius:50%;box-shadow:0 0 11px '+st.accent+'99">':'<div style="font-size:28px;filter:drop-shadow(0 0 8px '+st.accent+'88)">'+st.icon+'</div>')+'<div style="font-size:10px;color:'+st.accent+';font-weight:700;margin-top:4px;font-family:Cinzel,serif">'+p+'</div></div>';
   }).join("");
   app.innerHTML=`
-  <div class="center" style="padding:0 0 34px;min-height:100vh;background:radial-gradient(ellipse at top,#1a0a35 0%,#070514 62%)">
+  <div class="center" style="padding:0 0 34px;min-height:100dvh;background:radial-gradient(ellipse at top,#1a0a35 0%,#070514 62%)">
     <div class="w100" style="max-width:520px;display:flex;flex-direction:column">
       <div style="display:flex;align-items:center;gap:10px;padding:18px 16px 6px">
         <button class="btn-ghost" style="width:auto;padding:8px 14px" onclick="S.ecran='menu';render()">←</button>
@@ -8303,7 +8303,7 @@ function renderSelection(app){
   });
 
   app.innerHTML=`
-  <div class="screen fade" style="padding:0;min-height:100vh;background:radial-gradient(ellipse at top,#1a0535,#070514)">
+  <div class="screen fade" style="padding:0;min-height:100dvh;background:radial-gradient(ellipse at top,#1a0535,#070514)">
     <div style="position:sticky;top:0;z-index:100;background:rgba(7,5,20,0.95);
       border-bottom:1px solid rgba(212,175,55,0.2);padding:10px 16px;
       display:flex;align-items:center;justify-content:space-between">
