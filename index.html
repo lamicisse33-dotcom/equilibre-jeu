@@ -1126,7 +1126,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v93.20";
+const BUILD_TAG="v93.23";
 // ── Diagnostic : révèle le détail réel des erreurs (un « Script error. » nu = erreur d'un script tiers cross-origin, ex. PeerJS) ──
 window.addEventListener("error", function(ev){
   // Erreur tierce sans détail (ex. Google Analytics gêné par la prévention du tracking) : bruit bénin → on n'encombre pas la console
@@ -3080,12 +3080,7 @@ const DUEL = {
 
       // Étape 1 : connexion test pour vérifier le réseau
       var tmpId="eq-tmp-"+DUEL.genId();
-      var tmpPeer=new Peer(tmpId,{
-        config:{iceServers:[
-          {urls:"stun:stun.l.google.com:19302"},
-          {urls:"stun:stun1.l.google.com:19302"}
-        ]}
-      });
+      var tmpPeer=new Peer(tmpId, DUEL._ice());
 
       tmpPeer.on("open",function(){
         // Réseau OK — générer le vrai code
@@ -3094,12 +3089,7 @@ const DUEL = {
         DUEL.myId=DUEL.room;
 
         // Étape 2 : créer le vrai Peer avec le code
-        DUEL.peer=new Peer("eq-"+DUEL.room,{
-          config:{iceServers:[
-            {urls:"stun:stun.l.google.com:19302"},
-            {urls:"stun:stun1.l.google.com:19302"}
-          ]}
-        });
+        DUEL.peer=new Peer("eq-"+DUEL.room, DUEL._ice());
 
         DUEL.peer.on("open",function(){
           // ✅ Connecté avec le vrai code — afficher le lobby
@@ -3168,12 +3158,7 @@ const DUEL = {
       if(err||typeof Peer==="undefined"){
         showToast("❌ PeerJS indisponible","lose",2500); return;
       }
-      DUEL.peer=new Peer("eq-"+DUEL.myId,{
-        config:{iceServers:[
-          {urls:"stun:stun.l.google.com:19302"},
-          {urls:"stun:stun1.l.google.com:19302"}
-        ]}
-      });
+      DUEL.peer=new Peer("eq-"+DUEL.myId, DUEL._ice());
       DUEL.peer.on("open",function(id){
         console.log("✅ PeerJS invité ouvert:", id);
         // Se connecter à l'hôte
@@ -4239,7 +4224,13 @@ Object.assign(DUEL, {
 
   _ice(){ return {config:{iceServers:[
     {urls:"stun:stun.l.google.com:19302"},
-    {urls:"stun:stun1.l.google.com:19302"}
+    {urls:"stun:stun1.l.google.com:19302"},
+    {urls:"stun:stun.relay.metered.ca:80"},
+    // ── Relais TURN (Metered · compte jeuequilibre) : fiabilise la connexion en 4G/5G / NAT symétrique ──
+    {urls:"turn:global.relay.metered.ca:80", username:"81a5d232de32f26a801feff7", credential:"xXRdexEMeC6x8/lX"},
+    {urls:"turn:global.relay.metered.ca:80?transport=tcp", username:"81a5d232de32f26a801feff7", credential:"xXRdexEMeC6x8/lX"},
+    {urls:"turn:global.relay.metered.ca:443", username:"81a5d232de32f26a801feff7", credential:"xXRdexEMeC6x8/lX"},
+    {urls:"turns:global.relay.metered.ca:443?transport=tcp", username:"81a5d232de32f26a801feff7", credential:"xXRdexEMeC6x8/lX"}
   ]}}; },
 
   _stopRecon(){
@@ -5537,8 +5528,11 @@ function DUEL_VALIDER_NOM(cb){
 let _lastEcran=null,_lastTheme=null;
 function render(){
   appliquerModeLeger();
-  // Sur les écrans de jeu plein-hauteur, on empêche la page de défiler (seule la zone interne défile → en-tête figé)
-  var _lock=(S.ecran==="jeu"||S.ecran==="duel_jeu");
+  // Verrou de défilement : écrans plein-hauteur à zone interne défilante uniquement.
+  // En Duel, seules les phases de JEU l'utilisent — pas la sélection (qui défile en pleine page).
+  var _duelPlay = (S.ecran==="duel_jeu" && typeof DUEL!=="undefined" && DUEL.gs
+                   && ["choixBase","choixBase2","afficheBases","apresReponses"].indexOf(DUEL.gs.phase)!==-1);
+  var _lock=(S.ecran==="jeu" || _duelPlay);
   document.documentElement.classList.toggle("app-lock",_lock);
   document.body.classList.toggle("app-lock",_lock);
   if(S.theme!==_lastTheme){ setBg(S.theme); _lastTheme=S.theme; }
