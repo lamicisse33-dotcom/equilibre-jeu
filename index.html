@@ -101,6 +101,8 @@ select{font-family:'Crimson Text',Georgia,serif;}
 @keyframes slideIn{from{opacity:0;transform:translateX(20px)}to{opacity:1;transform:translateX(0)}}
 @keyframes spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+@keyframes frissonFlash{0%{opacity:0}25%{opacity:1}100%{opacity:0}}
+@keyframes frissonPop{0%{transform:scale(0.3);opacity:0}30%{transform:scale(1.4);opacity:1}70%{transform:scale(1.05)}100%{transform:scale(1.2);opacity:0}}
 @keyframes float{0%{opacity:0;transform:translateX(-50%) translateY(12px) scale(0.4)}18%{opacity:1;transform:translateX(-50%) translateY(0) scale(1.35)}34%{transform:translateX(-50%) translateY(-4px) scale(1)}100%{opacity:0;transform:translateX(-50%) translateY(-115px) scale(1.15)}}
 @keyframes glow{0%,100%{box-shadow:0 0 10px rgba(212,175,55,0.2)}50%{box-shadow:0 0 36px rgba(212,175,55,0.65)}}
 @keyframes trophyPop{0%{transform:scale(0) rotate(-15deg);opacity:0}60%{transform:scale(1.28) rotate(5deg)}80%{transform:scale(0.95) rotate(-2deg)}100%{transform:scale(1) rotate(0deg);opacity:1}}
@@ -1043,7 +1045,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v81";
+const BUILD_TAG="v88";
 const PILIER={
   Spiritualité:{bg:"#2D1B69",accent:"#9B59B6",icon:"🕯️",cit:"L'équilibre intérieur est la source de toute force."},
   Amour:       {bg:"#6B0F2A",accent:"#E74C3C",icon:"❤️", cit:"L'amour est la réponse, quelle que soit la question."},
@@ -2170,6 +2172,20 @@ function initBonusManches(){
   return manches;
 }
 
+// ── Manches ÉVÉNEMENT (règle spéciale le temps d'une manche) ──
+const EVENEMENTS={
+  double:{icon:"🔥",nom:"DOUBLE POINTS",desc:"Cette manche vaut le DOUBLE !",coul:"#FF6B35"},
+  vol:{icon:"💰",nom:"VOL DE POINTS",desc:"Le gagnant vole 10 pts au perdant !",coul:"#C15CFF"}
+};
+function initEvenements(){
+  var types=["double","vol"]; // une de chaque
+  var choisies=new Set();
+  while(choisies.size<2){ choisies.add(3+Math.floor(Math.random()*9)); } // manches 3-11
+  var arr=[...choisies], ev={};
+  arr.forEach(function(m,i){ ev[m]=types[i%types.length]; });
+  return ev; // objet {numManche: "double"|"vol"} (sérialisable)
+}
+
 // ════════════════════════════════════════════════
 // UTILS
 // ════════════════════════════════════════════════
@@ -2187,6 +2203,27 @@ function genererDeck24(){
     });
   });
   return shuffle(deck);
+}
+
+// Distribution ÉQUILIBRÉE : chaque joueur reçoit 2 cartes de CHAQUE combo
+// (→ tous les piliers toujours jouables), avec valeur totale garantie identique.
+function dealEquilibre(){
+  var combos=shuffle([...new Set(REPONSES.map(function(c){return c.combo;}))]);
+  var j1=[], j2=[];
+  combos.forEach(function(cb,idx){
+    var pool=REPONSES.filter(function(c){return c.combo===cb;});
+    var parPalier={};
+    [40,20,10,5].forEach(function(pt){
+      var opts=pool.filter(function(c){return c.pts===pt;});
+      if(opts.length) parPalier[pt]=opts[Math.floor(Math.random()*opts.length)];
+    });
+    var pForte=[parPalier[40],parPalier[5]].filter(Boolean);   // ~45 pts (une grosse + une petite)
+    var pMoyenne=[parPalier[20],parPalier[10]].filter(Boolean); // ~30 pts (deux moyennes)
+    // 3 premiers combos → J1 a la paire forte ; 3 suivants → J2 : total strictement équilibré
+    if(idx < combos.length/2){ j1=j1.concat(pForte); j2=j2.concat(pMoyenne); }
+    else { j1=j1.concat(pMoyenne); j2=j2.concat(pForte); }
+  });
+  return { j1:shuffle(j1), j2:shuffle(j2) };
 }
 // Enregistre les cartes découvertes (vues dans la main du joueur)
 function marquerVues(cartes){
@@ -3065,13 +3102,14 @@ const DUEL = {
   // ── Initialiser l'état de jeu ──
   _initGS(){
     const r=genererDeck24();
+    const _deal=dealEquilibre();
     const joks=shuffle([...JOKERS]);
     // Initialiser adversaire si absent
     if(!DUEL.adversaire) DUEL.adversaire={nom:"Adversaire",couleur:"#e05555",icon:"⚔️"};
     DUEL.gs={
       phase:"attente", // attend que l'invité rejoigne
       // Cartes J1 (hôte) et J2 (invité)
-      allRepJ1:r.slice(0,12), allRepJ2:r.slice(12,24),
+      allRepJ1:_deal.j1, allRepJ2:_deal.j2,
       allJokJ1:joks.slice(0,2), allJokJ2:joks.slice(2,4),
       mainRepJ1:[], mainRepJ2:[],
       mainJokJ1:joks.slice(0,2).map(function(j){return Object.assign({},j);}),
@@ -3082,7 +3120,7 @@ const DUEL = {
       s1:0, s2:0, manche:1, total:12,
       b1:null, b2:null, cb:null,
       repJ1:null, repJ2:null,
-      gainFinal:null, bonusHistory:[],
+      gainFinal:null, bonusHistory:[], evenements:initEvenements(),
       jokerJ1:null, jokerJ2:null,
       timerSec:0,
     };
@@ -3529,6 +3567,7 @@ const DUEL = {
   jouerCarte(carte){
     var gs=DUEL.gs; if(!gs||gs.phase!=="afficheBases") return;
     if(DUEL._myRepPlayed()) return;
+    DUEL._repSel=null;
     DUEL._stopTimer();
     if(carte){
       AUDIO.sfxCard();
@@ -3546,6 +3585,13 @@ const DUEL = {
   // Jouer par ID — appelé depuis le onclick HTML (évite les problèmes de référence)
   jouerCarteById(id){
     var gs=DUEL.gs; if(!gs) return;
+    // Double-tap : 1er tap = présélection (aperçu), 2e tap sur la même carte = jouer
+    if(DUEL._repSel!==id){
+      DUEL._repSel=id;
+      render();
+      return;
+    }
+    DUEL._repSel=null;
     var main=DUEL.isHost?gs.mainRepJ1:gs.mainRepJ2;
     var carte=main?main.find(function(x){return x.id===id;}):null;
     // Si pas dans la main (déjà retirée), chercher dans allRep
@@ -3644,6 +3690,9 @@ const DUEL = {
     var p1=gs.repJ1&&gs.repJ1.pts?gs.repJ1.pts:0;
     var p2=gs.repJ2&&gs.repJ2.pts?gs.repJ2.pts:0;
     var tot=p1+p2;
+    // ── Manche ÉVÉNEMENT Duel : Double Points ──
+    var _evD=(gs.evenements&&gs.evenements[gs.manche])?gs.evenements[gs.manche]:null;
+    if(_evD==="double"){ p1=p1*2; p2=p2*2; tot=p1+p2; }
     // ── Jokers offensifs (Brakeur j1 = tout le pot ; Multiplicateur j2 = pot ×2) ──
     var jk1=gs.jokerJ1||null, jk2=gs.jokerJ2||null;
     if(jk1||jk2){
@@ -3677,6 +3726,11 @@ const DUEL = {
     else if(j2Passe){ gagnant=1; }
     else if(p1>p2){ gagnant=1; }
     else if(p2>p1){ gagnant=2; }
+    // ── Manche ÉVÉNEMENT Duel : Vol de Points (le gagnant vole 10 au perdant) ──
+    if(_evD==="vol" && gagnant===1){ var _vv=Math.min(10,gs.s2); gs.s2-=_vv; gs.s1+=_vv; }
+    else if(_evD==="vol" && gagnant===2){ var _vv2=Math.min(10,gs.s1); gs.s1-=_vv2; gs.s2+=_vv2; }
+    // Frisson si je gagne une manche événement
+    if(_evD){ var _jeGagne=(DUEL.isHost?gagnant===1:gagnant===2); if(_jeGagne){ try{ frissonEvenement(_evD); }catch(e){} } }
     if(DUEL.isHost && DUEL._stats){
       DUEL._suiviStats(1, gagnant===1, gs.b1, jk1, p1);
       DUEL._suiviStats(2, gagnant===2, gs.b2, jk2, p2);
@@ -4576,6 +4630,17 @@ function showConfetti(n,colors){
 
 // ── Célébration de victoire à 3 paliers (selon le SCORE TOTAL du vainqueur) ──
 // Pour basculer sur l'ÉCART, remplacer l'argument passé par (scoreVainqueur - scoreAdversaire).
+function frissonEvenement(type){
+  var ev=EVENEMENTS[type]; if(!ev) return;
+  try{ if(AUDIO&&AUDIO.playCelebration) AUDIO.playCelebration(); }catch(e){}
+  var fl=document.createElement("div");
+  fl.style.cssText="position:fixed;inset:0;z-index:8000;pointer-events:none;display:flex;align-items:center;justify-content:center;"
+    +"background:radial-gradient(circle,"+ev.coul+"55,transparent 62%);animation:frissonFlash 0.85s ease forwards";
+  fl.innerHTML='<div style="font-size:70px;animation:frissonPop 0.85s ease forwards;filter:drop-shadow(0 0 26px '+ev.coul+')">'+ev.icon+'</div>';
+  document.body.appendChild(fl);
+  setTimeout(function(){ try{ fl.remove(); }catch(e){} },900);
+}
+
 function celebrerNiveau(niv){
   var n=NIVEAUX[niv];
   if(!n) return;
@@ -4920,7 +4985,7 @@ function renderDuelJeu(app){
     +'</div></div>'
 
     // Timer
-    +'<div id="duel-timer"></div>';
+    +'<div id="duel-timer"></div>'+banniereEvenement(gs);
 
   // ── Phase sélection ──
   if(phase==="selAttente"){
@@ -5173,13 +5238,15 @@ function renderDuelJeu(app){
               +'💡 '+mesJoks.filter(function(x){return x.id==="j1"||x.id==="j2";}).map(function(x){return x.name;}).join(" & ")
               +' disponibles après les réponses</div>';
           }
-          html+='<div style="font-size:11px;color:var(--muted);margin-bottom:8px;text-align:center">Jouez votre meilleure carte !</div>'
+          html+='<div style="font-size:11px;color:var(--muted);margin-bottom:2px;text-align:center">Jouez votre meilleure carte !</div>'
+            +'<div style="font-size:9px;color:var(--muted);text-align:center;margin-bottom:8px;font-style:italic">👆 Touche 2× une carte pour la jouer</div>'
             +'<div style="--card-w:86px;--card-h:114px;display:flex;flex-wrap:wrap;justify-content:center;gap:7px;padding:4px 0 10px">'
             +cartesValides.map(function(carte){
               return '<div onclick="DUEL.jouerCarteById(&quot;'+carte.id+'&quot;)" style="cursor:pointer;flex-shrink:0;touch-action:manipulation;-webkit-user-drag:none;-webkit-touch-callout:none;user-select:none">'
-                +carteMainHTML(carte,{clickable:true})+'</div>';
+                +carteMainHTML(carte,{clickable:true,selected:DUEL._repSel===carte.id})+'</div>';
             }).join("")
-            +'</div>';
+            +'</div>'
+            +(DUEL._repSel?('<div style="text-align:center;font-size:11px;font-weight:900;color:var(--goldL);font-family:\'Cinzel\',serif;margin-bottom:6px">👆 Touche à nouveau pour jouer</div>'):'');
         }
       } else {
         html+='<div style="text-align:center;padding:12px 16px 6px;color:var(--muted);font-size:12px">'
@@ -5895,11 +5962,12 @@ const G={
     try{ S._nivDebut=getIdxNiv(S.xp||0); }catch(e){ S._nivDebut=0; }
     if(survie){ S.viesSurvie=3; S.diff="Expert"; }
     const r=genererDeck24();
-    marquerVues(r.slice(0,12));
+    const _deal=dealEquilibre();
+    marquerVues(_deal.j1);
     const j=shuffle([...JOKERS]);
     S.jeu={
       phase:"selection",
-      allRepJ1:r.slice(0,12),allRepJ2:r.slice(12,24),
+      allRepJ1:_deal.j1,allRepJ2:_deal.j2,
       allJokJ1:j.slice(0,2),allJokJ2:j.slice(2,4),
       mainRepJ1:[],mainRepJ2:[],mainJokJ1:[],mainJokJ2:[],
       selTemp:[],
@@ -5919,6 +5987,7 @@ const G={
       repIAVues:[],
     };
     S.jeu.bonusManches = initBonusManches();
+    S.jeu.evenements = initEvenements();
     S.ecran="selection";
     render();
     AUDIO.sfxStart();
@@ -6035,7 +6104,12 @@ const G={
     if(!j||j.phase!=="afficheBases"||j.phaseEchange)return;
     const c=j.mainRepJ1.find(x=>x.id===id);
     if(!c)return;
-    j.repChoisie=(j.repChoisie?.id===id)?null:c;
+    // Double-tap : 2e appui sur la MÊME carte → on la joue directement
+    if(j.repChoisie&&j.repChoisie.id===id){
+      G.jouerRep();
+      return;
+    }
+    j.repChoisie=c;
     render();
   },
 
@@ -6081,7 +6155,7 @@ const G={
       j.gainFinal={p1:0,p2:0,joker:null};
       render();
       if(G._apresInt) clearTimeout(G._apresInt);
-      G._apresInt=setTimeout(function(){G._apresInt=null;if(S.jeu&&!TOURNOI.actif)G.mancheSuivante();},2000);
+      G._apresInt=setTimeout(function(){G._apresInt=null;if(S.jeu&&!TOURNOI.actif)G.mancheSuivante();},700);
       return;
     }
 
@@ -6096,7 +6170,7 @@ const G={
       j.gainFinal={p1:0,p2:cIA.pts+bonus,joker:null};
       render();
       if(G._apresInt) clearTimeout(G._apresInt);
-      G._apresInt=setTimeout(function(){G._apresInt=null;if(S.jeu&&!TOURNOI.actif)G.mancheSuivante();},2000);
+      G._apresInt=setTimeout(function(){G._apresInt=null;if(S.jeu&&!TOURNOI.actif)G.mancheSuivante();},700);
       return;
     }
 
@@ -6111,20 +6185,23 @@ const G={
       j.gainFinal={p1:cJ1.pts+bonus,p2:0,joker:null};
       render();
       if(G._apresInt) clearTimeout(G._apresInt);
-      G._apresInt=setTimeout(function(){G._apresInt=null;if(S.jeu&&!TOURNOI.actif)G.mancheSuivante();},2000);
+      G._apresInt=setTimeout(function(){G._apresInt=null;if(S.jeu&&!TOURNOI.actif)G.mancheSuivante();},700);
       return;
     }
 
-    // Cas normal — les deux ont une carte → résolution auto après 1.5s
+    // Cas normal — les deux ont une carte → résolution auto
     j.phase="apresReponses";
     render();
     if(G._apresInt) clearTimeout(G._apresInt);
+    // Fenêtre pour jouer un joker offensif (Brakeur 💀 / Multiplicateur ×2) : au moins 2 s si le joueur en a un
+    var _aJokerOff = j.mainJokJ1 && j.mainJokJ1.some(x=>x.id==="j1"||x.id==="j2");
+    var _delaiRep = _aJokerOff ? 3000 : 600;
     G._apresInt=setTimeout(function(){
       G._apresInt=null;
       if(S.jeu&&S.jeu.phase==="apresReponses"&&!TOURNOI.actif){
         G.resoudre(S.jeu.repChoisie,S.jeu.repIA,null);
       }
-    },1500);
+    },_delaiRep);
   },
 
   useJoker(id){
@@ -6275,6 +6352,10 @@ const G={
       p1=0;
     }
 
+    // ── Manche ÉVÉNEMENT : Double Points (le pot compte double) ──
+    var _evM = (j.evenements && j.evenements[j.manche]) ? j.evenements[j.manche] : null;
+    if(_evM==="double"){ p1=p1*2; p2=p2*2; }
+
     let msg="",xpG=0,gagnant=0;
     const j1p=!cJ1&&jokerFinal?.id!=="j1"; // passe réel = pas de carte ET pas de Brakeur
     const iap=!cIA&&jIAUsed?.id!=="j1";
@@ -6289,7 +6370,7 @@ const G={
       showToast(msg,"info",1800);
       render();
       // Manche suivante automatique après 1.8s
-      setTimeout(()=>G.mancheSuivante(),1900);
+      setTimeout(()=>G.mancheSuivante(),550);
       return;
     }
     // Brakeur joueur — il prend tout même si l'IA a une carte
@@ -6319,6 +6400,11 @@ const G={
     }
     else if(p2>p1){j.s2+=p1+p2;msg=`💔 IA gagne +${p1+p2} pts`;}
     else{msg="🤝 Égalité !";}
+    // ── Manche ÉVÉNEMENT : Vol de Points (le gagnant vole 10 pts au perdant) ──
+    if(_evM==="vol" && gagnant===1){ var _v=Math.min(10,j.s2); j.s2-=_v; j.s1+=_v; if(_v>0) msg+=` · 💰 +${_v} volés !`; }
+    else if(_evM==="vol" && gagnant===2){ var _v2=Math.min(10,j.s1); j.s1-=_v2; j.s2+=_v2; }
+    // ── Frisson de fin de manche événement gagnée par le joueur ──
+    if(_evM && gagnant===1){ try{ frissonEvenement(_evM); }catch(e){} }
     j.manchesGagnees+=gagnant;
     j.streak=gagnant?j.streak+1:0;
     j.maxStreak=Math.max(j.maxStreak,j.streak);
@@ -6337,16 +6423,18 @@ const G={
     if(gagnant===1)AUDIO.sfxWin();
     else if(tp==="lose")AUDIO.sfxLose();
     showToast(msg,tp);
-    setTimeout(()=>G.showIADlg(pick(iaPr.dlg[gagnant===1?"perd":gagnant===0&&!j1p&&!iap?"egal":"gagne"])),400);
+    setTimeout(()=>G.showIADlg(pick(iaPr.dlg[gagnant===1?"perd":gagnant===0&&!j1p&&!iap?"egal":"gagne"])),150);
     j.phase="fin";
     render();
     // Bonus imprévisible — alterne entre Question et Bonus du Sage
     // Toujours planifier mancheSuivante — annulée si bonus se lance
     if(G._apresInt) clearTimeout(G._apresInt);
+    // Rythme : rapide sans joker, mais on laisse 2 s si un joker (ou un événement) a été joué
+    var _delaiFin = (jokerFinal || jIAUsed || _evM) ? 2000 : 550;
     G._apresInt=setTimeout(function(){
       G._apresInt=null;
       if(S.jeu&&S.jeu.phase==="fin"&&!TOURNOI.actif) G.mancheSuivante();
-    }, 2000);
+    }, _delaiFin);
 
     if(j.bonusManches&&j.bonusManches.has(j.manche)){
       setTimeout(()=>{
@@ -6516,17 +6604,20 @@ const G={
     const validesJ1now=j.cb?j.mainRepJ1.filter(c=>c.combo===j.cb):[];
     const validesJ2now=j.cb?j.mainRepJ2.filter(c=>c.combo===j.cb):[];
     if(validesJ1now.length===0){
-      // Joueur sans carte → passe immédiatement
-      if(validesJ2now.length===0){
-        // Les deux sans carte → manche suivante immédiate
-        showToast("⚡ Aucune carte valide — manche suivante !","info",1500);
+      // Le joueur a-t-il le joker Échange 🔄 (le seul jouable sans carte : il en pioche une) ?
+      const aJokerJouable = j.mainJokJ1 && j.mainJokJ1.some(x=>x.id==="j4");
+      if(!aJokerJouable){
+        // Aucune carte ET aucun joker → passe très vite
+        if(validesJ2now.length===0){
+          showToast("⚡ Aucune carte valide — manche suivante !","info",1500);
+        } else {
+          showToast("⚠️ Aucune carte valide — passage automatique","info",1500);
+        }
         setTimeout(()=>G.execRep(null),400);
-      } else {
-        // Seul le joueur passe, l'IA joue normalement
-        showToast("⚠️ Aucune carte valide — passage automatique","info",1500);
-        setTimeout(()=>G.execRep(null),400);
+        return;
       }
-      return;
+      // Sinon : le joueur a un joker → on NE passe PAS tout de suite.
+      // Le timer normal démarre pour qu'il puisse jouer son joker (ou passer via le bouton).
     }
 
     // ── Timer 20s normal ──
@@ -8306,11 +8397,18 @@ function renderSelection(app){
   <div class="screen fade" style="padding:0;min-height:100dvh;background:radial-gradient(ellipse at top,#1a0535,#070514)">
     <div style="position:sticky;top:0;z-index:100;background:rgba(7,5,20,0.95);
       border-bottom:1px solid rgba(212,175,55,0.2);padding:10px 16px;
-      display:flex;align-items:center;justify-content:space-between">
-      <div style="font-family:Cinzel,serif;font-size:13px;font-weight:700;color:var(--goldL)">
+      display:flex;align-items:center;justify-content:space-between;gap:10px">
+      <div style="display:flex;align-items:center;gap:10px;min-width:0">
+        <button onclick="retourMenuDepuisSelection()" aria-label="Retour au menu"
+          style="flex-shrink:0;width:34px;height:34px;border-radius:10px;cursor:pointer;
+          border:1px solid rgba(212,175,55,0.35);background:rgba(255,255,255,0.05);
+          color:var(--goldL);font-size:16px;display:flex;align-items:center;justify-content:center">←</button>
+        <div style="font-family:Cinzel,serif;font-size:13px;font-weight:700;color:var(--goldL);
+          white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
         ⚔️ Sélectionnez vos 10 cartes
       </div>
-      <div style="font-size:14px;font-weight:900;font-family:Cinzel,serif;
+      </div>
+      <div style="font-size:14px;font-weight:900;font-family:Cinzel,serif;flex-shrink:0;
         color:${j.selTemp.length>=10?"#45c97a":"var(--gold)"}">${j.selTemp.length}/10</div>
     </div>
     <div style="padding:12px 16px 16px">
@@ -8337,6 +8435,23 @@ function renderSelection(app){
         </div>`
     }
   </div>`;
+}
+
+function banniereEvenement(j){
+  var t=(j&&j.evenements)?j.evenements[j.manche]:null;
+  if(!t) return "";
+  var ev=EVENEMENTS[t]; if(!ev) return "";
+  return '<div style="text-align:center;margin-bottom:10px;padding:8px 12px;border-radius:12px;'
+    +'background:linear-gradient(135deg,'+ev.coul+'33,'+ev.coul+'11);border:1.5px solid '+ev.coul+'99;'
+    +'box-shadow:0 0 16px '+ev.coul+'44;animation:celebPop 0.4s ease">'
+    +'<div style="font-size:13px;font-weight:900;color:'+ev.coul+';font-family:\'Cinzel\',serif;letter-spacing:1px">'+ev.icon+' '+ev.nom+' '+ev.icon+'</div>'
+    +'<div style="font-size:10px;color:#e8d8c8;margin-top:2px">'+ev.desc+'</div></div>';
+}
+
+function retourMenuDepuisSelection(){
+  try{ localStorage.removeItem("equilibre_partie_solo"); }catch(e){}
+  S.jeu=null; S.survieActif=false; S.campagneEnCours=-1;
+  S.ecran="menu"; render();
 }
 
 function coachOnboarding(phase){
@@ -8378,6 +8493,7 @@ function renderJeu(app){
   if(j.phase==="choixBase"){
     content=`
       ${contexteHTML(j.manche)}
+      ${banniereEvenement(j)}
       ${coachOnboarding("choixBase")}
       <div style="text-align:center;margin-bottom:16px" class="fade">
         <div style="font-size:11px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">CHOISISSEZ VOTRE PILIER</div>
@@ -8418,6 +8534,7 @@ function renderJeu(app){
   else if(j.phase==="iaChoisitBase"){
     content=`<div class="fade">
       ${contexteHTML(j.manche)}
+      ${banniereEvenement(j)}
       ${coachOnboarding("iaChoisitBase")}
       <div style="text-align:center;margin-bottom:12px">
         <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px">
@@ -8541,9 +8658,10 @@ function renderJeu(app){
             </button>
           `:`
             <!-- Mode normal -->
-            <div style="font-size:12px;color:var(--gold);font-weight:700;margin-bottom:8px;text-align:center">
+            <div style="font-size:12px;color:var(--gold);font-weight:700;margin-bottom:2px;text-align:center">
               ✅ Vos cartes — <strong style="color:var(--goldL)">${j.cb}</strong>
             </div>
+            <div style="font-size:9px;color:var(--muted);text-align:center;margin-bottom:8px;font-style:italic">👆 Touche 2× une carte pour la jouer</div>
             ${vIA.length===0?`<div style="font-size:10px;color:#45c97a;text-align:center;margin-bottom:8px;font-weight:700">💡 L'IA n'a pas de carte valide — jouez et gagnez vos points !</div>`:""}
             <div style="--card-w:86px;--card-h:114px;display:flex;flex-wrap:wrap;justify-content:center;gap:min(7px,1.8vw)">
               ${validesJ1.map(x=>`<div onclick="G.selRep('${x.id}')" draggable="false" style="cursor:pointer;touch-action:manipulation;-webkit-user-drag:none;-webkit-touch-callout:none;user-select:none">${carteMainHTML(x,{selected:j.repChoisie?.id===x.id})}</div>`).join("")}
@@ -8552,13 +8670,15 @@ function renderJeu(app){
         </div>
 
         ${!j.phaseEchange&&j.repChoisie?`
-          <div style="margin-bottom:8px">
-            <div style="font-size:10px;color:var(--muted);text-align:center;margin-bottom:6px">
-              ⚠️ Cette carte sera <strong style="color:var(--red)">défaussée définitivement</strong>
+          <div style="margin-bottom:8px;text-align:center;
+            background:linear-gradient(135deg,rgba(212,175,55,0.16),rgba(212,175,55,0.06));
+            border:1.5px solid rgba(212,175,55,0.5);border-radius:12px;padding:10px 12px;animation:celebPop 0.3s ease">
+            <div style="font-size:13px;font-weight:900;color:var(--goldL);font-family:'Cinzel',serif">
+              👆 Touche à nouveau « ${j.repChoisie.name} » pour la jouer
             </div>
-            <button class="btn-gold" onclick="G.jouerRep()">
-              ⚡ Confirmer — Jouer « ${j.repChoisie.name} » (${j.repChoisie.pts} pts)
-            </button>
+            <div style="font-size:9px;color:var(--muted);margin-top:3px">
+              (${j.repChoisie.pts} pts · défaussée définitivement)
+            </div>
           </div>
         `:""}
 
