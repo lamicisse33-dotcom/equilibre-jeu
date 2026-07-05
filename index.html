@@ -1000,7 +1000,7 @@ window.__logErr=function(e,ctx){
       if(typeof AUDIO!=="undefined"){
         AUDIO.init();
         if(AUDIO.ctx && AUDIO.ctx.state==="suspended"){ AUDIO.ctx.resume().catch(function(){}); }
-        if(!AUDIO.playing){ try{ AUDIO.startBg(); }catch(e){} }  // musique d'ambiance continue dès le 1er geste
+        // NB : la musique d'ambiance ne démarre plus ici — elle est lancée au vrai début de partie.
       }
     }catch(e){}
     // Amorcer la voix du Sage une seule fois, en SILENCE TOTAL (muted + volume 0).
@@ -1046,7 +1046,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v91";
+const BUILD_TAG="v92";
 const PILIER={
   Spiritualité:{bg:"#2D1B69",accent:"#9B59B6",icon:"🕯️",cit:"L'équilibre intérieur est la source de toute force."},
   Amour:       {bg:"#6B0F2A",accent:"#E74C3C",icon:"❤️", cit:"L'amour est la réponse, quelle que soit la question."},
@@ -1728,17 +1728,23 @@ const AUDIO = {
   },
 
   // Carte réponse jouée
-  sfxCard(){
+  sfxCard(pts){
     this.init();
     if(this.muted||!this.ctx) return;
     const ctx = this.ctx;
-    [0, 0.05].forEach((delay, i) => {
-      const osc = ctx.createOscillator();
-      const g = ctx.createGain();
+    var v = pts||0;
+    // Le son monte avec la valeur de la carte : plus la carte est forte, plus il est riche.
+    var notes, vol;
+    if(v>=40){ notes=[660,880,1047,1319]; vol=0.32; this.vibrer([0,30,20,55]); } // coup magistral : arpège triomphant + vibration
+    else if(v>=20){ notes=[660,880,1047]; vol=0.30; }                            // moyenne : 3 notes montantes
+    else { notes=[660,880]; vol=0.26; }                                          // petite : ding simple discret
+    notes.forEach(function(freq,i){
+      var osc = ctx.createOscillator();
+      var g = ctx.createGain();
       osc.type = 'sine';
-      osc.frequency.value = i===0 ? 660 : 880;
-      const st = ctx.currentTime + delay;
-      g.gain.setValueAtTime(0.3, st);
+      osc.frequency.value = freq;
+      var st = ctx.currentTime + i*0.05;
+      g.gain.setValueAtTime(vol, st);
       g.gain.exponentialRampToValueAtTime(0.0001, st + 0.18);
       osc.connect(g); g.connect(ctx.destination);
       osc.start(st); osc.stop(st + 0.2);
@@ -2206,25 +2212,23 @@ function genererDeck24(){
   return shuffle(deck);
 }
 
-// Distribution ÉQUILIBRÉE : chaque joueur reçoit 2 cartes de CHAQUE combo
-// (→ tous les piliers toujours jouables), avec valeur totale garantie identique.
+// Distribution PUREMENT ALÉATOIRE : les 24 cartes réponse (6 combos × 4 paliers
+// 40/20/10/5) sont mélangées puis coupées 12/12. Chaque joueur reçoit 12 cartes
+// tirées au hasard, sans doublon, exactement 12 chacun — aucun équilibrage forcé.
 function dealEquilibre(){
-  var combos=shuffle([...new Set(REPONSES.map(function(c){return c.combo;}))]);
-  var j1=[], j2=[];
-  combos.forEach(function(cb,idx){
+  var combos=[...new Set(REPONSES.map(function(c){return c.combo;}))];
+  var deck=[];
+  // Construit le deck des 24 cartes (1 carte tirée au hasard par palier, pour chaque combo)
+  combos.forEach(function(cb){
     var pool=REPONSES.filter(function(c){return c.combo===cb;});
-    var parPalier={};
     [40,20,10,5].forEach(function(pt){
       var opts=pool.filter(function(c){return c.pts===pt;});
-      if(opts.length) parPalier[pt]=opts[Math.floor(Math.random()*opts.length)];
+      if(opts.length) deck.push(opts[Math.floor(Math.random()*opts.length)]);
     });
-    var pForte=[parPalier[40],parPalier[5]].filter(Boolean);   // ~45 pts (une grosse + une petite)
-    var pMoyenne=[parPalier[20],parPalier[10]].filter(Boolean); // ~30 pts (deux moyennes)
-    // 3 premiers combos → J1 a la paire forte ; 3 suivants → J2 : total strictement équilibré
-    if(idx < combos.length/2){ j1=j1.concat(pForte); j2=j2.concat(pMoyenne); }
-    else { j1=j1.concat(pMoyenne); j2=j2.concat(pForte); }
   });
-  return { j1:shuffle(j1), j2:shuffle(j2) };
+  // Mélange pur (Fisher-Yates) puis coupe équitable 12/12
+  deck=shuffle(deck);
+  return { j1:deck.slice(0,12), j2:deck.slice(12,24) };
 }
 // Enregistre les cartes découvertes (vues dans la main du joueur)
 function marquerVues(cartes){
@@ -2287,6 +2291,7 @@ function showAnimPts(pts){
     const el=document.getElementById("animPts");
     if(!el) return;
     var gros=pts>=40, moyen=pts>=20;
+    try{ if(typeof AUDIO!=="undefined"){ if(gros) AUDIO.vibrer([0,45,30,90]); else if(moyen) AUDIO.vibrer(35); } }catch(e){}
     el.innerHTML="+"+pts+'<span style="font-size:0.42em;opacity:0.85"> PTS</span>'
       +(gros?'<div style="font-size:16px;letter-spacing:3px;margin-top:4px;color:#F0D060;text-shadow:0 0 16px rgba(240,208,96,0.8)">✦ COUP MAGISTRAL ✦</div>':'');
     el.style.color=gros?"#FFE9A0":(moyen?"var(--goldL)":"#EED9A0");
@@ -3226,6 +3231,7 @@ const DUEL = {
         });
         S.ecran="duel_jeu"; render();
         AUDIO.sfxStart();
+        AUDIO.startBg();
         showToast("⚔️ "+DUEL.adversaire.nom+" a rejoint — c'est parti !","win",3000);
         break;
 
@@ -3241,6 +3247,7 @@ const DUEL = {
         }
         S.ecran="duel_jeu"; render();
         AUDIO.sfxStart();
+        AUDIO.startBg();
         showToast("⚔️ Duel commencé — sélectionnez vos cartes !","win",3000);
         break;
 
@@ -3571,7 +3578,7 @@ const DUEL = {
     DUEL._repSel=null;
     DUEL._stopTimer();
     if(carte){
-      AUDIO.sfxCard();
+      AUDIO.sfxCard(carte.pts||0);
       if(DUEL.isHost) gs.mainRepJ1=gs.mainRepJ1.filter(function(x){return x.id!==carte.id;});
       else gs.mainRepJ2=gs.mainRepJ2.filter(function(x){return x.id!==carte.id;});
     }
@@ -3586,12 +3593,7 @@ const DUEL = {
   // Jouer par ID — appelé depuis le onclick HTML (évite les problèmes de référence)
   jouerCarteById(id){
     var gs=DUEL.gs; if(!gs) return;
-    // Double-tap : 1er tap = présélection (aperçu), 2e tap sur la même carte = jouer
-    if(DUEL._repSel!==id){
-      DUEL._repSel=id;
-      render();
-      return;
-    }
+    // Jeu immédiat : toucher une carte la joue directement (plus de double-tap ni de validation)
     DUEL._repSel=null;
     var main=DUEL.isHost?gs.mainRepJ1:gs.mainRepJ2;
     var carte=main?main.find(function(x){return x.id===id;}):null;
@@ -5240,27 +5242,29 @@ function renderDuelJeu(app){
               +' disponibles après les réponses</div>';
           }
           html+='<div style="font-size:11px;color:var(--muted);margin-bottom:2px;text-align:center">Jouez votre meilleure carte !</div>'
-            +'<div style="font-size:9px;color:var(--muted);text-align:center;margin-bottom:8px;font-style:italic">👆 Touche 2× une carte pour la jouer</div>'
+            +'<div style="font-size:9px;color:var(--muted);text-align:center;margin-bottom:8px;font-style:italic">👆 Touche une carte pour la jouer immédiatement</div>'
             +'<div style="--card-w:86px;--card-h:114px;display:flex;flex-wrap:wrap;justify-content:center;gap:7px;padding:4px 0 10px">'
             +cartesValides.map(function(carte){
               return '<div onclick="DUEL.jouerCarteById(&quot;'+carte.id+'&quot;)" style="cursor:pointer;flex-shrink:0;touch-action:manipulation;-webkit-user-drag:none;-webkit-touch-callout:none;user-select:none">'
                 +carteMainHTML(carte,{clickable:true,selected:DUEL._repSel===carte.id})+'</div>';
             }).join("")
-            +'</div>'
-            +(DUEL._repSel?('<div style="text-align:center;font-size:11px;font-weight:900;color:var(--goldL);font-family:\'Cinzel\',serif;margin-bottom:6px">👆 Touche à nouveau pour jouer</div>'):'');
+            +'</div>';
         }
       } else {
-        html+='<div style="text-align:center;padding:12px 16px 6px;color:var(--muted);font-size:12px">'
-          +'Aucune carte pour ce combo</div>';
         var jokCards2="";
         mesJoks.forEach(function(jk){
           if(jk.id==="j4") jokCards2+='<div style="width:var(--card-w);min-height:var(--card-h);display:flex;flex-shrink:0">'+jokerCardHTML(jk,{onClick:"DUEL.useEchangeLibre()"})+'</div>';
         });
         if(jokCards2){
-          html+='<div style="font-size:10px;color:var(--muted);text-align:center;margin-bottom:6px;letter-spacing:1px">VOS JOKERS</div>'
-            +'<div style="display:flex;flex-direction:row;gap:min(8px,2vw);justify-content:center;flex-wrap:nowrap;margin-bottom:10px">'+jokCards2+'</div>';
+          // A un joker Échange → vrai choix : échanger ou passer
+          html+='<div style="text-align:center;padding:12px 16px 6px;color:var(--muted);font-size:12px">Aucune carte pour ce combo</div>'
+            +'<div style="font-size:10px;color:var(--muted);text-align:center;margin-bottom:6px;letter-spacing:1px">VOS JOKERS</div>'
+            +'<div style="display:flex;flex-direction:row;gap:min(8px,2vw);justify-content:center;flex-wrap:nowrap;margin-bottom:10px">'+jokCards2+'</div>'
+            +'<div style="text-align:center;margin-top:8px"><button onclick="DUEL.jouerCarte(null)" style="padding:12px 32px;border-radius:12px;background:linear-gradient(135deg,#6b4fb0,#3d2b7d);border:1.5px solid var(--gold);color:#fff;font-size:14px;font-weight:800;letter-spacing:1px;cursor:pointer;box-shadow:0 3px 12px rgba(0,0,0,0.4)">⏭️ PASSER</button></div>';
+        } else {
+          // Aucune carte ET aucun joker → passage automatique, pas de bouton
+          html+='<div style="text-align:center;padding:16px;color:var(--red);font-size:12px;font-weight:700">⚡ Aucune carte pour ce combo — passage automatique…</div>';
         }
-        html+='<div style="text-align:center;margin-top:8px"><button onclick="DUEL.jouerCarte(null)" style="padding:12px 32px;border-radius:12px;background:linear-gradient(135deg,#6b4fb0,#3d2b7d);border:1.5px solid var(--gold);color:#fff;font-size:14px;font-weight:800;letter-spacing:1px;cursor:pointer;box-shadow:0 3px 12px rgba(0,0,0,0.4)">⏭️ PASSER</button></div>';
       }
       html+='</div>';
     }
@@ -6105,20 +6109,16 @@ const G={
     if(!j||j.phase!=="afficheBases"||j.phaseEchange)return;
     const c=j.mainRepJ1.find(x=>x.id===id);
     if(!c)return;
-    // Double-tap : 2e appui sur la MÊME carte → on la joue directement
-    if(j.repChoisie&&j.repChoisie.id===id){
-      G.jouerRep();
-      return;
-    }
+    // Jeu immédiat : toucher une carte la joue directement (plus de double-tap ni de validation)
     j.repChoisie=c;
-    render();
+    G.jouerRep();
   },
 
   jouerRep(){
     const j=S.jeu;
     G.stopTimer();
     if(!j.repChoisie)return;
-    AUDIO.sfxCard();
+    AUDIO.sfxCard(j.repChoisie.pts||0);
     G.execRep(j.repChoisie);
   },
 
@@ -6430,8 +6430,8 @@ const G={
     // Bonus imprévisible — alterne entre Question et Bonus du Sage
     // Toujours planifier mancheSuivante — annulée si bonus se lance
     if(G._apresInt) clearTimeout(G._apresInt);
-    // Rythme : rapide sans joker, mais on laisse 2 s si un joker (ou un événement) a été joué
-    var _delaiFin = (jokerFinal || jIAUsed || _evM) ? 2000 : 550;
+    // Rythme : rapide sans joker, et on laisse 1,5 s si un joker (ou un événement) a été joué
+    var _delaiFin = (jokerFinal || jIAUsed || _evM) ? 1500 : 550;
     G._apresInt=setTimeout(function(){
       G._apresInt=null;
       if(S.jeu&&S.jeu.phase==="fin"&&!TOURNOI.actif) G.mancheSuivante();
@@ -7961,7 +7961,7 @@ function renderRegles(app){
           {i:"🌟",n:"Niveaux & progression",t:"Gagnez de l'XP à chaque partie et grimpez les rangs : Novice → Apprenti → Initié → Gardien → Sage → Maître → Maître Suprême. Chaque montée de niveau déclenche une célébration et débloque du contenu."},
           {i:"🎨",n:"Thèmes débloquables",t:"Personnalisez l'ambiance du jeu avec des thèmes de fond (Nuit Mystique, Aurore Boréale, Cosmos, Coucher de Soleil), à débloquer en montant de niveau, via le menu 🎨 Thèmes."},
           {i:"🎴",n:"Cartes illustrées",t:"Les 4 piliers et leurs emblèmes (méditation, cœur, arbre, pièces) sont de véritables illustrations dorées, présentes sur toutes les cartes — de base comme réponses — pour une identité visuelle riche et cohérente."},
-          {i:"🎵",n:"Musique d'ambiance",t:"Une musique céleste (harpe & piano) accompagne tout le jeu en continu, du menu aux parties. Activez ou coupez le son à tout moment avec le bouton 🔊."},
+          {i:"🎵",n:"Musique d'ambiance",t:"Une musique céleste (harpe & piano) accompagne vos parties, du début à la fin. Elle démarre quand la partie commence. Activez ou coupez le son à tout moment avec le bouton 🔊."},
           {i:"👋",n:"Première partie guidée",t:"Lors de votre toute première partie, un guide discret vous accompagne pas à pas, directement pendant que vous jouez — la meilleure façon d'apprendre."},
         ].map(f=>`
           <div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
@@ -8662,26 +8662,13 @@ function renderJeu(app){
             <div style="font-size:12px;color:var(--gold);font-weight:700;margin-bottom:2px;text-align:center">
               ✅ Vos cartes — <strong style="color:var(--goldL)">${j.cb}</strong>
             </div>
-            <div style="font-size:9px;color:var(--muted);text-align:center;margin-bottom:8px;font-style:italic">👆 Touche 2× une carte pour la jouer</div>
+            <div style="font-size:9px;color:var(--muted);text-align:center;margin-bottom:8px;font-style:italic">👆 Touche une carte pour la jouer immédiatement</div>
             ${vIA.length===0?`<div style="font-size:10px;color:#45c97a;text-align:center;margin-bottom:8px;font-weight:700">💡 L'IA n'a pas de carte valide — jouez et gagnez vos points !</div>`:""}
             <div style="--card-w:86px;--card-h:114px;display:flex;flex-wrap:wrap;justify-content:center;gap:min(7px,1.8vw)">
               ${validesJ1.map(x=>`<div onclick="G.selRep('${x.id}')" draggable="false" style="cursor:pointer;touch-action:manipulation;-webkit-user-drag:none;-webkit-touch-callout:none;user-select:none">${carteMainHTML(x,{selected:j.repChoisie?.id===x.id})}</div>`).join("")}
             </div>
           `}
         </div>
-
-        ${!j.phaseEchange&&j.repChoisie?`
-          <div style="margin-bottom:8px;text-align:center;
-            background:linear-gradient(135deg,rgba(212,175,55,0.16),rgba(212,175,55,0.06));
-            border:1.5px solid rgba(212,175,55,0.5);border-radius:12px;padding:10px 12px;animation:celebPop 0.3s ease">
-            <div style="font-size:13px;font-weight:900;color:var(--goldL);font-family:'Cinzel',serif">
-              👆 Touche à nouveau « ${j.repChoisie.name} » pour la jouer
-            </div>
-            <div style="font-size:9px;color:var(--muted);margin-top:3px">
-              (${j.repChoisie.pts} pts · défaussée définitivement)
-            </div>
-          </div>
-        `:""}
 
         ${!j.phaseEchange&&j.mainJokJ1.find(x=>x.id==="j4")&&validesJ1.length>0?`
           <div style="margin-bottom:8px">
@@ -8706,10 +8693,10 @@ function renderJeu(app){
           <div style="display:flex;gap:7px;margin-bottom:8px">
             ${jokerCardHTML(j.mainJokJ1.find(x=>x.id==="j4"),{onClick:"G.useEchangeLibre()"})}
           </div>
-        `:`<div style="font-size:11px;color:var(--red);text-align:center;margin-bottom:8px">
-            ⚠️ Aucune carte valide pour <strong>${j.cb}</strong> — passage dans ${j.timerSec}s
+          <button class="btn-ghost" onclick="G.passerTour()">Passer ce tour (0 pts)</button>
+        `:`<div style="font-size:11px;color:var(--red);text-align:center;margin-bottom:4px">
+            ⚡ Aucune carte valide pour <strong>${j.cb}</strong> — passage automatique…
           </div>`}
-        <button class="btn-ghost" onclick="G.passerTour()">Passer ce tour (0 pts)</button>
       </div>`:""}
 
       ${j.mainJokJ1.find(x=>x.id==="j3")&&validesJ1.length>0&&!j.phaseEchange?`
@@ -8906,13 +8893,13 @@ function renderJeu(app){
     </div>
   </div>`;
 
-  // Auto iaRepond après 0.8s en phase j1AChoisi (plus de bouton — automatique)
+  // Auto iaRepond après 0.6s en phase j1AChoisi (plus de bouton — automatique)
   if(j.phase==="j1AChoisi"){
     if(G._iaInt) clearTimeout(G._iaInt);
     G._iaInt=setTimeout(function(){
       G._iaInt=null;
       if(S.jeu&&S.jeu.phase==="j1AChoisi") G.iaRepond();
-    },800);
+    },600);
   } else {
     if(G._iaInt){ clearTimeout(G._iaInt); G._iaInt=null; }
   }
