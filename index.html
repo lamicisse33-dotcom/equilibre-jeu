@@ -1126,7 +1126,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v93.23";
+const BUILD_TAG="v93.26";
 // ── Diagnostic : révèle le détail réel des erreurs (un « Script error. » nu = erreur d'un script tiers cross-origin, ex. PeerJS) ──
 window.addEventListener("error", function(ev){
   // Erreur tierce sans détail (ex. Google Analytics gêné par la prévention du tracking) : bruit bénin → on n'encombre pas la console
@@ -5316,8 +5316,8 @@ function renderDuelJeu(app){
     } else {
       // Phase afficheBases — jouer sa carte
       var cartesValides=maMain.filter(function(c){return c.combo===gs.cb;});
-      html+='<div class="card" style="padding:14px">'
-        +header;
+      html+=header
+        +'<!--HAND--><div class="card" style="padding:14px">';
       if(maRep!==null&&maRep!==undefined&&maRep!==false){
         // Déjà joué — afficher MA carte + points tout de suite, puis attendre l'adversaire
         html+='<div style="text-align:center;padding:16px">'
@@ -5394,7 +5394,7 @@ function renderDuelJeu(app){
   // Découpe Duel : figer le haut (en-tête + score + piliers) et ne faire défiler que la main.
   if(html.indexOf("<!--HAND-->")!==-1){
     var _pOpen=html.indexOf(">")+1;
-    var _ouvre=html.slice(0,_pOpen).replace("min-height:100vh","height:100vh;height:100dvh;overflow:hidden");
+    var _ouvre=html.slice(0,_pOpen).replace("min-height:100dvh","height:100vh;height:100dvh;overflow:hidden");
     var _rest=html.slice(_pOpen);
     var _mi=_rest.indexOf("<!--HAND-->");
     var _top=_rest.slice(0,_mi);
@@ -5528,10 +5528,10 @@ function DUEL_VALIDER_NOM(cb){
 let _lastEcran=null,_lastTheme=null;
 function render(){
   appliquerModeLeger();
-  // Verrou de défilement : écrans plein-hauteur à zone interne défilante uniquement.
-  // En Duel, seules les phases de JEU l'utilisent — pas la sélection (qui défile en pleine page).
+  // Verrou de défilement : solo "jeu" + phases de JEU du Duel qui ont une zone interne défilante
+  // (pas sélection/attente/résultat, qui défilent en pleine page).
   var _duelPlay = (S.ecran==="duel_jeu" && typeof DUEL!=="undefined" && DUEL.gs
-                   && ["choixBase","choixBase2","afficheBases","apresReponses"].indexOf(DUEL.gs.phase)!==-1);
+                   && ["choixBase","choixBase2","afficheBases"].indexOf(DUEL.gs.phase)!==-1);
   var _lock=(S.ecran==="jeu" || _duelPlay);
   document.documentElement.classList.toggle("app-lock",_lock);
   document.body.classList.toggle("app-lock",_lock);
