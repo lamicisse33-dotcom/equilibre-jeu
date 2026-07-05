@@ -1123,7 +1123,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v93.7";
+const BUILD_TAG="v93.12";
 const PILIER={
   Spiritualité:{bg:"#2D1B69",accent:"#9B59B6",icon:"🕯️",cit:"L'équilibre intérieur est la source de toute force."},
   Amour:       {bg:"#6B0F2A",accent:"#E74C3C",icon:"❤️", cit:"L'amour est la réponse, quelle que soit la question."},
@@ -4286,7 +4286,7 @@ Object.assign(DUEL, {
     if(DUEL.demo) return;
     if(DUEL._quitVolontaire) return;
     if(!DUEL._recon) DUEL._recon={active:false,tries:0,timer:null};
-    if(S.ecran!=="duel_jeu" && S.ecran!=="duel_lobby") return; // pas pendant résultat/menu
+    if(S.ecran!=="duel_jeu" && S.ecran!=="duel_lobby" && S.ecran!=="duel_resultat") return; // pas au menu
     if(DUEL._recon.active) return; // déjà en reconnexion
     sauvegarderDuelEnCours();
     DUEL._montrerSuspension("Connexion interrompue. Reconnexion automatique dès que possible…");
@@ -6289,9 +6289,18 @@ const G={
     const vIA=j.mainRepJ2.filter(c=>c.combo===j.cb);
     let cIA=null;
     if(vIA.length>0){
-      if(S.diff==="Expert")cIA=[...vIA].sort((a,b)=>b.pts-a.pts)[0];
-      else if(S.diff==="Débutant")cIA=[...vIA].sort((a,b)=>a.pts-b.pts)[0];
-      else cIA=pick(vIA);
+      const asc=[...vIA].sort((a,b)=>a.pts-b.pts);        // de la plus faible à la plus forte
+      const pJ=cJ1?cJ1.pts:-1;                            // valeur de la carte du joueur (déjà jouée)
+      const gagnantes=asc.filter(c=>c.pts>pJ);            // cartes qui battent le joueur
+      if(S.diff==="Débutant"){
+        cIA=asc[0];                                       // naïf : toujours la plus faible
+      }else if(S.diff==="Expert"){
+        // Malin : bat le joueur avec la plus PETITE carte suffisante, sinon sacrifie la plus faible
+        cIA=gagnantes.length?gagnantes[0]:asc[0];
+      }else{
+        // Intermédiaire : 65% jeu réfléchi, 35% aléatoire
+        cIA=(Math.random()<0.65)?(gagnantes.length?gagnantes[0]:asc[0]):pick(vIA);
+      }
     }
     if(cJ1)j.mainRepJ1=j.mainRepJ1.filter(x=>x.id!==cJ1.id);
     if(cIA)j.mainRepJ2=j.mainRepJ2.filter(x=>x.id!==cIA.id);
@@ -6835,7 +6844,7 @@ function showTutoriel(force){
   if(!force){ try{ if(localStorage.getItem("equilibre_tuto_vu")) return; }catch(e){} }
   var etapes=[
     {i:"👋",t:"Bienvenue dans ÉQUILIBRE",d:"Un jeu de stratégie et de sagesse. Accumulez le plus de points sur <strong style='color:var(--goldL)'>12 manches</strong> — le meilleur score l'emporte."},
-    {i:"⚖️",t:"Les 4 Piliers de Vie",d:"🕯️ Spiritualité · ❤️ Amour · 🌿 Santé · 🪙 Argent. Chaque paire de piliers forme un <strong style='color:var(--goldL)'>Combo</strong>, et chaque carte appartient à un Combo."},
+    {i:"⚖️",t:"Les 4 Piliers de Vie",d:PILIER["Spiritualité"].icon+" Spiritualité · "+PILIER["Amour"].icon+" Amour · "+PILIER["Santé"].icon+" Santé · "+PILIER["Argent"].icon+" Argent. Chaque paire de piliers forme un <strong style='color:var(--goldL)'>Combo</strong>, et chaque carte appartient à un Combo."},
     {i:"🎴",t:"Le tour de jeu",d:"À tour de rôle, un joueur choisit un <strong style='color:var(--goldL)'>Pilier de Base</strong>, l'autre répond avec un Pilier différent → ça forme le <strong style='color:var(--goldL)'>Combo actif</strong>. La main <strong style='color:var(--goldL)'>alterne</strong> à chaque manche."},
     {i:"🃏",t:"La Carte Réponse",d:"Chaque joueur joue une carte du Combo actif (⏱️ 20 s). La carte la plus <strong style='color:var(--goldL)'>forte</strong> rafle le pot. Une carte jouée est défaussée définitivement — choisissez bien !"},
     {i:"⚡",t:"Jokers &amp; Bonus",d:"Vous avez <strong style='color:var(--goldL)'>2 Jokers</strong> pour renverser une manche. Et des <strong style='color:var(--goldL)'>bonus surprise</strong> (Sage, Questions) rapportent des points en cours de partie."},
@@ -7280,13 +7289,14 @@ function renderMenu(app){
           box-shadow:0 4px 12px rgba(0,0,0,0.4),inset 0 1px 0 rgba(255,255,255,0.5)">
           🏅<br>(${S.badgesTotal?S.badgesTotal.length:0}/${BADGES.length})
         </button>
+        <button onclick="S.ecran='themes';render()" style="
+          min-height:54px;border-radius:14px;cursor:pointer;border:1px solid rgba(240,208,96,0.4);
+          background:linear-gradient(180deg,#211a15,#12100d);
+          color:var(--goldL);font-size:11px;font-weight:700;font-family:Cinzel,serif;text-shadow:0 1px 3px rgba(0,0,0,0.35);
+          box-shadow:0 4px 12px rgba(0,0,0,0.4),inset 0 1px 0 rgba(240,208,96,0.12)">
+          🎨<br>Thèmes
+        </button>
       </div>
-      <button onclick="S.ecran='themes';render()" style="
-        width:100%;min-height:46px;border-radius:14px;cursor:pointer;border:1px solid rgba(192,132,87,0.4);
-        background:rgba(255,255,255,0.04);
-        color:var(--goldL);font-family:Cinzel,serif;font-size:12px;font-weight:700;letter-spacing:1px">
-        🎨 Thèmes — Personnalise l'ambiance
-      </button>
       <button onclick="S.ecran='collection';render()" style="
         width:100%;min-height:48px;border-radius:14px;cursor:pointer;margin-top:10px;border:1px solid rgba(192,132,87,0.5);
         background:linear-gradient(180deg,#2b241d,#171210);
@@ -8132,6 +8142,7 @@ function renderRegles(app){
           {i:"⚖️",n:"Écran d'accueil animé",t:"Une intro où les 4 piliers convergent vers la balance — l'esprit du jeu dès la première seconde."},
           {i:"🌟",n:"Niveaux & progression",t:"Gagnez de l'XP à chaque partie et grimpez les rangs : Novice → Apprenti → Initié → Gardien → Sage → Maître → Maître Suprême. Chaque montée de niveau déclenche une célébration et débloque du contenu."},
           {i:"🎨",n:"Thèmes débloquables",t:"Personnalisez l'ambiance du jeu avec des thèmes de fond (Nuit Mystique, Aurore Boréale, Cosmos, Coucher de Soleil), à débloquer en montant de niveau, via le menu 🎨 Thèmes."},
+          {i:"⚡",n:"Mode léger",t:"Dans <strong style='color:var(--goldL)'>🎨 Thèmes</strong>, un réglage réduit les animations pour une fluidité maximale sur les téléphones plus modestes. Il s'active aussi tout seul si votre téléphone est réglé sur « réduire les animations »."},
           {i:"🎴",n:"Cartes illustrées",t:"Les 4 piliers et leurs emblèmes (méditation, cœur, arbre, pièces) sont de véritables illustrations dorées, présentes sur toutes les cartes — de base comme réponses — pour une identité visuelle riche et cohérente."},
           {i:"🎵",n:"Musique d'ambiance",t:"Une musique céleste (harpe & piano) accompagne vos parties, du début à la fin. Elle démarre quand la partie commence. Activez ou coupez le son à tout moment avec le bouton 🔊."},
           {i:"👋",n:"Première partie guidée",t:"Lors de votre toute première partie, un guide discret vous accompagne pas à pas, directement pendant que vous jouez — la meilleure façon d'apprendre."},
@@ -8491,7 +8502,7 @@ function _relancerReconDuel(){
 // ── Détection d'une coupure silencieuse (appel téléphonique / app en arrière-plan) ──
 function _duelEnJeu(){
   return (typeof DUEL!=="undefined") && DUEL.gs && !DUEL.demo && !DUEL._quitVolontaire
-      && (S.ecran==="duel_jeu" || S.ecran==="duel_lobby");
+      && (S.ecran==="duel_jeu" || S.ecran==="duel_lobby" || S.ecran==="duel_resultat");
 }
 // Battement de cœur : chaque pair envoie un ping toutes les 5 s ; l'autre répond pong.
 // Si plus rien n'arrive pendant 15 s, la connexion est considérée coupée.
