@@ -218,6 +218,9 @@ html.lite [style*="starSpin"],html.lite [style*="haloSpin"],html.lite [style*="c
 html.lite [style*="backdrop-filter"]{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;}
 html.lite .sb-icone-fixe{backdrop-filter:none!important;-webkit-backdrop-filter:none!important;}
 
+/* ─── Écrans de jeu plein-hauteur : la PAGE ne défile pas ; seule la zone interne (VOS CARTES) défile, en-tête figé ─── */
+html.app-lock,body.app-lock{height:100%;overflow:hidden;overscroll-behavior:none;}
+
 @media(min-width:900px){
   .btn-gold{padding:16px 0;font-size:16px;border-radius:14px;}
   .btn-ghost{padding:13px 0;font-size:15px;}
@@ -1123,7 +1126,22 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v93.12";
+const BUILD_TAG="v93.20";
+// ── Diagnostic : révèle le détail réel des erreurs (un « Script error. » nu = erreur d'un script tiers cross-origin, ex. PeerJS) ──
+window.addEventListener("error", function(ev){
+  // Erreur tierce sans détail (ex. Google Analytics gêné par la prévention du tracking) : bruit bénin → on n'encombre pas la console
+  if(!ev.filename && (ev.message==="Script error." || !ev.message)){
+    ev.preventDefault();
+    try{ console.info("[ÉQUILIBRE] Erreur tierce ignorée (bénigne — ex. Google Analytics bloqué)."); }catch(_){}
+    return;
+  }
+  var d={ message:ev.message, source:ev.filename, ligne:ev.lineno, col:ev.colno, stack:(ev.error&&ev.error.stack)||null };
+  window.__lastErr=d;
+  try{ console.error("[ÉQUILIBRE] Détail erreur ▶", JSON.stringify(d)); }catch(_){ console.error("[ÉQUILIBRE] Détail erreur ▶", d); }
+});
+window.addEventListener("unhandledrejection", function(ev){
+  try{ console.error("[ÉQUILIBRE] Promesse rejetée ▶", (ev.reason&&(ev.reason.stack||ev.reason.message))||ev.reason); }catch(_){}
+});
 const PILIER={
   Spiritualité:{bg:"#2D1B69",accent:"#9B59B6",icon:"🕯️",cit:"L'équilibre intérieur est la source de toute force."},
   Amour:       {bg:"#6B0F2A",accent:"#E74C3C",icon:"❤️", cit:"L'amour est la réponse, quelle que soit la question."},
@@ -1553,89 +1571,72 @@ const AUDIO = {
     osc.stop(start + dur + 0.05);
   },
 
-  // ── MUSIQUE DE FOND : Harpe céleste & piano doux ──
+  // ── MUSIQUE DE FOND : lo-fi doux & chaleureux (Cmaj7 – Am7 – Dm7 – G7) ──
   startBg(){
     this.init();
     if(this.playing||!this.ctx) return;
     this.playing = true;
     const ctx = this.ctx;
     this.bgGain = ctx.createGain();
-    this.bgGain.gain.value = this.muted ? 0 : 0.22;
+    this.bgGain.gain.value = this.muted ? 0 : 0.20;
     this.bgGain.connect(ctx.destination);
 
-    // Gamme pentatonique de Ré mineur : Ré Fa Sol La Do
-    const scale = [
-      293.66, 349.23, 392.00, 440.00, 523.25,  // octave 1
-      587.33, 698.46, 783.99, 880.00, 1046.50,  // octave 2
-      146.83, 174.61, 196.00, 220.00, 261.63,   // octave 0 (basse)
+    const N = {
+      C2:65.41,A1:55,D2:73.42,G1:49,
+      C4:261.63,D4:293.66,E4:329.63,F4:349.23,G4:392,A4:440,B4:493.88,
+      C5:523.25,D5:587.33,E5:659.25,F5:698.46,G5:783.99,A5:880
+    };
+    // Tour jazz chaleureux I–vi–ii–V (accords de 7e) : basse, pad (4 notes), mélodie tendre (null = silence)
+    const prog = [
+      { bass:N.C2, pad:[N.C4,N.E4,N.G4,N.B4], mel:[N.E5,null,N.G5,N.E5] },
+      { bass:N.A1, pad:[N.A4,N.C5,N.E5,N.G4], mel:[N.C5,null,N.E5,null]  },
+      { bass:N.D2, pad:[N.D4,N.F4,N.A4,N.C5], mel:[N.F5,N.E5,N.D5,null]  },
+      { bass:N.G1, pad:[N.G4,N.B4,N.D5,N.F4], mel:[N.D5,null,N.G4,null]  },
     ];
 
     let t = ctx.currentTime + 0.3;
+    const chordDur = 2.6;          // relax, cosy (~lo-fi)
+    const swing = 0.06;            // léger swing sur les contretemps
+    const noteDur = chordDur/4;
+
+    const soft = (freq, st, dur, vol, type, useRev) => {
+      const osc=ctx.createOscillator(), g=ctx.createGain();
+      osc.type=type||'sine'; osc.frequency.value=freq; osc.detune.value=-4; // chaleur légère
+      g.gain.setValueAtTime(0, st);
+      g.gain.linearRampToValueAtTime(vol, st+0.04);
+      g.gain.exponentialRampToValueAtTime(0.0001, st+dur);
+      osc.connect(g); g.connect(this.bgGain);
+      if(useRev){ const rev=this._reverb(ctx), rg=ctx.createGain(); rg.gain.value=0.3; g.connect(rev); rev.connect(rg); rg.connect(this.bgGain); }
+      osc.start(st); osc.stop(st+dur+0.05);
+    };
 
     const playBar = () => {
       if(!this.playing) return;
-      const bar = ctx.createGain();
-      bar.gain.value = this.muted ? 0 : 1;
-      bar.connect(this.bgGain);
-
-      // Pattern harpe arpégé : montée douce
-      const arp = [0,2,4,7, 9,7,4,2, 1,3,5,8, 6,4,2,0];
-      const dur = 10; // durée totale du bar
-
-      arp.forEach((idx, i) => {
-        const freq = scale[idx % scale.length];
-        const osc = ctx.createOscillator();
-        const g = ctx.createGain();
-        const rev = this._reverb(ctx);
-        const rg = ctx.createGain();
-        rg.gain.value = 0.3;
-
-        osc.type = 'sine';
-        osc.frequency.value = freq;
-
-        const st = t + i * (dur / arp.length);
-        const noteDur = (dur / arp.length) * 2.2;
-
-        g.gain.setValueAtTime(0, st);
-        g.gain.linearRampToValueAtTime(0.28, st + 0.06);
-        g.gain.exponentialRampToValueAtTime(0.0001, st + noteDur);
-
-        osc.connect(g);
-        g.connect(bar);
-        g.connect(rev);
-        rev.connect(rg);
-        rg.connect(bar);
-        osc.start(st);
-        osc.stop(st + noteDur + 0.1);
-
-        // Harmonique douce (quinte)
-        const osc2 = ctx.createOscillator();
-        const g2 = ctx.createGain();
-        osc2.type = 'triangle';
-        osc2.frequency.value = freq * 1.498; // quinte juste
-        g2.gain.setValueAtTime(0, st);
-        g2.gain.linearRampToValueAtTime(0.08, st + 0.1);
-        g2.gain.exponentialRampToValueAtTime(0.0001, st + noteDur * 0.7);
-        osc2.connect(g2); g2.connect(bar);
-        osc2.start(st); osc2.stop(st + noteDur);
+      prog.forEach((ch, ci) => {
+        const cst = t + ci*chordDur;
+        // Basse feutrée (temps 1 + rappel doux à l'octave sur le contretemps)
+        soft(ch.bass,   cst,                        1.4, 0.18, 'sine',     false);
+        soft(ch.bass*2, cst + chordDur/2 + swing,   1.0, 0.06, 'triangle', false);
+        // Pad d'accord chaud (type Rhodes, léger désaccord pour l'épaisseur)
+        ch.pad.forEach((f,pi) => {
+          const osc=ctx.createOscillator(), g=ctx.createGain();
+          osc.type='sine'; osc.frequency.value=f; osc.detune.value=(pi%2?4:-4);
+          g.gain.setValueAtTime(0, cst);
+          g.gain.linearRampToValueAtTime(0.035, cst+0.5);
+          g.gain.setValueAtTime(0.035, cst+chordDur-0.6);
+          g.gain.linearRampToValueAtTime(0, cst+chordDur);
+          osc.connect(g); g.connect(this.bgGain);
+          osc.start(cst); osc.stop(cst+chordDur+0.05);
+        });
+        // Mélodie tendre & aérée (silences → respiration lo-fi), swing léger
+        ch.mel.forEach((f,ni) => {
+          if(!f) return;
+          const st = cst + ni*noteDur + (ni%2?swing:0);
+          soft(f, st, noteDur*2.0, 0.15, 'sine', true);
+        });
       });
-
-      // Pad ambient doux (fond continu)
-      [146.83, 220.00, 261.63].forEach(freq => {
-        const osc = ctx.createOscillator();
-        const g = ctx.createGain();
-        osc.type = 'sine';
-        osc.frequency.value = freq;
-        g.gain.setValueAtTime(0, t);
-        g.gain.linearRampToValueAtTime(0.06, t + 1.5);
-        g.gain.setValueAtTime(0.06, t + dur - 1.5);
-        g.gain.linearRampToValueAtTime(0, t + dur);
-        osc.connect(g); g.connect(bar);
-        osc.start(t); osc.stop(t + dur + 0.1);
-      });
-
-      t += dur;
-      this._bgTimer = setTimeout(playBar, (dur - 0.8) * 1000);
+      t += prog.length*chordDur;
+      this._bgTimer = setTimeout(playBar, (prog.length*chordDur - 0.05) * 1000);
     };
     playBar();
   },
@@ -5536,6 +5537,10 @@ function DUEL_VALIDER_NOM(cb){
 let _lastEcran=null,_lastTheme=null;
 function render(){
   appliquerModeLeger();
+  // Sur les écrans de jeu plein-hauteur, on empêche la page de défiler (seule la zone interne défile → en-tête figé)
+  var _lock=(S.ecran==="jeu"||S.ecran==="duel_jeu");
+  document.documentElement.classList.toggle("app-lock",_lock);
+  document.body.classList.toggle("app-lock",_lock);
   if(S.theme!==_lastTheme){ setBg(S.theme); _lastTheme=S.theme; }
   const app=document.getElementById("app");
   app.innerHTML="";
@@ -6371,7 +6376,7 @@ const G={
       if(S.jeu&&S.jeu.phase==="apresReponses"&&!TOURNOI.actif){
         G.resoudre(S.jeu.repChoisie,S.jeu.repIA,null);
       }
-    },1500);
+    },1000);
   },
 
   useJoker(id){
@@ -6480,8 +6485,21 @@ const G={
     if(j.mainJokJ2.length>0){
       const p1=cJ1?.pts||0,p2=cIA?.pts||0;
       const brak=j.mainJokJ2.find(x=>x.id==="j1"),mult=j.mainJokJ2.find(x=>x.id==="j2");
-      if(S.diff==="Expert"){if(p1>p2&&brak)jIAUsed=brak;else if(p2>=p1&&mult)jIAUsed=mult;}
-      else if(S.diff==="Intermédiaire"&&Math.random()<0.25)jIAUsed=pick(j.mainJokJ2);
+      const pot=p1+p2;
+      const derniers=j.manche>=(j.total-1);            // 2 dernières manches → ne pas gaspiller ses jokers
+      if(S.diff==="Expert"){
+        // Conserve ses jokers pour les gros pots ; les sort d'office en fin de partie
+        if(p1>p2 && brak && (pot>=30 || derniers)) jIAUsed=brak;        // vole un gros pot qu'elle allait perdre
+        else if(p2>=p1 && mult && (pot>=30 || derniers)) jIAUsed=mult;  // double une victoire déjà conséquente
+      }
+      else if(S.diff==="Intermédiaire"){
+        // Joue le bon joker selon la situation, plus souvent sur les gros pots
+        const chance = pot>=30 ? 0.6 : 0.18;
+        if(Math.random()<chance){
+          if(p1>p2&&brak) jIAUsed=brak;
+          else if(p2>=p1&&mult) jIAUsed=mult;
+        }
+      }
       else if(S.diff==="Débutant"&&Math.random()<0.08)jIAUsed=pick(j.mainJokJ2);
       if(jIAUsed)j.mainJokJ2=j.mainJokJ2.filter(x=>x.id!==jIAUsed.id);
     }
@@ -6602,7 +6620,7 @@ const G={
     // Toujours planifier mancheSuivante — annulée si bonus se lance
     if(G._apresInt) clearTimeout(G._apresInt);
     // Rythme : rapide sans joker, et on laisse 1,5 s si un joker (ou un événement) a été joué
-    var _delaiFin = (jokerFinal || jIAUsed || _evM) ? 1500 : 550;
+    var _delaiFin = (jokerFinal || jIAUsed || _evM) ? 1000 : 500;
     G._apresInt=setTimeout(function(){
       G._apresInt=null;
       if(S.jeu&&S.jeu.phase==="fin"&&!TOURNOI.actif) G.mancheSuivante();
@@ -7195,38 +7213,38 @@ function renderMenu(app){
         </button>
         <button onclick="S.ecran='campagne';render()" style="
           width:100%;min-height:60px;border-radius:16px;cursor:pointer;
-          border:1px solid rgba(192,132,87,0.55);
-          background:linear-gradient(180deg,rgba(255,255,255,0.32),rgba(255,255,255,0.05) 44%,rgba(0,0,0,0.1)),linear-gradient(180deg,#2b241d,#171210);
+          border:1px solid rgba(155,89,182,0.55);
+          background:linear-gradient(180deg,rgba(255,255,255,0.28),rgba(255,255,255,0.04) 44%,rgba(0,0,0,0.12)),linear-gradient(180deg,#3a2358,#1c0f30);
           color:#fff;font-family:Cinzel,serif;font-size:16px;font-weight:900;
-          letter-spacing:1px;box-shadow:0 5px 18px rgba(0,0,0,0.55),inset 0 1px 0 rgba(255,255,255,0.35);
+          letter-spacing:1px;box-shadow:0 5px 20px rgba(110,60,170,0.4),inset 0 1px 0 rgba(255,255,255,0.28);
           display:flex;align-items:center;justify-content:center;gap:10px;text-shadow:0 1px 3px rgba(0,0,0,0.4)">
           🗺️ Campagne <span style="font-size:9px;font-family:sans-serif;opacity:0.9">${(S.campagne?S.campagne.progres:0)}/${CAMPAGNE.length} gardiens</span>
         </button>
         <button onclick="S.ecran='duel_menu';render()" style="
           width:100%;min-height:60px;border-radius:16px;cursor:pointer;
-          border:1px solid rgba(192,132,87,0.55);
-          background:linear-gradient(180deg,rgba(255,255,255,0.32),rgba(255,255,255,0.05) 44%,rgba(0,0,0,0.1)),linear-gradient(180deg,#2b241d,#171210);
+          border:1px solid rgba(231,76,60,0.55);
+          background:linear-gradient(180deg,rgba(255,255,255,0.28),rgba(255,255,255,0.04) 44%,rgba(0,0,0,0.12)),linear-gradient(180deg,#5a1626,#2e0b15);
           color:#fff;font-family:Cinzel,serif;font-size:16px;font-weight:900;
-          letter-spacing:1px;box-shadow:0 5px 18px rgba(0,0,0,0.55),inset 0 1px 0 rgba(255,255,255,0.35);
+          letter-spacing:1px;box-shadow:0 5px 20px rgba(200,50,45,0.4),inset 0 1px 0 rgba(255,255,255,0.28);
           display:flex;align-items:center;justify-content:center;gap:10px;text-shadow:0 1px 3px rgba(0,0,0,0.4)">
           ⚔️ DUEL 1v1
         </button>
         <button onclick="G.startJeu(true)" style="
           width:100%;min-height:60px;border-radius:16px;cursor:pointer;
-          border:1px solid rgba(192,132,87,0.55);
-          background:linear-gradient(180deg,rgba(255,255,255,0.32),rgba(255,255,255,0.05) 44%,rgba(0,0,0,0.1)),linear-gradient(180deg,#2b241d,#171210);
+          border:1px solid rgba(39,174,96,0.55);
+          background:linear-gradient(180deg,rgba(255,255,255,0.28),rgba(255,255,255,0.04) 44%,rgba(0,0,0,0.12)),linear-gradient(180deg,#0e4030,#082017);
           color:#fff;font-family:Cinzel,serif;font-size:16px;font-weight:900;
-          letter-spacing:1px;box-shadow:0 5px 18px rgba(0,0,0,0.55),inset 0 1px 0 rgba(255,255,255,0.35);
+          letter-spacing:1px;box-shadow:0 5px 20px rgba(20,120,70,0.4),inset 0 1px 0 rgba(255,255,255,0.28);
           display:flex;align-items:center;justify-content:center;gap:10px;text-shadow:0 1px 3px rgba(0,0,0,0.4)">
           ❤️ Mode Survie
         </button>
         <button onclick="TOURNOI.start()" style="
           width:100%;min-height:54px;border-radius:14px;cursor:pointer;
-          border:1px solid rgba(192,132,87,0.55);
-          background:linear-gradient(180deg,#2b241d,#171210);
-          color:#fff;font-family:Cinzel,serif;font-size:14px;font-weight:700;
-          letter-spacing:1px;box-shadow:0 5px 18px rgba(0,0,0,0.55),inset 0 1px 0 rgba(255,255,255,0.3);
-          display:flex;align-items:center;justify-content:center;gap:8px;text-shadow:0 1px 3px rgba(0,0,0,0.4)">
+          border:1px solid rgba(240,208,96,0.6);
+          background:linear-gradient(180deg,rgba(255,255,255,0.35),rgba(255,255,255,0.05) 45%),linear-gradient(135deg,#F0D060,#D4AF37 70%,#B8912E);
+          color:#241703;font-family:Cinzel,serif;font-size:14px;font-weight:700;
+          letter-spacing:1px;box-shadow:0 5px 20px rgba(212,175,55,0.4),inset 0 1px 0 rgba(255,255,255,0.6);
+          display:flex;align-items:center;justify-content:center;gap:8px;text-shadow:0 1px 0 rgba(255,255,255,0.3)">
           🏆 Mode Tournoi <span style="font-size:9px;font-family:sans-serif;opacity:0.9">3 manches · Classement</span>
         </button>
       </div>
@@ -8144,7 +8162,7 @@ function renderRegles(app){
           {i:"🎨",n:"Thèmes débloquables",t:"Personnalisez l'ambiance du jeu avec des thèmes de fond (Nuit Mystique, Aurore Boréale, Cosmos, Coucher de Soleil), à débloquer en montant de niveau, via le menu 🎨 Thèmes."},
           {i:"⚡",n:"Mode léger",t:"Dans <strong style='color:var(--goldL)'>🎨 Thèmes</strong>, un réglage réduit les animations pour une fluidité maximale sur les téléphones plus modestes. Il s'active aussi tout seul si votre téléphone est réglé sur « réduire les animations »."},
           {i:"🎴",n:"Cartes illustrées",t:"Les 4 piliers et leurs emblèmes (méditation, cœur, arbre, pièces) sont de véritables illustrations dorées, présentes sur toutes les cartes — de base comme réponses — pour une identité visuelle riche et cohérente."},
-          {i:"🎵",n:"Musique d'ambiance",t:"Une musique céleste (harpe & piano) accompagne vos parties, du début à la fin. Elle démarre quand la partie commence. Activez ou coupez le son à tout moment avec le bouton 🔊."},
+          {i:"🎵",n:"Musique d'ambiance",t:"Une musique douce et joyeuse accompagne vos parties, du début à la fin. Elle démarre quand la partie commence. Activez ou coupez le son à tout moment avec le bouton 🔊."},
           {i:"👋",n:"Première partie guidée",t:"Lors de votre toute première partie, un guide discret vous accompagne pas à pas, directement pendant que vous jouez — la meilleure façon d'apprendre."},
         ].map(f=>`
           <div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
