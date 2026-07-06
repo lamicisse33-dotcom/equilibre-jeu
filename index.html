@@ -1140,7 +1140,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v93.51";
+const BUILD_TAG="v93.54";
 // ── Diagnostic : révèle le détail réel des erreurs (un « Script error. » nu = erreur d'un script tiers cross-origin, ex. PeerJS) ──
 window.addEventListener("error", function(ev){
   // Erreur tierce sans détail (ex. Google Analytics gêné par la prévention du tracking) : bruit bénin → on n'encombre pas la console
@@ -1308,9 +1308,9 @@ const THEMES=[
 // ── MODE CAMPAGNE : « La Voie des 4 Piliers » (5 gardiens, pilier fort différent) ──
 const CAMPAGNE=[
   {id:"c1",nom:"Gardien de la Santé",         pilier:"Santé",       icon:"🌿",diff:"Débutant",     xp:80, phrase:"Le corps est le temple de l'âme. Prouve que tu sais l'honorer."},
-  {id:"c2",nom:"Gardienne de l'Amour",        pilier:"Amour",       icon:"❤️",diff:"Débutant",     xp:120,phrase:"Sans amour, toute victoire est vide. Montre-moi ton cœur."},
+  {id:"c2",nom:"Gardienne de l'Amour",        pilier:"Amour",       icon:"❤️",diff:"Intermédiaire",xp:120,phrase:"Sans amour, toute victoire est vide. Montre-moi ton cœur."},
   {id:"c3",nom:"Gardien de l'Argent",         pilier:"Argent",      icon:"🪙",diff:"Intermédiaire",xp:180,phrase:"L'abondance récompense la stratégie. Sauras-tu la mériter ?"},
-  {id:"c4",nom:"Gardienne de la Spiritualité",pilier:"Spiritualité",icon:"🕯️",diff:"Intermédiaire",xp:250,phrase:"L'équilibre intérieur est la vraie force. Trouve la paix… ou péris."},
+  {id:"c4",nom:"Gardienne de la Spiritualité",pilier:"Spiritualité",icon:"🕯️",diff:"Expert",       xp:250,phrase:"L'équilibre intérieur est la vraie force. Trouve la paix… ou péris."},
   {id:"c5",nom:"Le Maître Suprême",           pilier:"Équilibre",   icon:"🔮",diff:"Expert",       xp:400,phrase:"Tu as parcouru la Voie. Prouve maintenant que tu as trouvé l'Équilibre."},
 ];
 const BADGES=[
@@ -6246,10 +6246,12 @@ function showJokerOverlay(joker, ptsReveal, who, callback){
 // LOGIQUE JEU
 // ════════════════════════════════════════════════
 const G={
-  startJeu(survie=false){
+  startJeu(survie=false, keepVies=false){
+    S._lastCampagne=null;
+    S._lastSurvie=null;
     S.survieActif=survie;
     try{ S._nivDebut=getIdxNiv(S.xp||0); }catch(e){ S._nivDebut=0; }
-    if(survie){ S.viesSurvie=3; S.diff="Expert"; }
+    if(survie){ if(!keepVies) S.viesSurvie=3; S.diff="Expert"; }
     const r=genererDeck24();
     const _deal=dealEquilibre();
     marquerVues(_deal.j1);
@@ -6863,15 +6865,22 @@ const G={
     S.classement.sort((a,b)=>b.pts-a.pts);
     S.classement=S.classement.slice(0,10);
     // Survie
-    if(S.survieActif&&j.s1<=j.s2){
-      S.viesSurvie--;
-      if(S.viesSurvie<=0){S.survieActif=false;S.viesSurvie=3;}
+    if(S.survieActif){
+      if(j.s1<=j.s2){               // manche perdue ou nulle → on perd une vie
+        S.viesSurvie--;
+        if(S.viesSurvie<=0){ S.survieActif=false; }   // 0 vie → run terminé (les vies seront remises à 3 au prochain startJeu(true))
+      }
+      // contexte pour l'écran de résultat : run en cours (continuer) ou game over (nouvelle survie)
+      S._lastSurvie={ vies:S.viesSurvie, gameOver:!S.survieActif };
+    } else {
+      S._lastSurvie=null;
     }
     // ── Progression CAMPAGNE ──
     try{
       if(typeof S.campagneEnCours==="number" && S.campagneEnCours>=0){
         var _gi=S.campagneEnCours;
         if(!S.campagne) S.campagne={progres:0};
+        S._lastCampagne={gi:_gi, gagne:!!(S.jeu && S.jeu.s1>S.jeu.s2)};   // contexte pour l'écran de résultat
         if(S.jeu && S.jeu.s1>S.jeu.s2 && _gi===S.campagne.progres){
           S.campagne.progres=_gi+1;
           var _g=CAMPAGNE[_gi];
@@ -7895,29 +7904,54 @@ function renderResultat(app){
       </div>
     </div>
 
-    <!-- Boutons principaux — remontés juste après le score -->
-    <button onclick="G.startJeu(false)" style="
-      width:100%;min-height:56px;border-radius:16px;cursor:pointer;border:none;
-      color:#fff;font-family:Cinzel,serif;font-size:16px;font-weight:900;letter-spacing:1px;
-      animation:btnRainbow 2s linear infinite;
-      box-shadow:0 6px 30px rgba(212,175,55,0.5);
-      text-shadow:0 1px 4px rgba(0,0,0,0.4);margin-bottom:10px">
-      🔄 Rejouer — Une nouvelle partie !
-    </button>
-    <div style="display:flex;gap:8px;margin-bottom:18px">
-      <button onclick="S.ecran='menu';render()" style="
-        flex:1;min-height:46px;border-radius:12px;cursor:pointer;
-        background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);
-        color:var(--muted);font-size:13px;font-weight:700">🏠 Menu</button>
-      <button onclick="G.startJeu(true)" style="
-        flex:1;min-height:46px;border-radius:12px;cursor:pointer;border:none;
-        background:linear-gradient(135deg,#6d1a36,#c0392b);
-        color:#fff;font-size:13px;font-weight:700">❤️ Survie</button>
-      <button onclick="partagerResultat()" style="
-        flex:1;min-height:46px;border-radius:12px;cursor:pointer;border:none;
-        background:linear-gradient(135deg,#1565c0,#1e88e5);
-        color:#fff;font-size:13px;font-weight:700">📤 Partager</button>
-    </div>
+    <!-- Boutons principaux — adaptés au contexte (campagne / solo) -->
+    ${(function(){
+      var primStyle="width:100%;min-height:56px;border-radius:16px;cursor:pointer;border:none;color:#fff;font-family:Cinzel,serif;font-size:16px;font-weight:900;letter-spacing:1px;animation:btnRainbow 2s linear infinite;box-shadow:0 6px 30px rgba(212,175,55,0.5);text-shadow:0 1px 4px rgba(0,0,0,0.4);margin-bottom:10px";
+      var subStyle="flex:1;min-height:46px;border-radius:12px;cursor:pointer;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:var(--muted);font-size:13px;font-weight:700";
+      if(S._lastCampagne){
+        var lc=S._lastCampagne, prog=(S.campagne&&S.campagne.progres)||0;
+        if(lc.gagne && prog<CAMPAGNE.length){
+          return '<button onclick="introGardien('+prog+')" style="'+primStyle+'">⚔️ Défi suivant →</button>'
+            +'<div style="display:flex;gap:8px;margin-bottom:18px">'
+            +'<button onclick="S.ecran=\'campagne\';render()" style="'+subStyle+'">🗺️ Campagne</button>'
+            +'<button onclick="S.ecran=\'menu\';render()" style="'+subStyle+'">🏠 Menu</button></div>';
+        } else if(lc.gagne){
+          return '<button onclick="S.ecran=\'campagne\';render()" style="'+primStyle+'">🏆 Voir la Campagne</button>'
+            +'<div style="display:flex;gap:8px;margin-bottom:18px">'
+            +'<button onclick="S.ecran=\'menu\';render()" style="'+subStyle+'">🏠 Menu</button></div>';
+        }
+        return '<button onclick="lancerGardien('+lc.gi+')" style="'+primStyle+'">🔄 Réessayer ce gardien</button>'
+          +'<div style="display:flex;gap:8px;margin-bottom:18px">'
+          +'<button onclick="S.ecran=\'campagne\';render()" style="'+subStyle+'">🗺️ Campagne</button>'
+          +'<button onclick="S.ecran=\'menu\';render()" style="'+subStyle+'">🏠 Menu</button></div>';
+      }
+      // ── SURVIE : run en cours (continuer avec les vies restantes) ou game over ──
+      if(S._lastSurvie){
+        var _partage='<button onclick="partagerResultat()" style="flex:1;min-height:46px;border-radius:12px;cursor:pointer;border:none;background:linear-gradient(135deg,#1565c0,#1e88e5);color:#fff;font-size:13px;font-weight:700">📤 Partager</button>';
+        if(!S._lastSurvie.gameOver){
+          var _nv=S._lastSurvie.vies, _sV=(_nv>1?'s':'');
+          return '<button onclick="G.startJeu(true,true)" style="'+primStyle+'">❤️ Continuer la Survie — '+_nv+' vie'+_sV+'</button>'
+            +'<div style="display:flex;gap:8px;margin-bottom:18px">'
+            +'<button onclick="S.ecran=\'menu\';render()" style="'+subStyle+'">🏠 Menu</button>'+_partage+'</div>';
+        }
+        return '<button onclick="G.startJeu(true)" style="'+primStyle+'">💀 Game Over — Nouvelle Survie</button>'
+          +'<div style="display:flex;gap:8px;margin-bottom:18px">'
+          +'<button onclick="G.startJeu(false)" style="'+subStyle+'">⚔️ Solo</button>'
+          +'<button onclick="S.ecran=\'menu\';render()" style="'+subStyle+'">🏠 Menu</button>'+_partage+'</div>';
+      }
+      // ── SOLO : rejouer + (si victoire) proposer la difficulté supérieure ──
+      var NEXT_DIFF={"Débutant":"Intermédiaire","Intermédiaire":"Expert"};
+      var htmlSolo='<button onclick="G.startJeu(false)" style="'+primStyle+'">🔄 Rejouer — Une nouvelle partie !</button>';
+      if(gagne && NEXT_DIFF[S.diff]){
+        var nd=NEXT_DIFF[S.diff], ip=IA_PROFILS[nd]||{};
+        htmlSolo+='<button onclick="S.diff=\''+nd+'\';sauvegarder();G.startJeu(false)" style="width:100%;min-height:50px;border-radius:14px;cursor:pointer;border:1px solid rgba(240,208,96,0.5);background:linear-gradient(180deg,rgba(255,255,255,0.22),rgba(255,255,255,0.03) 45%),linear-gradient(135deg,#3a2358,#1c0f30);color:#fff;font-family:Cinzel,serif;font-size:14px;font-weight:800;letter-spacing:1px;margin-bottom:10px;box-shadow:0 4px 16px rgba(110,60,170,0.35)">⬆️ Difficulté supérieure · '+(ip.icon||'')+' '+(ip.nom||nd)+'</button>';
+      }
+      htmlSolo+='<div style="display:flex;gap:8px;margin-bottom:18px">'
+        +'<button onclick="S.ecran=\'menu\';render()" style="'+subStyle+'">🏠 Menu</button>'
+        +'<button onclick="G.startJeu(true)" style="flex:1;min-height:46px;border-radius:12px;cursor:pointer;border:none;background:linear-gradient(135deg,#6d1a36,#c0392b);color:#fff;font-size:13px;font-weight:700">❤️ Survie</button>'
+        +'<button onclick="partagerResultat()" style="flex:1;min-height:46px;border-radius:12px;cursor:pointer;border:none;background:linear-gradient(135deg,#1565c0,#1e88e5);color:#fff;font-size:13px;font-weight:700">📤 Partager</button></div>';
+      return htmlSolo;
+    })()}
 
     <!-- DÉTAILS (animation délayée) -->
     <div style="width:100%;animation:sUp 0.5s 0.4s both">
