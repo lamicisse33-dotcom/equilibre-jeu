@@ -221,6 +221,20 @@ html.lite .sb-icone-fixe{backdrop-filter:none!important;-webkit-backdrop-filter:
 /* ─── Écrans de jeu plein-hauteur : la PAGE ne défile pas ; seule la zone interne (VOS CARTES) défile, en-tête figé ─── */
 html.app-lock,body.app-lock{height:100%;overflow:hidden;overscroll-behavior:none;}
 
+/* ─── Bouton GUIDE flottant (le Sage) : très visible, pulse pour attirer l'œil ─── */
+@keyframes guidePulse{
+  0%,100%{ box-shadow:0 6px 22px rgba(255,130,20,0.5), 0 0 0 0 rgba(255,175,45,0.6); transform:scale(1); }
+  50%{ box-shadow:0 8px 28px rgba(255,130,20,0.75), 0 0 0 12px rgba(255,175,45,0); transform:scale(1.06); }
+}
+#guide-fab:active{ transform:scale(0.94)!important; }
+html.lite #guide-fab{ animation:none!important; }
+/* Masquer le bouton Guide pendant un bonus (Bonus du Sage / bonus question) — réapparaît à la fin */
+body:has(#sage-bonus-overlay.active) #guide-fab,
+body:has(#bonus-overlay.active) #guide-fab{ display:none!important; }
+/* Le bouton Guide s'efface pendant que le joueur joue (masqué 10 s après chaque toucher) */
+#guide-fab{ transition:opacity .3s ease; }
+body.guide-touch-hide #guide-fab{ opacity:0!important; pointer-events:none!important; }
+
 @media(min-width:900px){
   .btn-gold{padding:16px 0;font-size:16px;border-radius:14px;}
   .btn-ghost{padding:13px 0;font-size:15px;}
@@ -1126,7 +1140,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v93.27";
+const BUILD_TAG="v93.45";
 // ── Diagnostic : révèle le détail réel des erreurs (un « Script error. » nu = erreur d'un script tiers cross-origin, ex. PeerJS) ──
 window.addEventListener("error", function(ev){
   // Erreur tierce sans détail (ex. Google Analytics gêné par la prévention du tracking) : bruit bénin → on n'encombre pas la console
@@ -2859,7 +2873,7 @@ const BONUS = {
       <div style="display:inline-flex;align-items:center;gap:6px;
         background:${st.accent}22;border:1px solid ${st.accent}66;
         border-radius:16px;padding:4px 12px;margin-bottom:2px">
-        <span style="font-size:15px">${st.icon}</span>
+        <span style="font-size:15px">${emblemeMini(q.pilier,15)}</span>
         <span style="font-size:10px;color:${st.accent};font-weight:700;letter-spacing:1px">PILIER ${q.pilier.toUpperCase()}</span>
       </div>`;
 
@@ -3769,6 +3783,7 @@ const DUEL = {
   },
 
   _startNextRoundCountdown(sec){
+    if(DUEL._clearJokerCountdown) DUEL._clearJokerCountdown();
     if(DUEL._nextRoundInt) clearTimeout(DUEL._nextRoundInt);
     if(DUEL._tickInt) clearTimeout(DUEL._tickInt);
     var delay=(sec||1.5)*1000;
@@ -4418,6 +4433,7 @@ Object.assign(DUEL, {
   // Décision d'un joker offensif APRÈS la révélation (comme le Solo)
   jokerFinal(id){
     var gs=DUEL.gs; if(!gs||gs.phase!=="apresReponses") return;
+    DUEL._clearJokerCountdown();
     if(id){
       var joks=DUEL._mesJoks();
       if(!joks.find(function(x){return x.id===id;})){ id=null; }
@@ -4436,6 +4452,19 @@ Object.assign(DUEL, {
     DUEL._send({type:"joker_final",joker:id||null});
     render();
     DUEL._verifierResolution();
+  },
+  _armerJokerCountdown(){
+    if(DUEL._jokerCountInt) return;
+    DUEL._jSec=5;
+    DUEL._jokerCountInt=setInterval(function(){
+      DUEL._jSec--;
+      var el=document.getElementById("duel-joker-sec");
+      if(el) el.textContent=Math.max(0,DUEL._jSec);
+      if(DUEL._jSec<=0){ clearInterval(DUEL._jokerCountInt); DUEL._jokerCountInt=null; }
+    },1000);
+  },
+  _clearJokerCountdown(){
+    if(DUEL._jokerCountInt){ clearInterval(DUEL._jokerCountInt); DUEL._jokerCountInt=null; }
   },
 
   // L'hôte résout la manche quand LES DEUX joueurs ont décidé (garde-fou 5s)
@@ -4854,12 +4883,12 @@ function showCardDealAnimation(cartes, callback){
     +"max-width:min(380px,90vw);width:90vw";
   ov.appendChild(grid);
 
-  // Couleurs par pilier
+  // Couleurs par pilier (icônes = emblèmes personnalisés, comme dans le jeu)
   var PILIER_COLORS={
-    "Amour":   {col:"#e05555",icon:"❤️"},
-    "Santé":   {col:"#45c97a",icon:"💚"},
-    "Argent":  {col:"#F0D060",icon:"💛"},
-    "Spiritualité":{col:"#9B59B6",icon:"💜"},
+    "Amour":   {col:"#e05555",icon:emblemeMini("Amour",24)},
+    "Santé":   {col:"#45c97a",icon:emblemeMini("Santé",24)},
+    "Argent":  {col:"#F0D060",icon:emblemeMini("Argent",24)},
+    "Spiritualité":{col:"#9B59B6",icon:emblemeMini("Spiritualité",24)},
   };
 
   // Directions de vol — depuis les 4 coins et bords
@@ -5151,14 +5180,15 @@ function renderDuelJeu(app){
       +'<div style="font-size:14px;font-weight:900;font-family:Cinzel,serif;color:'+(sel>=10?"#45c97a":"var(--gold)")+'">'+sel+'/10</div>'
       +'</div>'
       +cartesHtml
-      +'<div style="height:96px"></div>'; // espace pour le bouton fixe
+      +'<div style="height:150px"></div>'; // espace pour le bouton fixe
     // Bouton FIXE en bas (comme le Solo)
     html+='<div style="position:fixed;bottom:0;left:0;right:0;z-index:200;padding:10px 16px env(safe-area-inset-bottom,16px);background:linear-gradient(to top,rgba(7,5,20,0.98) 70%,transparent)">'
       +(sel>=10
-        ?'<button onclick="AUDIO.sfxConfirm();DUEL.confirmerSel()" style="width:100%;min-height:64px;border-radius:16px;cursor:pointer;border:none;color:#fff;font-family:Cinzel,serif;font-size:17px;font-weight:900;letter-spacing:1px;box-shadow:0 6px 30px rgba(212,175,55,0.5),0 0 0 3px rgba(255,255,255,0.1);animation:btnRainbow 2s linear infinite;text-shadow:0 1px 4px rgba(0,0,0,0.4)">⚔️ Que les choses sérieuses commencent !</button>'
+        ?''
         :'<div style="text-align:center;padding:16px;font-size:12px;color:var(--muted);background:rgba(7,5,20,0.9);border-radius:14px;border:1px solid rgba(255,255,255,0.08)">Choisissez encore <strong style="color:var(--goldL)">'+(10-sel)+'</strong> carte'+(10-sel>1?"s":"")+'</div>'
       )
       +'</div>';
+    if(sel>=10){ html+=selConfirmModalHTML("AUDIO.sfxConfirm();DUEL.confirmerSel()","var m=DUEL.isHost?DUEL.gs.mainRepJ1:DUEL.gs.mainRepJ2;m.pop();render()"); }
   }
 
   // ── Phase choixBase ──
@@ -5286,8 +5316,8 @@ function renderDuelJeu(app){
           var advDecid=isJ1?gs.jokDecidJ2:gs.jokDecidJ1;
           if(mesJoksOff.length>0 && !moiDecid){
             var box='<div style="background:rgba(45,27,105,0.44);border:1px solid rgba(212,175,55,0.55);border-radius:12px;padding:12px 10px;margin-top:12px;text-align:left">'
-              +'<div style="font-size:12px;color:var(--gold);font-weight:700;margin-bottom:4px;text-align:center">🎯 Dernier moment — jouer un joker ?</div>'
-              +'<div style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:10px">Décision secrète — l\'adversaire choisit aussi</div>'
+              +'<div style="font-size:13px;color:var(--gold);font-weight:700;margin-bottom:4px;text-align:center">🃏 Veux-tu jouer un joker ?</div>'
+              +'<div style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:10px">⏱ <span id="duel-joker-sec" style="color:var(--goldL);font-weight:900">5</span> s pour décider · sinon résultat normal</div>'
               +'<div style="display:flex;gap:min(8px,2vw);margin-bottom:10px;justify-content:center;flex-wrap:nowrap">';
             mesJoksOff.forEach(function(jk){
               box+='<div style="width:var(--card-w);min-height:var(--card-h);display:flex;flex-shrink:0">'+jokerCardHTML(jk,{bonus:(jk.id==="j1"?tot2:tot2*2),onClick:"DUEL.jokerFinal('"+jk.id+"')"})+'</div>';
@@ -5295,6 +5325,7 @@ function renderDuelJeu(app){
             box+='</div>'
               +'<button class="btn-ghost" onclick="DUEL.jokerFinal(null)">✗ Non — résultat normal</button>'
               +'</div>';
+            DUEL._armerJokerCountdown();
             return box;
           } else if(!advDecid){
             return '<div style="font-size:11px;color:var(--muted);text-align:center;margin-top:12px">⏳ En attente de la décision de <strong style="color:'+advCoul+'">'+advNom+'</strong>…</div>';
@@ -5466,7 +5497,7 @@ function renderDuelResultat(app){
           var st=PILIER[p];
           return '<div style="margin-bottom:6px">'
             +'<div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px">'
-            +'<span style="color:'+st.accent+'">'+st.icon+' '+p+'</span>'
+            +'<span style="color:'+st.accent+'">'+emblemeMini(p,12)+' '+p+'</span>'
             +'<span style="color:var(--muted)">'+pts+' pts</span></div>'
             +'<div style="height:4px;border-radius:2px;background:rgba(255,255,255,0.06);overflow:hidden">'
             +'<div style="height:100%;width:'+pct+'%;background:'+st.accent+';border-radius:2px;'
@@ -5516,7 +5547,66 @@ function DUEL_VALIDER_NOM(cb){
   S.nom=nom; sauvegarder(); cb();
 }
 
+// ── LE SAGE : guide contextuel (aide adaptée à la phase de jeu) ──
+function guideTexte(){
+  var e=S.ecran;
+  if(e==="selection") return {t:"La sélection",m:"Choisis tes <b>10 meilleures cartes</b> parmi les 12. Garde les plus fortes, et un peu de chaque combo pour pouvoir t'adapter."};
+  if(e==="jeu" && S.jeu){
+    var p=S.jeu.phase;
+    if(p==="choixBase") return {t:"Forme ton Combo",m:"Choisis <b>2 piliers</b> pour créer ton Combo (ex. "+emblemeMini("Amour",18)+"+"+emblemeMini("Argent",18)+"). Ta carte devra appartenir à ce combo."};
+    if(p==="iaChoisitBase") return {t:"Réponds au combo",m:"L'adversaire a ouvert. Choisis un pilier qui forme un combo <b>valide</b> avec le sien, puis joue ta carte."};
+    if(p==="afficheBases") return {t:"Joue ta carte",m:"Pose une carte de ton combo — <b>la plus forte l'emporte</b>. Garde tes cartes à 40 pour les gros enjeux. Tes jokers peuvent renverser la manche."};
+    if(p==="apresReponses"||p==="fin") return {t:"Le verdict",m:"Les deux cartes sont révélées et les points comptés. La manche suivante démarre <b>toute seule</b>."};
+  }
+  if(e==="duel_jeu" && typeof DUEL!=="undefined" && DUEL.gs){
+    var dp=DUEL.gs.phase;
+    if(dp==="selection") return {t:"La sélection",m:"Choisis tes <b>10 meilleures cartes</b> parmi les 12, puis valide. La partie démarre quand l'adversaire est prêt."};
+    if(dp==="selAttente") return {t:"Patience",m:"Tes cartes sont validées. On attend que l'adversaire finisse sa sélection."};
+    if(dp==="choixBase") return {t:"Ton pilier d'attaque",m:"Choisis <b>un pilier</b> pour ouvrir la manche. L'adversaire devra y répondre."};
+    if(dp==="choixBase2") return {t:"Réponds au pilier",m:"Choisis un pilier qui forme un <b>combo valide</b> avec celui de l'adversaire."};
+    if(dp==="afficheBases") return {t:"Joue ta carte",m:"Pose une carte de ton combo — la <b>plus forte gagne</b> le pot. Garde tes atouts pour les moments décisifs."};
+    if(dp==="apresReponses") return {t:"Le verdict",m:"Les cartes sont révélées. La manche suivante s'enchaîne automatiquement."};
+  }
+  return {t:"Le Sage veille",m:"Forme un <b>combo</b> de 2 piliers, joue ta carte, et l'emporte avec la plus forte. Garde tes atouts pour les moments qui comptent."};
+}
+function appelerGuide(){
+  try{ AUDIO && AUDIO.sfxConfirm && AUDIO.sfxConfirm(); }catch(_){}
+  var old=document.getElementById('guide-ov'); if(old) old.remove();
+  var g=guideTexte();
+  var ov=document.createElement('div');
+  ov.id='guide-ov';
+  ov.style.cssText='position:fixed;inset:0;z-index:9000;background:rgba(4,3,10,0.72);display:flex;align-items:center;justify-content:center;padding:24px';
+  ov.onclick=function(ev){ if(ev.target===ov) ov.remove(); };
+  ov.innerHTML='<div style="max-width:340px;width:100%;background:linear-gradient(180deg,#1a1330,#0c0818);border:1px solid rgba(240,208,96,0.4);border-radius:20px;padding:26px 22px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.6),0 0 40px rgba(120,80,180,0.25)">'
+    +'<div style="margin-bottom:6px;filter:drop-shadow(0 0 12px rgba(240,208,96,0.5))">'+emblemeMini("Spiritualité",44)+'</div>'
+    +'<div style="font-size:10px;letter-spacing:3px;color:var(--muted);text-transform:uppercase;margin-bottom:8px">Le Sage te guide</div>'
+    +'<div style="font-family:Cinzel,serif;font-size:17px;font-weight:700;color:var(--goldL);margin-bottom:12px">'+g.t+'</div>'
+    +'<div style="font-size:14px;color:var(--text);line-height:1.6;margin-bottom:20px">'+g.m+'</div>'
+    +'<button onclick="var o=document.getElementById(\'guide-ov\');if(o)o.remove()" style="width:100%;padding:13px;border-radius:12px;border:1px solid rgba(255,245,210,0.5);background:linear-gradient(135deg,#F6E4A0,#F0D060 30%,#D4AF37 60%,#B8912E);color:#241703;font-family:Cinzel,serif;font-weight:700;font-size:14px;letter-spacing:1px;cursor:pointer">✓ Compris</button>'
+    +'</div>';
+  document.body.appendChild(ov);
+}
+// ── Pop-up centré de confirmation de sélection (Retour / Valider) ──
+function selConfirmModalHTML(validerJs, retourJs){
+  return '<div id="sel-modal-ov" style="position:fixed;inset:0;z-index:8500;background:rgba(4,3,10,0.72);display:flex;align-items:center;justify-content:center;padding:24px">'
+    +'<div style="max-width:330px;width:100%;background:linear-gradient(180deg,#1a1330,#0c0818);border:1px solid rgba(240,208,96,0.45);border-radius:22px;padding:26px 22px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.65),0 0 44px rgba(212,175,55,0.22)">'
+    +'<div style="font-size:40px;margin-bottom:6px">🎴</div>'
+    +'<div style="font-family:\'Cinzel\',serif;font-size:18px;font-weight:900;color:var(--goldL);margin-bottom:6px">Tes 10 cartes sont prêtes</div>'
+    +'<div style="font-size:13px;color:var(--text);line-height:1.5;margin-bottom:20px">Valide pour lancer la partie, ou reviens en arrière pour changer tes cartes.</div>'
+    +'<button onclick="'+validerJs+'" style="width:100%;min-height:56px;border-radius:14px;cursor:pointer;border:1px solid rgba(255,245,210,0.5);color:#241703;font-family:\'Cinzel\',serif;font-size:16px;font-weight:900;letter-spacing:1px;background:linear-gradient(135deg,#F6E4A0,#F0D060 30%,#D4AF37 60%,#B8912E);box-shadow:0 6px 20px rgba(212,175,55,0.5)">✓ Valider</button>'
+    +'<button onclick="'+retourJs+'" style="width:100%;margin-top:10px;min-height:44px;border-radius:12px;cursor:pointer;background:rgba(255,255,255,0.05);border:1px solid rgba(212,175,55,0.35);color:var(--goldL);font-family:\'Cinzel\',serif;font-size:14px;font-weight:700">↩️ Retour</button>'
+    +'</div></div>';
+}
 let _lastEcran=null,_lastTheme=null;
+// Le bouton Guide s'efface pendant le jeu : masqué à chaque toucher, réapparaît 10 s après le dernier toucher
+(function(){
+  var _gHideTO=null;
+  document.addEventListener("pointerdown", function(){
+    document.body.classList.add("guide-touch-hide");
+    if(_gHideTO) clearTimeout(_gHideTO);
+    _gHideTO=setTimeout(function(){ document.body.classList.remove("guide-touch-hide"); }, 10000);
+  }, {passive:true});
+})();
 function render(){
   appliquerModeLeger();
   // Verrou de défilement : solo "jeu" + phases de JEU du Duel qui ont une zone interne défilante
@@ -5526,6 +5616,19 @@ function render(){
   var _lock=(S.ecran==="jeu" || _duelPlay);
   document.documentElement.classList.toggle("app-lock",_lock);
   document.body.classList.toggle("app-lock",_lock);
+  // Bouton GUIDE flottant (le Sage) : présent de la sélection jusqu'à la fin de partie
+  try{
+    var _guideOn = ["selection","jeu","duel_jeu","duel_resultat"].indexOf(S.ecran)!==-1;
+    var _fab = document.getElementById("guide-fab");
+    if(_guideOn && !_fab){
+      _fab=document.createElement("div");
+      _fab.id="guide-fab";
+      _fab.setAttribute("onclick","appelerGuide()");
+      _fab.innerHTML='<span style="font-size:20px;line-height:1">🧙</span><span style="font-family:\'Cinzel\',serif;font-weight:900;font-size:13px;letter-spacing:1.5px">GUIDE</span>';
+      _fab.style.cssText='position:fixed;left:14px;bottom:14px;z-index:8000;display:flex;align-items:center;gap:7px;padding:11px 17px 11px 13px;border-radius:30px;cursor:pointer;color:#3a1600;background:linear-gradient(135deg,#FFC24D,#FF8A1E 55%,#FF6A00);border:2px solid rgba(255,240,205,0.7);box-shadow:0 6px 22px rgba(255,130,20,0.55);animation:guidePulse 1.9s ease-in-out infinite;-webkit-tap-highlight-color:transparent';
+      document.body.appendChild(_fab);
+    } else if(!_guideOn && _fab){ _fab.remove(); }
+  }catch(_g){}
   if(S.theme!==_lastTheme){ setBg(S.theme); _lastTheme=S.theme; }
   const app=document.getElementById("app");
   app.innerHTML="";
@@ -5660,7 +5763,7 @@ function pilierCard(p,opts={}){
       <div style="font-size:${sz.ef}px;position:relative;z-index:1;
         filter:drop-shadow(0 0 9px ${st.accent}cc);
         animation:iconPulse 2s ease-in-out infinite;--ic-col:${st.accent}cc">
-        ${st.icon}
+        ${emblemeMini(p,sz.ef)}
       </div>
     </div>
     <!-- Nom bien visible -->
@@ -5704,7 +5807,7 @@ function pilierCard(p,opts={}){
           background:radial-gradient(circle,${st.accent}44 0%,transparent 70%)"></div>
         <div style="font-size:${sz.ef}px;position:relative;
           filter:drop-shadow(0 1px 7px ${st.accent}bb);
-          --ic-col:${st.accent}cc" class="pilier-icon">${st.icon}</div>
+          --ic-col:${st.accent}cc" class="pilier-icon">${emblemeMini(p,sz.ef)}</div>
       </div>
       <div style="display:flex;align-items:center;gap:4px;width:75%">
         <div style="flex:1;height:1px;background:linear-gradient(90deg,transparent,${st.accent}99)"></div>
@@ -5740,6 +5843,12 @@ function emblemeMini(p,size){
     return '<img src="'+EMBLEME_IMG[p]+'" alt="" style="width:'+size+'px;height:'+size+'px;border-radius:50%;vertical-align:middle;display:inline-block;margin:0 1px">';
   }
   return '<span style="font-size:'+size+'px;vertical-align:middle">'+(st.icon||'')+'</span>';
+}
+// Avatar : affiche l'emblème personnalisé pour les 4 avatars-piliers, l'emoji brut sinon
+function avatarHTML(av, size){
+  var map={'🕯️':'Spiritualité','❤️':'Amour','🌿':'Santé','🪙':'Argent'};
+  if(map[av] && typeof emblemeMini==='function') return emblemeMini(map[av], size||24);
+  return av;
 }
 
 function carteRepHTML(c,opts={}){
@@ -6223,9 +6332,12 @@ const G={
     let baseIA;
     if(S.diff==="Expert"){
       baseIA=[...cands].sort((a,z)=>{
-        const ma=Math.max(...j.mainRepJ2.filter(c=>c.combo===mkCombo(j.b1,a)).map(c=>c.pts),0);
-        const mz=Math.max(...j.mainRepJ2.filter(c=>c.combo===mkCombo(j.b1,z)).map(c=>c.pts),0);
-        return mz-ma;
+        const ca=j.mainRepJ2.filter(c=>c.combo===mkCombo(j.b1,a));
+        const cz=j.mainRepJ2.filter(c=>c.combo===mkCombo(j.b1,z));
+        const ma=Math.max(...ca.map(c=>c.pts),0);
+        const mz=Math.max(...cz.map(c=>c.pts),0);
+        if(mz!==ma) return mz-ma;          // priorité à la carte la plus forte
+        return cz.length-ca.length;        // à égalité : le combo le plus profond (tient plus de manches)
       })[0];
     }else if(S.diff==="Débutant"){baseIA=pick(cands);}
     else{
@@ -6282,14 +6394,17 @@ const G={
       const asc=[...vIA].sort((a,b)=>a.pts-b.pts);        // de la plus faible à la plus forte
       const pJ=cJ1?cJ1.pts:-1;                            // valeur de la carte du joueur (déjà jouée)
       const gagnantes=asc.filter(c=>c.pts>pJ);            // cartes qui battent le joueur
+      const optimal=gagnantes.length?gagnantes[0]:asc[0]; // bat avec la + petite suffisante, sinon sacrifie
+      const prog=j.total?(j.manche-1)/j.total:0;          // 0 au début → ~1 en fin de partie (montée en puissance)
       if(S.diff==="Débutant"){
-        cIA=asc[0];                                       // naïf : toujours la plus faible
+        // naïf, mais se réveille un peu en fin de partie
+        cIA=(gagnantes.length && Math.random()<prog*0.35)?gagnantes[0]:asc[0];
       }else if(S.diff==="Expert"){
-        // Malin : bat le joueur avec la plus PETITE carte suffisante, sinon sacrifie la plus faible
-        cIA=gagnantes.length?gagnantes[0]:asc[0];
+        cIA=optimal;                                       // toujours optimal
       }else{
-        // Intermédiaire : 65% jeu réfléchi, 35% aléatoire
-        cIA=(Math.random()<0.65)?(gagnantes.length?gagnantes[0]:asc[0]):pick(vIA);
+        // Intermédiaire : de plus en plus réfléchi au fil de la partie (60 % → ~92 %)
+        const pSmart=Math.min(0.92,0.6+prog*0.35);
+        cIA=(Math.random()<pSmart)?optimal:pick(vIA);
       }
     }
     if(cJ1)j.mainRepJ1=j.mainRepJ1.filter(x=>x.id!==cJ1.id);
@@ -6352,14 +6467,19 @@ const G={
       G.resoudre(j.repChoisie,j.repIA,null);
       return;
     }
-    // Joker offensif possible → on garde l'écran de décision + sa fenêtre
+    // Joker offensif possible → écran de décision, 5 s pour choisir (sinon résultat sans joker)
+    if(G._apresInt){ clearTimeout(G._apresInt); G._apresInt=null; }
+    if(G._jokerInt){ clearInterval(G._jokerInt); G._jokerInt=null; }
     j.phase="apresReponses";
+    j._jokerSec=5;
     render();
-    if(G._apresInt) clearTimeout(G._apresInt);
-    G._apresInt=setTimeout(function(){
-      G._apresInt=null;
-      if(S.jeu&&S.jeu.phase==="apresReponses"&&!TOURNOI.actif){
-        G.resoudre(S.jeu.repChoisie,S.jeu.repIA,null);
+    G._jokerInt=setInterval(function(){
+      if(!S.jeu || S.jeu.phase!=="apresReponses"){ clearInterval(G._jokerInt); G._jokerInt=null; return; }
+      S.jeu._jokerSec--;
+      var el=document.getElementById("joker-sec"); if(el) el.textContent=Math.max(0,S.jeu._jokerSec);
+      if(S.jeu._jokerSec<=0){
+        clearInterval(G._jokerInt); G._jokerInt=null;
+        if(!TOURNOI.actif) G.resoudre(S.jeu.repChoisie,S.jeu.repIA,null);
       }
     },1000);
   },
@@ -6451,6 +6571,7 @@ const G={
 
   appliquerJoker(id){
     if(G._apresInt){ clearTimeout(G._apresInt); G._apresInt=null; }
+    if(G._jokerInt){ clearInterval(G._jokerInt); G._jokerInt=null; }
     const j=S.jeu;
     let joker=id?j.mainJokJ1.find(x=>x.id===id):null;
     if(joker)j.mainJokJ1=j.mainJokJ1.filter(x=>x.id!==id);
@@ -6847,7 +6968,7 @@ function showTutoriel(force){
   if(!force){ try{ if(localStorage.getItem("equilibre_tuto_vu")) return; }catch(e){} }
   var etapes=[
     {i:"👋",t:"Bienvenue dans ÉQUILIBRE",d:"Un jeu de stratégie et de sagesse. Accumulez le plus de points sur <strong style='color:var(--goldL)'>12 manches</strong> — le meilleur score l'emporte."},
-    {i:"⚖️",t:"Les 4 Piliers de Vie",d:PILIER["Spiritualité"].icon+" Spiritualité · "+PILIER["Amour"].icon+" Amour · "+PILIER["Santé"].icon+" Santé · "+PILIER["Argent"].icon+" Argent. Chaque paire de piliers forme un <strong style='color:var(--goldL)'>Combo</strong>, et chaque carte appartient à un Combo."},
+    {i:"⚖️",t:"Les 4 Piliers de Vie",d:emblemeMini("Spiritualité",22)+" Spiritualité · "+emblemeMini("Amour",22)+" Amour · "+emblemeMini("Santé",22)+" Santé · "+emblemeMini("Argent",22)+" Argent. Chaque paire de piliers forme un <strong style='color:var(--goldL)'>Combo</strong>, et chaque carte appartient à un Combo."},
     {i:"🎴",t:"Le tour de jeu",d:"À tour de rôle, un joueur choisit un <strong style='color:var(--goldL)'>Pilier de Base</strong>, l'autre répond avec un Pilier différent → ça forme le <strong style='color:var(--goldL)'>Combo actif</strong>. La main <strong style='color:var(--goldL)'>alterne</strong> à chaque manche."},
     {i:"🃏",t:"La Carte Réponse",d:"Chaque joueur joue une carte du Combo actif (⏱️ 20 s). La carte la plus <strong style='color:var(--goldL)'>forte</strong> rafle le pot. Une carte jouée est défaussée définitivement — choisissez bien !"},
     {i:"⚡",t:"Jokers &amp; Bonus",d:"Vous avez <strong style='color:var(--goldL)'>2 Jokers</strong> pour renverser une manche. Et des <strong style='color:var(--goldL)'>bonus surprise</strong> (Sage, Questions) rapportent des points en cours de partie."},
@@ -6909,7 +7030,7 @@ function renderGardienIntro(app){
       <div style="font-size:11px;color:var(--muted);letter-spacing:3px;margin-bottom:12px">UN GARDIEN SE DRESSE DEVANT TOI</div>
       <div style="font-size:82px;filter:drop-shadow(0 0 26px ${st.accent}aa);animation:celebFloat 3s ease-in-out infinite">${g.icon}</div>
       <div style="font-family:'Cinzel',serif;font-size:24px;font-weight:900;color:var(--goldL);margin-top:12px">${g.nom}</div>
-      <div style="font-size:11px;color:${st.accent};letter-spacing:2px;margin-top:5px">${st.icon||''} PILIER : ${g.pilier.toUpperCase()} · NIVEAU ${g.diff.toUpperCase()}</div>
+      <div style="font-size:11px;color:${st.accent};letter-spacing:2px;margin-top:5px">${emblemeMini(g.pilier,12)} PILIER : ${g.pilier.toUpperCase()} · NIVEAU ${g.diff.toUpperCase()}</div>
       <div style="background:rgba(0,0,0,0.35);border:1px solid ${st.accent}55;border-radius:16px;padding:18px;margin:20px 0;font-style:italic;font-size:14px;color:#e8e0f5;line-height:1.6">« ${g.phrase} »</div>
       <div style="font-size:12px;color:var(--goldL);margin-bottom:18px">🎁 Récompense : <strong>+${g.xp} XP</strong>${dejaVaincu?' <span style="color:var(--muted)">(déjà obtenue)</span>':''}</div>
       <button onclick="lancerGardien(${i})" style="width:100%;min-height:56px;border-radius:16px;cursor:pointer;border:none;background:linear-gradient(135deg,${st.accent},#F0D060);color:#12082e;font-family:'Cinzel',serif;font-size:16px;font-weight:900;letter-spacing:1px;box-shadow:0 4px 24px ${st.accent}77">⚔️ Commencer le combat</button>
@@ -6934,7 +7055,7 @@ function renderCampagne(app){
       +'<div style="font-size:38px;filter:'+(verrou?'grayscale(1) opacity(0.6)':'drop-shadow(0 0 8px '+st.accent+'88)')+'">'+(verrou?'❓':g.icon)+'</div>'
       +'<div style="flex:1;min-width:0">'
       +'<div style="font-size:14px;font-weight:900;color:'+(verrou?'var(--muted)':'var(--goldL)')+';font-family:\'Cinzel\',serif">'+(verrou?'Gardien inconnu':g.nom)+'</div>'
-      +'<div style="font-size:10px;color:var(--muted);margin-top:2px">Niveau : '+g.diff+(verrou?'':' · '+(st.icon||'')+' '+g.pilier)+'</div>'
+      +'<div style="font-size:10px;color:var(--muted);margin-top:2px">Niveau : '+g.diff+(verrou?'':' · '+emblemeMini(g.pilier,11)+' '+g.pilier)+'</div>'
       +'<div style="font-size:11px;margin-top:4px">'+statut+'</div>'
       +'</div>'
       +(jouable?'<div style="font-size:11px;color:#fff;background:'+(actuel?st.accent:'rgba(255,255,255,0.12)')+';padding:6px 12px;border-radius:10px;font-weight:700;white-space:nowrap">'+(vaincu?'Rejouer':'Affronter →')+'</div>':'')
@@ -7143,7 +7264,7 @@ function renderMenu(app){
     <div style="padding:20px 16px 16px;background:linear-gradient(180deg,rgba(45,27,105,0.6),transparent)">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
         <div style="display:flex;align-items:center;gap:10px">
-          <div style="font-size:32px;filter:drop-shadow(0 0 8px var(--gold))">${S.avatar||'⚖️'}</div>
+          <div style="font-size:32px;filter:drop-shadow(0 0 8px var(--gold))">${avatarHTML(S.avatar||'⚖️',32)}</div>
           <div>
             <div style="font-family:Cinzel,serif;font-size:16px;font-weight:900;color:var(--goldL)">
               ${S.nom||"Joueur"}
@@ -7349,7 +7470,7 @@ function renderMenu(app){
     var _avBtns=['⚖️','🕯️','❤️','🌿','🪙','🔮','🧘','🌟','✨','👑'].map(function(av){
       return '<div onclick="_setAvatar(this,\''+av+'\')" class="av-opt" '
         +'style="font-size:24px;padding:6px 8px;border-radius:10px;cursor:pointer;'
-        +'background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1)">'+av+'</div>';
+        +'background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.1)">'+avatarHTML(av,24)+'</div>';
     }).join('');
     _inp.innerHTML='<div style="padding:24px;background:linear-gradient(135deg,#1a0a35,#0a0520);border:2px solid var(--gold);border-radius:20px;width:90%;max-width:340px;text-align:center">'
       +'<div style="font-size:36px;margin-bottom:12px">👑</div>'
@@ -7744,6 +7865,30 @@ function renderResultat(app){
       </div>
     </div>
 
+    <!-- Boutons principaux — remontés juste après le score -->
+    <button onclick="G.startJeu(false)" style="
+      width:100%;min-height:56px;border-radius:16px;cursor:pointer;border:none;
+      color:#fff;font-family:Cinzel,serif;font-size:16px;font-weight:900;letter-spacing:1px;
+      animation:btnRainbow 2s linear infinite;
+      box-shadow:0 6px 30px rgba(212,175,55,0.5);
+      text-shadow:0 1px 4px rgba(0,0,0,0.4);margin-bottom:10px">
+      🔄 Rejouer — Une nouvelle partie !
+    </button>
+    <div style="display:flex;gap:8px;margin-bottom:18px">
+      <button onclick="S.ecran='menu';render()" style="
+        flex:1;min-height:46px;border-radius:12px;cursor:pointer;
+        background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);
+        color:var(--muted);font-size:13px;font-weight:700">🏠 Menu</button>
+      <button onclick="G.startJeu(true)" style="
+        flex:1;min-height:46px;border-radius:12px;cursor:pointer;border:none;
+        background:linear-gradient(135deg,#6d1a36,#c0392b);
+        color:#fff;font-size:13px;font-weight:700">❤️ Survie</button>
+      <button onclick="partagerResultat()" style="
+        flex:1;min-height:46px;border-radius:12px;cursor:pointer;border:none;
+        background:linear-gradient(135deg,#1565c0,#1e88e5);
+        color:#fff;font-size:13px;font-weight:700">📤 Partager</button>
+    </div>
+
     <!-- DÉTAILS (animation délayée) -->
     <div style="width:100%;animation:sUp 0.5s 0.4s both">
       <!-- XP -->
@@ -7769,7 +7914,7 @@ function renderResultat(app){
           const st=PILIER[p],pct=Math.round((v/maxP)*100);
           return`<div style="margin-bottom:8px">
             <div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px">
-              <span style="color:${st.accent}">${st.icon} ${p}</span>
+              <span style="color:${st.accent}">${emblemeMini(p,12)} ${p}</span>
               <span style="color:var(--muted)">${v} pts · ${pct}%</span>
             </div>
             <div style="height:7px;border-radius:4px;background:rgba(255,255,255,0.1);overflow:hidden">
@@ -7808,7 +7953,7 @@ function renderResultat(app){
             var st=PILIER[p];
             return '<div style="margin-bottom:6px">'
               +'<div style="display:flex;justify-content:space-between;font-size:10px;margin-bottom:3px">'
-              +'<span style="color:'+st.accent+'">'+st.icon+' '+p+'</span>'
+              +'<span style="color:'+st.accent+'">'+emblemeMini(p,12)+' '+p+'</span>'
               +'<span style="color:var(--muted)">'+pts+' pts</span></div>'
               +'<div style="height:4px;border-radius:2px;background:rgba(255,255,255,0.06);overflow:hidden">'
               +'<div style="height:100%;width:'+pct+'%;background:'+st.accent+';border-radius:2px;'
@@ -7816,29 +7961,6 @@ function renderResultat(app){
           }).join("")
           +'</div>';
       })()}
-      <!-- Boutons juste après les résultats -->
-      <button onclick="G.startJeu(false)" style="
-        width:100%;min-height:62px;border-radius:16px;cursor:pointer;border:none;
-        color:#fff;font-family:Cinzel,serif;font-size:17px;font-weight:900;letter-spacing:1px;
-        animation:btnRainbow 2s linear infinite;
-        box-shadow:0 6px 30px rgba(212,175,55,0.5);
-        text-shadow:0 1px 4px rgba(0,0,0,0.4);margin-bottom:10px">
-        🔄 Rejouer — Une nouvelle partie !
-      </button>
-      <div style="display:flex;gap:8px;margin-bottom:8px">
-        <button onclick="S.ecran='menu';render()" style="
-          flex:1;min-height:48px;border-radius:12px;cursor:pointer;
-          background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);
-          color:var(--muted);font-size:13px;font-weight:700">🏠 Menu</button>
-        <button onclick="G.startJeu(true)" style="
-          flex:1;min-height:48px;border-radius:12px;cursor:pointer;border:none;
-          background:linear-gradient(135deg,#6d1a36,#c0392b);
-          color:#fff;font-size:13px;font-weight:700">❤️ Survie</button>
-        <button onclick="partagerResultat()" style="
-          flex:1;min-height:48px;border-radius:12px;cursor:pointer;border:none;
-          background:linear-gradient(135deg,#1565c0,#1e88e5);
-          color:#fff;font-size:13px;font-weight:700">📤 Partager</button>
-      </div>
     </div>
   </div>`;
 }
@@ -7860,7 +7982,7 @@ function renderStats(app){
   var barres="";
   PILIERS.forEach(function(pl){
     var v=piliers[pl]||0, pct=totalP>0?Math.round(v/totalP*100):0, stp=PILIER[pl]||{accent:"#D4AF37",icon:"⭐"};
-    barres+='<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:3px"><span>'+stp.icon+' '+pl+'</span><span>'+pct+'%</span></div>'
+    barres+='<div style="margin-bottom:10px"><div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:3px"><span>'+emblemeMini(pl,12)+' '+pl+'</span><span>'+pct+'%</span></div>'
       +'<div style="height:8px;border-radius:5px;background:rgba(255,255,255,0.06);overflow:hidden"><div style="height:100%;width:'+pct+'%;background:'+stp.accent+';border-radius:5px;transition:width .5s"></div></div></div>';
   });
   app.innerHTML=`<div class="screen fade"><div class="w100">
@@ -8600,28 +8722,23 @@ function renderSelection(app){
     </div>
     <div style="padding:12px 16px 16px">
       ${groupesHtml}
-      <div style="height:90px"></div>
+      <div style="height:150px"></div>
     </div>
   </div>
 
-  <!-- Bouton FIXE en bas -->
+  <!-- Barre du bas : compteur / validation de secours -->
   <div style="position:fixed;bottom:0;left:0;right:0;z-index:200;
     padding:10px 16px env(safe-area-inset-bottom,16px);
     background:linear-gradient(to top,rgba(7,5,20,0.98) 70%,transparent)">
     ${j.selTemp.length>=10
-      ?`<button id="solo-sel-btn" onclick="AUDIO.sfxConfirm();G.confirmerSelection()"
-          style="width:100%;min-height:64px;border-radius:16px;cursor:pointer;border:none;
-          color:#fff;font-family:Cinzel,serif;font-size:17px;font-weight:900;letter-spacing:1px;
-          box-shadow:0 0 40px rgba(212,175,55,0.6),0 0 0 3px rgba(255,255,255,0.15);
-          animation:btnRainbow 2s linear infinite;text-shadow:0 1px 4px rgba(0,0,0,0.4)">
-          ⚔️ Que les choses sérieuses commencent !
-        </button>`
+      ?``
       :`<div style="text-align:center;padding:12px;font-size:12px;color:var(--muted);
           background:rgba(255,255,255,0.04);border-radius:12px;border:1px solid rgba(255,255,255,0.08)">
           Sélectionnez encore <strong style="color:var(--goldL)">${10-j.selTemp.length}</strong> carte${10-j.selTemp.length>1?"s":""}
         </div>`
     }
-  </div>`;
+  </div>
+  ${(j.selTemp.length>=10) ? selConfirmModalHTML("AUDIO.sfxConfirm();G.confirmerSelection()","S.jeu.selTemp.pop();render()") : ""}`;
 }
 
 function banniereEvenement(j){
@@ -8952,8 +9069,8 @@ function renderJeu(app){
       </div>
       ${j.mainJokJ1.filter(x=>x.id==="j1"||x.id==="j2").length>0?`
         <div style="background:rgba(45,27,105,0.44);border:1px solid rgba(212,175,55,0.55);border-radius:12px;padding:12px 10px;margin-bottom:10px;text-align:left">
-          <div style="font-size:12px;color:var(--gold);font-weight:700;margin-bottom:4px;text-align:center">🎯 Dernier moment — jouer un joker ?</div>
-          <div style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:10px">Décision secrète — l'IA choisit aussi</div>
+          <div style="font-size:13px;color:var(--gold);font-weight:700;margin-bottom:4px;text-align:center">🃏 Veux-tu jouer un joker ?</div>
+          <div style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:10px">⏱ <span id="joker-sec" style="color:var(--goldL);font-weight:900">${j._jokerSec!=null?j._jokerSec:5}</span> s pour décider · sinon résultat normal</div>
           <div style="display:flex;gap:8px;margin-bottom:10px">
             ${j.mainJokJ1.filter(x=>x.id==="j1"||x.id==="j2").map(jk=>`
               <div style="flex:1">
