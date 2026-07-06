@@ -1140,7 +1140,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v93.55";
+const BUILD_TAG="v93.56";
 // ── Diagnostic : révèle le détail réel des erreurs (un « Script error. » nu = erreur d'un script tiers cross-origin, ex. PeerJS) ──
 window.addEventListener("error", function(ev){
   // Erreur tierce sans détail (ex. Google Analytics gêné par la prévention du tracking) : bruit bénin → on n'encombre pas la console
@@ -4325,28 +4325,46 @@ Object.assign(DUEL, {
     if(!DUEL._recon.active) return;
     if(!DUEL.room){ DUEL._stopRecon(); return; }
     DUEL._recon.tries++;
-    // Réveiller le peer au niveau du serveur de signalisation si nécessaire
+    // Réveiller la signalisation si le peer est seulement "disconnected" (pas détruit).
     try{
       if(DUEL.peer && !DUEL.peer.destroyed && DUEL.peer.disconnected){ DUEL.peer.reconnect(); }
     }catch(e){}
 
+    // Un peer PeerJS "disconnected"/"destroyed" ne rétablira JAMAIS de canal de données
+    // (fréquent après une longue veille : appel, app en arrière-plan). On le reconstruit.
+    var peerMort = !DUEL.peer || DUEL.peer.destroyed || DUEL.peer.disconnected;
+
     if(DUEL.isHost){
-      // Hôte : garder l'identifiant eq-<CODE> vivant ; l'invité s'y reconnectera.
-      if(!DUEL.peer || DUEL.peer.destroyed){ DUEL._recreerPeerHote(); }
+      // Hôte : il conserve l'identifiant eq-<CODE> et attend l'invité.
+      // On ne recrée le peer QUE s'il est réellement mort (éviter la valse d'ID côté serveur).
+      if(peerMort){ DUEL._reconnexionRepartirDeZero(); }
     } else {
-      // Invité : retenter la connexion vers l'hôte.
-      DUEL._reconnecterInvite();
+      // Invité (initiateur) : reconstruction si zombie, + filet anti-zombie toutes les 3 tentatives,
+      // sinon on retente simplement la connexion vers l'hôte.
+      if(peerMort || DUEL._recon.tries % 3 === 0){ DUEL._reconnexionRepartirDeZero(); }
+      else { DUEL._tenterConnexionHote(); }
     }
 
-    // Replanifier tant qu'on n'est pas reconnecté
+    // Replanifier tant qu'on n'est pas reconnecté (backoff plafonné)
     DUEL._recon.timer=setTimeout(function(){
       if(DUEL._recon.active) DUEL._reconnecter();
     }, Math.min(2500+DUEL._recon.tries*400, 6000));
   },
 
+  // Reconstruction COMPLÈTE du peer (élimine tout objet PeerJS zombie) en conservant
+  // l'état de jeu (gs, room, isHost, adversaire) → la partie n'est jamais perdue.
+  _reconnexionRepartirDeZero(){
+    try{ if(DUEL.conn){ DUEL.conn.close(); } }catch(e){}
+    try{ if(DUEL.peer && !DUEL.peer.destroyed){ DUEL.peer.destroy(); } }catch(e){}
+    DUEL.peer=null; DUEL.conn=null;
+    if(DUEL.isHost){ DUEL._recreerPeerHote(); }
+    else { DUEL._reconnecterInvite(); }
+  },
+
   _recreerPeerHote(){
     if(typeof Peer==="undefined") return;
     try{
+      if(DUEL.peer && !DUEL.peer.destroyed){ try{ DUEL.peer.destroy(); }catch(e){} }
       DUEL.peer=new Peer("eq-"+DUEL.room, DUEL._ice());
       DUEL._armerHotePeer(DUEL.peer);
     }catch(e){}
@@ -4372,7 +4390,10 @@ Object.assign(DUEL, {
   _reconnecterInvite(){
     if(typeof Peer==="undefined") return;
     try{
-      if(!DUEL.peer || DUEL.peer.destroyed){
+      // Un peer absent, détruit OU "disconnected" (zombie) ne rouvrira jamais → on le reconstruit.
+      var peerMort = !DUEL.peer || DUEL.peer.destroyed || DUEL.peer.disconnected;
+      if(peerMort){
+        try{ if(DUEL.peer && !DUEL.peer.destroyed){ DUEL.peer.destroy(); } }catch(e){}
         DUEL.myId=DUEL.genId();
         DUEL.peer=new Peer("eq-"+DUEL.myId, DUEL._ice());
         DUEL.peer.on("disconnected",function(){ try{ if(DUEL.peer && !DUEL.peer.destroyed) DUEL.peer.reconnect(); }catch(e){} });
@@ -4385,7 +4406,10 @@ Object.assign(DUEL, {
   },
 
   _tenterConnexionHote(){
+    if(!DUEL.peer || DUEL.peer.destroyed || DUEL.peer.disconnected) return; // peer pas prêt
     try{
+      // Fermer une éventuelle connexion zombie avant d'en ouvrir une neuve (évite l'empilement).
+      try{ if(DUEL.conn){ DUEL.conn.close(); } }catch(e){}
       var conn=DUEL.peer.connect("eq-"+DUEL.room,{reliable:true});
       DUEL.conn=conn;
       conn.on("open",function(){
