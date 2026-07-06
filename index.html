@@ -1140,7 +1140,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v93.46";
+const BUILD_TAG="v93.51";
 // ── Diagnostic : révèle le détail réel des erreurs (un « Script error. » nu = erreur d'un script tiers cross-origin, ex. PeerJS) ──
 window.addEventListener("error", function(ev){
   // Erreur tierce sans détail (ex. Google Analytics gêné par la prévention du tracking) : bruit bénin → on n'encombre pas la console
@@ -5092,7 +5092,7 @@ function renderDuelJeu(app){
       +'</div>'
       +'<div style="position:fixed;bottom:0;left:0;right:0;z-index:200;padding:10px 16px env(safe-area-inset-bottom,16px);background:linear-gradient(to top,rgba(7,5,20,0.98) 70%,transparent)">'
       +(selN>=10
-        ?'<button onclick="AUDIO.sfxConfirm();DUEL.confirmerSel()" style="width:100%;min-height:64px;border-radius:16px;cursor:pointer;border:none;color:#fff;font-family:Cinzel,serif;font-size:17px;font-weight:900;letter-spacing:1px;box-shadow:0 0 40px rgba(212,175,55,0.6),0 0 0 3px rgba(255,255,255,0.15);animation:btnRainbow 2s linear infinite;text-shadow:0 1px 4px rgba(0,0,0,0.4)">⚔️ Que les choses sérieuses commencent !</button>'
+        ?''
         :'<div style="text-align:center;padding:12px;font-size:12px;color:var(--muted);background:rgba(255,255,255,0.04);border-radius:12px;border:1px solid rgba(255,255,255,0.08)">Sélectionnez encore <strong style="color:var(--goldL)">'+(10-selN)+'</strong> carte'+(10-selN>1?"s":"")+'</div>'
       )
       +'</div>';
@@ -5188,7 +5188,7 @@ function renderDuelJeu(app){
         :'<div style="text-align:center;padding:16px;font-size:12px;color:var(--muted);background:rgba(7,5,20,0.9);border-radius:14px;border:1px solid rgba(255,255,255,0.08)">Choisissez encore <strong style="color:var(--goldL)">'+(10-sel)+'</strong> carte'+(10-sel>1?"s":"")+'</div>'
       )
       +'</div>';
-    if(sel>=10){ html+=selConfirmModalHTML("AUDIO.sfxConfirm();DUEL.confirmerSel()","var m=DUEL.isHost?DUEL.gs.mainRepJ1:DUEL.gs.mainRepJ2;m.pop();render()"); }
+    // (le pop-up de confirmation est attaché au body dans render() pour un centrage fiable)
   }
 
   // ── Phase choixBase ──
@@ -5631,6 +5631,34 @@ function render(){
       document.body.appendChild(_fab);
     } else if(!_guideOn && _fab){ _fab.remove(); }
   }catch(_g){}
+  // Pop-up de confirmation de sélection (10 cartes) — construit directement dans le body (position:fixed fiable)
+  try{
+    var _selV=null,_selR=null;
+    if(S.ecran==="selection" && S.jeu && S.jeu.selTemp && S.jeu.selTemp.length>=10){
+      _selV="var o=document.getElementById('sel-modal-ov');if(o)o.remove();AUDIO.sfxConfirm();G.confirmerSelection()"; _selR="if(S.jeu&&S.jeu.selTemp)S.jeu.selTemp.pop();render()";
+    } else if(S.ecran==="duel_jeu" && typeof DUEL!=="undefined" && DUEL.gs && DUEL.gs.phase==="selection"){
+      var _m=DUEL.isHost?DUEL.gs.mainRepJ1:DUEL.gs.mainRepJ2;
+      var _done=DUEL.isHost?DUEL.gs.selJ1Done:DUEL.gs.selJ2Done;
+      if(_m && _m.length>=10 && !_done){ _selV="var o=document.getElementById('sel-modal-ov');if(o)o.remove();AUDIO.sfxConfirm();DUEL.confirmerSel()"; _selR="var m=DUEL.isHost?DUEL.gs.mainRepJ1:DUEL.gs.mainRepJ2;if(m)m.pop();render()"; }
+    }
+    var _selEx=document.getElementById("sel-modal-ov");
+    if(_selV){
+      if(!_selEx){
+        _selEx=document.createElement("div");
+        _selEx.id="sel-modal-ov";
+        _selEx.style.cssText="position:fixed;inset:0;z-index:9500;background:rgba(4,3,10,0.75);display:flex;align-items:center;justify-content:center;padding:24px";
+        _selEx.innerHTML=
+          '<div style="max-width:330px;width:100%;background:linear-gradient(180deg,#1a1330,#0c0818);border:1px solid rgba(240,208,96,0.45);border-radius:22px;padding:26px 22px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.65),0 0 44px rgba(212,175,55,0.22)">'
+          +'<div style="font-size:40px;margin-bottom:6px">🎴</div>'
+          +'<div style="font-family:\'Cinzel\',serif;font-size:18px;font-weight:900;color:var(--goldL);margin-bottom:6px">Tes 10 cartes sont pr&ecirc;tes</div>'
+          +'<div style="font-size:13px;color:var(--text);line-height:1.5;margin-bottom:20px">Valide pour lancer la partie, ou reviens en arri&egrave;re pour changer tes cartes.</div>'
+          +'<button onclick="'+_selV+'" style="width:100%;min-height:56px;border-radius:14px;cursor:pointer;border:1px solid rgba(255,245,210,0.5);color:#241703;font-family:\'Cinzel\',serif;font-size:16px;font-weight:900;letter-spacing:1px;background:linear-gradient(135deg,#F6E4A0,#F0D060 30%,#D4AF37 60%,#B8912E);box-shadow:0 6px 20px rgba(212,175,55,0.5)">&#10003; Valider</button>'
+          +'<button onclick="'+_selR+'" style="width:100%;margin-top:10px;min-height:44px;border-radius:12px;cursor:pointer;background:rgba(255,255,255,0.05);border:1px solid rgba(212,175,55,0.35);color:var(--goldL);font-family:\'Cinzel\',serif;font-size:14px;font-weight:700">&#8617; Retour</button>'
+          +'</div>';
+        document.body.appendChild(_selEx);
+      }
+    } else if(_selEx){ _selEx.remove(); }
+  }catch(_sm){ if(window.__logErr) window.__logErr(_sm,"sel-modal"); }
   if(S.theme!==_lastTheme){ setBg(S.theme); _lastTheme=S.theme; }
   const app=document.getElementById("app");
   app.innerHTML="";
@@ -6312,7 +6340,7 @@ const G={
         else AUDIO.sfxClick();
       }
     }
-    renderSelection(document.getElementById("app"));
+    render();
   },
 
   choisirBase(p){
@@ -8739,8 +8767,7 @@ function renderSelection(app){
           Sélectionnez encore <strong style="color:var(--goldL)">${10-j.selTemp.length}</strong> carte${10-j.selTemp.length>1?"s":""}
         </div>`
     }
-  </div>
-  ${(j.selTemp.length>=10) ? selConfirmModalHTML("AUDIO.sfxConfirm();G.confirmerSelection()","S.jeu.selTemp.pop();render()") : ""}`;
+  </div>`;
 }
 
 function banniereEvenement(j){
