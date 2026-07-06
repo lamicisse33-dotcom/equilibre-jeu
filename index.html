@@ -1140,7 +1140,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v93.45";
+const BUILD_TAG="v93.46";
 // ── Diagnostic : révèle le détail réel des erreurs (un « Script error. » nu = erreur d'un script tiers cross-origin, ex. PeerJS) ──
 window.addEventListener("error", function(ev){
   // Erreur tierce sans détail (ex. Google Analytics gêné par la prévention du tracking) : bruit bénin → on n'encombre pas la console
@@ -5601,7 +5601,9 @@ let _lastEcran=null,_lastTheme=null;
 // Le bouton Guide s'efface pendant le jeu : masqué à chaque toucher, réapparaît 10 s après le dernier toucher
 (function(){
   var _gHideTO=null;
-  document.addEventListener("pointerdown", function(){
+  document.addEventListener("pointerdown", function(e){
+    // Ne pas masquer si on touche le bouton Guide ou sa fenêtre (sinon il ne s'ouvrirait pas)
+    if(e.target && e.target.closest && (e.target.closest("#guide-fab") || e.target.closest("#guide-ov"))) return;
     document.body.classList.add("guide-touch-hide");
     if(_gHideTO) clearTimeout(_gHideTO);
     _gHideTO=setTimeout(function(){ document.body.classList.remove("guide-touch-hide"); }, 10000);
