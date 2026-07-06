@@ -1140,7 +1140,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v93.54";
+const BUILD_TAG="v93.55";
 // ── Diagnostic : révèle le détail réel des erreurs (un « Script error. » nu = erreur d'un script tiers cross-origin, ex. PeerJS) ──
 window.addEventListener("error", function(ev){
   // Erreur tierce sans détail (ex. Google Analytics gêné par la prévention du tracking) : bruit bénin → on n'encombre pas la console
@@ -3136,6 +3136,8 @@ const DUEL = {
             showToast("🔄 Nouveau code : "+DUEL.room,"info",2000);
             render();
           } else {
+            // Partie déjà engagée : ne pas détruire la session sur une erreur réseau → reconnexion.
+            if(DUEL.gs && !DUEL._quitVolontaire){ DUEL._onDisconnect(); return; }
             showToast("⚠️ Erreur : "+e.type,"lose",3000);
             DUEL._reset(); S.ecran="duel_menu"; render();
           }
@@ -3196,6 +3198,9 @@ const DUEL = {
       });
       DUEL.peer.on("error",function(e){
         if(DUEL._recon && DUEL._recon.active) return; // la boucle de reconnexion gère
+        // Partie déjà engagée : une erreur réseau (ex. appel entrant / veille) ne doit PAS
+        // détruire la session → on bascule en reconnexion automatique au lieu de revenir au menu.
+        if(DUEL.gs && !DUEL._quitVolontaire){ DUEL._onDisconnect(); return; }
         console.warn("PeerJS invité erreur:", e.type);
         if(e.type==="peer-unavailable"){
           showToast("❌ Code introuvable : "+code+" — vérifiez le code","lose",4000);
@@ -4271,8 +4276,12 @@ Object.assign(DUEL, {
         +'<div style="font-family:Cinzel,serif;font-size:18px;font-weight:900;color:var(--goldL);margin-bottom:8px">Partie suspendue</div>'
         +'<div id="duel-suspendu-txt" style="font-size:13px;color:var(--muted);max-width:300px;line-height:1.5;margin-bottom:20px"></div>'
         +'<div style="width:38px;height:38px;border:3px solid rgba(212,175,55,0.25);border-top-color:var(--gold);border-radius:50%;animation:duelspin 0.9s linear infinite;margin-bottom:24px"></div>'
+        +'<div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">'
+        +'<button onclick="DUEL._forcerReconnexion()" style="min-height:42px;padding:0 22px;border-radius:12px;'
+        +'background:linear-gradient(135deg,var(--gold),var(--goldL));border:none;color:#12082e;font-family:Cinzel,serif;font-size:12px;font-weight:900;cursor:pointer">🔄 Réessayer maintenant</button>'
         +'<button onclick="DUEL._quitterDepuisSuspension()" style="min-height:42px;padding:0 22px;border-radius:12px;'
-        +'background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:var(--muted);font-size:12px;font-weight:700;cursor:pointer">Quitter le duel</button>';
+        +'background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:var(--muted);font-size:12px;font-weight:700;cursor:pointer">Quitter le duel</button>'
+        +'</div>';
       document.body.appendChild(ov);
     }
     ov.style.display="flex";
@@ -4286,6 +4295,16 @@ Object.assign(DUEL, {
   _quitterDepuisSuspension(){
     DUEL._cacherSuspension();
     DUEL.quitter();
+  },
+
+  // Forcer une nouvelle tentative de reconnexion (bouton manuel si l'auto cale)
+  _forcerReconnexion(){
+    if(DUEL._quitVolontaire) return;
+    if(!DUEL._recon) DUEL._recon={active:false,tries:0,timer:null};
+    DUEL._recon.active=true; DUEL._recon.tries=0;
+    if(DUEL._recon.timer){ clearTimeout(DUEL._recon.timer); DUEL._recon.timer=null; }
+    DUEL._montrerSuspension("Nouvelle tentative de reconnexion…");
+    DUEL._reconnecter();
   },
 
   // ── Point d'entrée : connexion perdue ──
@@ -8671,6 +8690,11 @@ function afficherPopupReprise(type,data){
 
 // Sauvegarde forcée avant fermeture/changement d'onglet
 window.addEventListener("beforeunload",function(){
+  sauvegarderPartieEnCours();
+  sauvegarderDuelEnCours();
+});
+// iOS/Safari : beforeunload peu fiable → pagehide capte la fermeture / mise en cache
+window.addEventListener("pagehide",function(){
   sauvegarderPartieEnCours();
   sauvegarderDuelEnCours();
 });
