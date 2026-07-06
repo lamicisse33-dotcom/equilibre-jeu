@@ -1126,7 +1126,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v93.26";
+const BUILD_TAG="v93.27";
 // ── Diagnostic : révèle le détail réel des erreurs (un « Script error. » nu = erreur d'un script tiers cross-origin, ex. PeerJS) ──
 window.addEventListener("error", function(ev){
   // Erreur tierce sans détail (ex. Google Analytics gêné par la prévention du tracking) : bruit bénin → on n'encombre pas la console
@@ -5085,29 +5085,20 @@ function renderDuelJeu(app){
     return;
   }
 
-  var html='<div style="min-height:100dvh;padding:min(10px,2.5vw);display:flex;flex-direction:column;gap:min(8px,2vw);max-width:600px;margin:0 auto">'
-    // Nav
+  var html='<div style="min-height:100dvh;padding:min(12px,2vw);display:flex;flex-direction:column;gap:min(10px,1.5vw);max-width:var(--max-w);margin:0 auto;width:100%">'
+    // En-tête (même style que le solo)
     +'<div style="display:flex;justify-content:space-between;align-items:center">'
-    +'<div style="font-size:12px;font-weight:700;color:var(--goldL);font-family:Cinzel,serif">⚔️ DUEL</div>'
+    +'<div style="font-size:10px;color:'+advCoul+';font-weight:700">'+DUEL.adversaire.icon+' '+advNom.slice(0,9)+' · Duel</div>'
+    +'<div style="font-size:13px;font-weight:700;color:var(--goldL);font-family:Cinzel,serif">⚖️ ÉQUILIBRE</div>'
+    +'<button onclick="const m=AUDIO.toggleMute();this.textContent=m?&quot;🔇&quot;:&quot;🔊&quot;" style="background:rgba(255,255,255,0.08);border:1px solid rgba(192,132,87,0.4);border-radius:8px;padding:4px 8px;color:var(--goldL);font-size:14px;cursor:pointer">🔊</button>'
     +'<div style="font-size:10px;color:var(--muted)">Manche '+(gs.manche||1)+'/'+(gs.total||12)+'</div>'
-    +'<button onclick="DUEL.quitter()" style="background:rgba(255,80,80,0.12);border:1px solid rgba(255,80,80,0.3);border-radius:8px;padding:5px 10px;color:#e05555;font-size:11px;font-weight:700;cursor:pointer;">🏠 Menu</button>'
+    +'<button onclick="DUEL.quitter()" style="background:rgba(255,80,80,0.12);border:1px solid rgba(255,80,80,0.3);border-radius:8px;padding:4px 10px;color:#e05555;font-size:11px;font-weight:700;cursor:pointer">🏠</button>'
     +'</div>'
-
-    // Scores face à face
-    +'<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center">'
-    +'<div style="text-align:center;padding:10px;border-radius:12px;background:rgba(212,175,55,0.08);border:1.5px solid rgba(212,175,55,0.3)">'
-    +'<div style="font-size:20px">👑</div>'
-    +'<div style="font-size:11px;font-weight:700;color:var(--goldL)">'+(monNom.slice(0,8))+'</div>'
-    +'<div style="font-size:22px;font-weight:900;color:var(--goldL);font-family:Cinzel,serif">'+monScore+'</div>'
-    +'</div>'
-    +'<div style="text-align:center;font-size:18px;color:var(--muted)">VS</div>'
-    +'<div style="text-align:center;padding:10px;border-radius:12px;background:'+advCoul+'11;border:1.5px solid '+advCoul+'44">'
-    +'<div style="font-size:20px">'+DUEL.adversaire.icon+'</div>'
-    +'<div style="font-size:11px;font-weight:700;color:'+advCoul+'">'+advNom.slice(0,8)+'</div>'
-    +'<div style="font-size:22px;font-weight:900;color:'+advCoul+';font-family:Cinzel,serif">'+advScore+'</div>'
-    +'</div></div>'
-
-    // Timer
+    // Barre de progression
+    +'<div style="height:3px;border-radius:2px;background:rgba(255,255,255,0.06);overflow:hidden"><div style="height:100%;width:'+((((gs.manche||1)-1)/(gs.total||12))*100)+'%;background:linear-gradient(90deg,var(--gold),var(--goldL));transition:width 0.5s;border-radius:2px"></div></div>'
+    // Balance + scores (composant du solo)
+    +scoreBarHTML(monScore, advScore, monNom.slice(0,8), advNom.slice(0,8))
+    // Timer + événement
     +'<div id="duel-timer"></div>'+banniereEvenement(gs);
 
   // ── Phase sélection ──
@@ -5944,9 +5935,9 @@ function iaBulle(profil,texte,typing=false){
   </div>`;
 }
 
-function scoreBarHTML(s1,s2,nom){
+function scoreBarHTML(s1,s2,nom,nomAdv){
   const lead1=s1>s2, lead2=s2>s1;
-  const st=S.jeu.streak||0;
+  const st=(S.jeu&&S.jeu.streak)||0;
   // Série qui monte en intensité
   let flame="";
   if(st>=2){
@@ -5979,7 +5970,7 @@ function scoreBarHTML(s1,s2,nom){
         </g>
       </svg>
       <div style="display:flex;flex-direction:column;align-items:flex-end;min-width:52px">
-        <span style="font-size:8px;color:var(--muted);letter-spacing:0.3px;white-space:nowrap">IA</span>
+        <span style="font-size:8px;color:var(--muted);letter-spacing:0.3px;white-space:nowrap">${nomAdv||"IA"}</span>
         <span style="font-family:'Cinzel',serif;font-weight:900;font-size:22px;line-height:1;color:${lead2?"var(--red)":"var(--text)"};${lead2?"text-shadow:0 0 14px rgba(224,85,85,0.4)":""}">${s2}</span>
       </div>
     </div>
