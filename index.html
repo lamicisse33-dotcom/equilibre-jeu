@@ -1140,7 +1140,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v93.76";
+const BUILD_TAG="v93.81";
 // ── Diagnostic : révèle le détail réel des erreurs (un « Script error. » nu = erreur d'un script tiers cross-origin, ex. PeerJS) ──
 window.addEventListener("error", function(ev){
   // Erreur tierce sans détail (ex. Google Analytics gêné par la prévention du tracking) : bruit bénin → on n'encombre pas la console
@@ -5605,8 +5605,34 @@ function _guideVocal(g){
   return s;
 }
 function _voixDispo(){ return (typeof window!=="undefined") && ("speechSynthesis" in window) && (typeof SpeechSynthesisUtterance!=="undefined"); }
-// Pré-chargement des voix (iOS/Android les chargent de façon asynchrone)
-try{ if(_voixDispo()){ window.speechSynthesis.getVoices(); window.speechSynthesis.onvoiceschanged=function(){ window.speechSynthesis.getVoices(); }; } }catch(_){}
+// Choix de la MEILLEURE voix française disponible (la qualité varie beaucoup selon l'appareil)
+var _voixFrCache=null;
+function _meilleureVoixFr(){
+  if(_voixFrCache) return _voixFrCache;
+  try{
+    var voix=window.speechSynthesis.getVoices()||[];
+    var fr=voix.filter(function(v){ return /^fr($|[-_])/i.test(v.lang||""); });
+    if(!fr.length) return null;
+    function score(v){
+      var n=((v.name||"")+" "+(v.voiceURI||"")).toLowerCase();
+      var s=0;
+      if(/fr-fr/i.test(v.lang||"")) s+=3;                  // français de France
+      // Forte préférence pour une voix FÉMININE française (douce)
+      if(/aurélie|aurelie|amélie|amelie|audrey|marie|virginie|charlotte|léa|\blea\b|céline|celine|julie|chloé|chloe|manon|sandrine|google/.test(n)) s+=8;
+      // Écarter les voix masculines connues
+      if(/thomas|jacques|daniel|nicolas|\bpaul\b|henri|guillaume|sébastien|sebastien/.test(n)) s-=7;
+      if(/premium|enhanced|neural|siri/.test(n)) s+=5;     // voix haute qualité
+      if(/compact|eloquence|basique/.test(n)) s-=5;        // voix bas de gamme (à éviter)
+      if(v.localService) s+=1;                             // hors-ligne, fiable
+      return s;
+    }
+    fr.sort(function(a,b){ return score(b)-score(a); });
+    _voixFrCache=fr[0];
+    return _voixFrCache;
+  }catch(e){ return null; }
+}
+// Pré-chargement des voix (iOS/Android les chargent de façon asynchrone) + réinit. du cache au chargement
+try{ if(_voixDispo()){ window.speechSynthesis.getVoices(); window.speechSynthesis.onvoiceschanged=function(){ _voixFrCache=null; window.speechSynthesis.getVoices(); }; } }catch(_){}
 function _stopVoixGuide(){ try{ if(_voixDispo()) window.speechSynthesis.cancel(); }catch(_){} }
 function _parlerGuide(txt, opts){
   if(!_voixDispo() || !txt) return false;
@@ -5615,13 +5641,10 @@ function _parlerGuide(txt, opts){
     window.speechSynthesis.cancel();
     var u=new SpeechSynthesisUtterance(txt);
     u.lang="fr-FR";
-    u.rate=(typeof opts.rate==="number")?opts.rate:0.98;
-    u.pitch=(typeof opts.pitch==="number")?opts.pitch:1.0;
+    u.rate=(typeof opts.rate==="number")?opts.rate:0.90;
+    u.pitch=(typeof opts.pitch==="number")?opts.pitch:1.06;
     u.volume=1.0;
-    var voix=window.speechSynthesis.getVoices()||[];
-    var fr=voix.filter(function(v){ return /^fr(-|_|$)/i.test(v.lang||""); });
-    // Préférer une voix française naturelle si disponible
-    var pref=fr.find(function(v){ return /(audrey|amelie|amélie|marie|virginie|google.*fran)/i.test(v.name||""); }) || fr[0];
+    var pref=_meilleureVoixFr();
     if(pref) u.voice=pref;
     window.speechSynthesis.speak(u);
     return true;
@@ -5668,10 +5691,8 @@ function _lireFileRegles(){
   var txt=_fileVoixRegles.shift();
   try{
     var u=new SpeechSynthesisUtterance(txt);
-    u.lang="fr-FR"; u.rate=0.98; u.pitch=1.0;
-    var voix=window.speechSynthesis.getVoices()||[];
-    var fr=voix.filter(function(v){ return /^fr(-|_|$)/i.test(v.lang||""); });
-    var pref=fr.find(function(v){ return /(audrey|amelie|amélie|marie|virginie|google.*fran)/i.test(v.name||""); })||fr[0];
+    u.lang="fr-FR"; u.rate=0.90; u.pitch=1.06;
+    var pref=_meilleureVoixFr();
     if(pref) u.voice=pref;
     u.onend=function(){ if(_lectureReglesActive) _lireFileRegles(); };
     u.onerror=function(){ if(_lectureReglesActive) _lireFileRegles(); };
@@ -8409,7 +8430,7 @@ function renderRegles(app){
       </div>
 
       <!-- Modes de jeu -->
-      <div style="font-size:13px;color:var(--gold);font-weight:700;font-family:'Cinzel',serif;margin-bottom:10px;letter-spacing:1px">🎮 LES 4 MODES DE JEU</div>
+      <div style="font-size:13px;color:var(--gold);font-weight:700;font-family:'Cinzel',serif;margin-bottom:10px;letter-spacing:1px">🎮 LES 5 MODES DE JEU</div>
       <div class="card" style="margin-bottom:14px">
         ${[
           {i:"⚔️",n:"Solo vs IA",c:"var(--goldL)",t:"Affrontez l'IA sur 12 manches. Choisissez parmi 3 niveaux : Rara (Débutante), Magey (Intermédiaire) ou Bolito (Expert). Après une victoire, un bouton vous propose de <strong style='color:var(--goldL)'>monter d'un cran</strong> vers la difficulté supérieure. Idéal pour apprendre et progresser. À la fin, vos stats de piliers et votre score sont affichés."},
@@ -8448,7 +8469,7 @@ function renderRegles(app){
       <div style="font-size:13px;color:var(--gold);font-weight:700;font-family:'Cinzel',serif;margin-bottom:10px;margin-top:6px;letter-spacing:1px">🔄 DÉROULEMENT D'UNE PARTIE</div>
       <div class="card" style="margin-bottom:14px">
         ${[
-          {n:"1. Sélection des cartes",i:"🎯",t:"Avant la première manche, choisissez <strong style='color:var(--goldL)'>10 cartes parmi 12</strong>, organisées par Combo. Appuyez sur ⚔️ <em>Que les choses sérieuses commencent !</em> quand vous êtes prêt. En Duel, chaque joueur sélectionne ses cartes de son côté."},
+          {n:"1. Sélection des cartes",i:"🎯",t:"Avant la première manche, choisissez <strong style='color:var(--goldL)'>10 cartes parmi 12</strong>, organisées par Combo. Validez votre sélection quand vous êtes prêt. En Duel, chaque joueur sélectionne ses cartes de son côté."},
           {n:"2. Animation de distribution",i:"✨",t:"Après la sélection, une animation spectaculaire distribue vos 10 cartes qui volent depuis les 4 coins de l'écran et se retournent pour révéler leurs couleurs."},
           {n:"3. Carte de Base",i:"🎴",t:"Le joueur qui commence choisit un <strong style='color:var(--goldL)'>Pilier de Base</strong>. L'adversaire répond avec un <strong style='color:var(--goldL)'>Pilier différent</strong>. Les deux forment un <strong style='color:var(--goldL)'>Combo</strong>. À chaque manche, la <strong style='color:var(--goldL)'>main alterne</strong> : c'est l'autre joueur qui choisit le Pilier de Base en premier. Les piliers joués s'assombrissent avec leur logo pulsant."},
           {n:"4. Carte Réponse",i:"🃏",t:"Chaque joueur joue une <strong style='color:var(--goldL)'>Carte Réponse</strong> du Combo actif. Vous avez <strong style='color:var(--goldL)'>20 secondes</strong>. La carte jouée est <strong style='color:var(--red)'>défaussée définitivement</strong>. Si aucune carte valide → pénalité -5 pts, l'adversaire gagne +5 pts bonus. Les <strong style='color:var(--goldL)'>deux cartes-réponses</strong> jouées s'affichent ensuite côte à côte, avec le pot <strong style='color:var(--goldL)'>GAIN TOTAL</strong>, avant le résultat."},
@@ -8557,7 +8578,7 @@ function renderRegles(app){
       <div class="card" style="margin-bottom:14px">
         ${[
           {i:"👑",n:"Profil & Avatar",t:"Choisissez un emoji avatar qui vous représente. Il s'affiche partout dans le jeu."},
-          {i:"📊",n:"Stats de piliers",t:"Après chaque partie, visualisez vos points par pilier avec des barres de progression colorées."},
+          {i:"📊",n:"Points par pilier",t:"Après chaque partie, visualisez vos points par pilier avec des barres de progression colorées."},
           {i:"📤",n:"Partager en image",t:"Partagez une <strong style='color:var(--goldL)'>belle image de résultat</strong> (badge de palier 🥈🥇💎, scores, QR code du jeu) sur WhatsApp, TikTok, Instagram… De quoi attirer de nouveaux joueurs !"},
           {i:"🏆",n:"Historique",t:"Vos 10 dernières parties sont sauvegardées automatiquement avec date, score et résultat."},
           {i:"🎬",n:"Animation distribution",t:"Vos cartes volent depuis les 4 coins de l'écran après la sélection — spectaculaire !"},
@@ -8568,7 +8589,7 @@ function renderRegles(app){
           {i:"📈",n:"Statistiques perso",t:"L'écran <strong style='color:var(--goldL)'>Stats</strong> suit vos parties : victoires, défaites, taux de victoire, meilleur score, plus longue série de victoires, et votre pilier préféré."},
           {i:"📳",n:"Sons & vibrations",t:"Effets sonores et retours haptiques (vibrations) aux moments clés — victoire de manche, joker, bonus. Tout respecte le mode muet."},
           {i:"💬",n:"Contact WhatsApp",t:"Le bouton <strong style='color:var(--goldL)'>WhatsApp</strong> ouvre une discussion pré-remplie, pour envoyer vos idées et retours directement au couple KHALAM."},
-          {i:"🎓",n:"Tutoriel guidé",t:"Au tout premier lancement, un tutoriel en quelques étapes présente les règles. Vous pouvez le revoir à tout moment via « 🎓 Revoir le tutoriel »."},
+          {i:"🎓",n:"Apprentissage guidé",t:"Au premier lancement, un <strong style='color:var(--goldL)'>tutoriel</strong> en quelques étapes présente les règles (revoyable via « 🎓 Revoir le tutoriel »). Et pendant ta toute première partie, de petites astuces <strong style='color:var(--goldL)'>« 👋 Guide »</strong> t'accompagnent au bon moment — chacune une seule fois."},
           {i:"🃏",n:"Collection de 48 cartes",t:"Un pool de <strong style='color:var(--goldL)'>48 cartes</strong> ! Chaque partie tire une main différente. L'écran <strong style='color:var(--goldL)'>🃏 Collection</strong> révèle les cartes découvertes et garde les autres en silhouette — collectionne-les toutes."},
           {i:"📅",n:"Défi du jour",t:"Un défi <strong style='color:var(--goldL)'>différent chaque jour</strong>, avec bonus d'XP. Réussis-le plusieurs jours d'affilée pour faire monter ta <strong style='color:#ff6b35'>série 🔥</strong>."},
           {i:"🏆",n:"Trophées",t:"8 badges à débloquer selon tes exploits (séries, jokers gagnants, remontées, IA Expert battue…), consultables dans <strong style='color:var(--goldL)'>🏆 Trophées</strong>."},
@@ -8580,7 +8601,6 @@ function renderRegles(app){
           {i:"🎵",n:"Musique d'ambiance",t:"Une musique douce et joyeuse accompagne vos parties, du début à la fin. Elle démarre quand la partie commence. Activez ou coupez le son à tout moment avec le bouton 🔊."},
           {i:"🔊",n:"Lecture à voix haute",t:"Le jeu peut <strong style='color:var(--goldL)'>parler</strong> : le Sage lit ses conseils, les gardiens récitent leur défi avant le combat, et le mode d'emploi se lit d'un bouton « 🔊 Écouter le guide » (en haut à gauche). Les bannières importantes — le <strong style='color:var(--goldL)'>Défi du jour</strong>, le joker <strong style='color:var(--goldL)'>Espion</strong>, le guide de première partie — sont aussi énoncées. Coupez ou réactivez la voix d'un simple bouton 🔊. Aucun fichier à télécharger : la voix vient de votre téléphone."},
           {i:"⚖️",n:"Bonus équilibrés",t:"Les bonus surprise (Sage, Questions) <strong style='color:var(--goldL)'>alternent désormais entre toi et l'IA</strong> en Solo, Campagne et Tournoi. L'IA reçoit un gain calculé avec la même mécanique que toi : le jeu reste juste, sans avantage pour un seul camp."},
-          {i:"👋",n:"Première partie guidée",t:"Lors de votre toute première partie, un guide discret vous accompagne pas à pas, directement pendant que vous jouez — la meilleure façon d'apprendre."},
         ].map(f=>`
           <div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
             <div style="font-size:22px;flex-shrink:0;width:30px;text-align:center">${f.i}</div>
