@@ -871,10 +871,10 @@ body.guide-touch-hide #guide-fab{ opacity:0!important; pointer-events:none!impor
   <div class="sp-inner">
     <div class="sp-stage">
       <div class="sp-ring"></div>
-      <span class="sp-p sp-p1">🕯️</span>
-      <span class="sp-p sp-p2">❤️</span>
-      <span class="sp-p sp-p3">🌿</span>
-      <span class="sp-p sp-p4">🪙</span>
+      <span class="sp-p sp-p1"></span>
+      <span class="sp-p sp-p2"></span>
+      <span class="sp-p sp-p3"></span>
+      <span class="sp-p sp-p4"></span>
       <div class="sp-balance">⚖️</div>
     </div>
     <div class="sp-title">ÉQUILIBRE</div>
@@ -1048,6 +1048,11 @@ body.guide-touch-hide #guide-fab{ opacity:0!important; pointer-events:none!impor
         font-family:'Cinzel',serif;letter-spacing:0.3px;
         text-shadow:0 0 20px rgba(212,175,55,0.4)"></div>
 
+      <!-- Bouton lecture à voix haute -->
+      <div style="text-align:center;margin-bottom:12px">
+        <button id="bonus-read-btn" onclick="_lireBonusQuestion()" style="background:rgba(212,175,55,0.15);border:1px solid rgba(212,175,55,0.5);border-radius:20px;padding:6px 16px;color:var(--goldL);font-size:12px;font-weight:700;cursor:pointer;font-family:'Cinzel',serif;letter-spacing:0.5px">🔊 Écouter la question</button>
+      </div>
+
       <!-- Réponses -->
       <div id="bonus-reponses" style="display:flex;flex-direction:column;gap:8px"></div>
 
@@ -1140,7 +1145,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v93.81";
+const BUILD_TAG="v94.04";
 // ── Diagnostic : révèle le détail réel des erreurs (un « Script error. » nu = erreur d'un script tiers cross-origin, ex. PeerJS) ──
 window.addEventListener("error", function(ev){
   // Erreur tierce sans détail (ex. Google Analytics gêné par la prévention du tracking) : bruit bénin → on n'encombre pas la console
@@ -1163,6 +1168,15 @@ const PILIER={
   Argent:      {bg:"#4A3500",accent:"#F39C12",icon:"🪙",cit:"L'abondance naît d'un esprit de gratitude."},
 };
 const PILIERS=["Spiritualité","Amour","Santé","Argent"];
+
+// ── Modificateurs de partie SOLO (tirés ~25% du temps, Solo uniquement) ──
+const MODIFS_SOLO={
+  destin:    {icon:"🎲",nom:"Manche du Destin",desc:"Une manche vaudra DOUBLE."},
+  maudit:    {icon:"☠️",nom:"Pilier Maudit",   desc:"Un pilier vaut moitié moins toute la partie."},
+  pot:       {icon:"💰",nom:"Pot Gonflé",       desc:"Chaque manche gagnée rapporte un bonus."},
+  brouillard:{icon:"🌫️",nom:"Brouillard",       desc:"Une manche sur deux, tes valeurs sont masquées."}
+};
+const MODIFS_IDS=["destin","maudit","pot","brouillard"];
 
 // ── Cartes de Sagesse : 5 pensées par pilier, tirées au hasard en fin de partie ──
 const SAGESSE={
@@ -1307,15 +1321,28 @@ const THEMES=[
 ];
 // ── MODE CAMPAGNE : « La Voie des 4 Piliers » (5 gardiens, pilier fort différent) ──
 const CAMPAGNE=[
-  {id:"c1",nom:"Gardien de la Santé",         pilier:"Santé",       icon:"🌿",diff:"Débutant",     xp:80, phrase:"Le corps est le temple de l'âme. Prouve que tu sais l'honorer."},
-  {id:"c2",nom:"Gardienne de l'Amour",        pilier:"Amour",       icon:"❤️",diff:"Intermédiaire",xp:120,phrase:"Sans amour, toute victoire est vide. Montre-moi ton cœur."},
-  {id:"c3",nom:"Gardien de l'Argent",         pilier:"Argent",      icon:"🪙",diff:"Intermédiaire",xp:180,phrase:"L'abondance récompense la stratégie. Sauras-tu la mériter ?"},
-  {id:"c4",nom:"Gardienne de la Spiritualité",pilier:"Spiritualité",icon:"🕯️",diff:"Expert",       xp:250,phrase:"L'équilibre intérieur est la vraie force. Trouve la paix… ou péris."},
-  {id:"c5",nom:"Le Maître Suprême",           pilier:"Équilibre",   icon:"🔮",diff:"Expert",       xp:400,phrase:"Tu as parcouru la Voie. Prouve maintenant que tu as trouvé l'Équilibre."},
+  // ── ACTE I — L'ÉVEIL ──
+  {id:"c1", acte:1,nom:"Gardien de la Santé",          pilier:"Santé",       icon:"🌿",diff:"Débutant",     xp:80,  phrase:"Le corps est le temple de l'âme. Prouve que tu sais l'honorer."},
+  {id:"c2", acte:1,fem:true,nom:"Gardienne de l'Amour",         pilier:"Amour",       icon:"❤️",diff:"Intermédiaire",xp:120, phrase:"Sans amour, toute victoire est vide. Montre-moi ton cœur."},
+  {id:"c3", acte:1,nom:"Gardien de l'Argent",          pilier:"Argent",      icon:"🪙",diff:"Intermédiaire",xp:180, twist:"jackpot",phrase:"L'abondance récompense la stratégie. Sauras-tu la mériter ?"},
+  {id:"c4", acte:1,fem:true,nom:"Gardienne de la Spiritualité", pilier:"Spiritualité",icon:"🕯️",diff:"Expert",      xp:250, phrase:"L'équilibre intérieur est la vraie force. Trouve la paix… ou péris."},
+  {id:"c5", acte:1,nom:"Le Gardien du Seuil",          pilier:"Équilibre",   icon:"🗝️",diff:"Expert",      xp:350, phrase:"Tu franchis le premier seuil. Beaucoup s'y sont brisés avant toi."},
+  // ── ACTE II — L'ÉPREUVE ──
+  {id:"c6", acte:2,nom:"Le Moine de Fer",              pilier:"Santé",       icon:"🌿",diff:"Expert",      xp:420, twist:"endurance",phrase:"Ta chair cédera bien avant ma volonté."},
+  {id:"c7", acte:2,fem:true,nom:"La Dame des Regrets",          pilier:"Amour",       icon:"❤️",diff:"Expert",      xp:480, twist:"passion",  phrase:"Chaque cœur que tu chéris deviendra ta faiblesse."},
+  {id:"c8", acte:2,nom:"Le Marchand d'Ombres",        pilier:"Argent",      icon:"🪙",diff:"Expert",      xp:540, twist:"jackpot",  phrase:"Ta fortune n'est qu'un prêt. Je viens réclamer mon dû."},
+  {id:"c9", acte:2,nom:"L'Ermite Aveugle",            pilier:"Spiritualité",icon:"🕯️",diff:"Expert",      xp:600, twist:"aveugle",  phrase:"Ferme les yeux : ici, la vue ne sert plus à rien."},
+  {id:"c10",acte:2,nom:"Le Juge de l'Équilibre",      pilier:"Équilibre",   icon:"⚖️",diff:"Expert",      xp:750, phrase:"Tu as vu l'Épreuve. Reste à savoir si tu la mérites."},
+  // ── ACTE III — L'ASCENSION ──
+  {id:"c11",acte:3,nom:"Le Colosse Éternel",          pilier:"Santé",       icon:"🌿",diff:"Expert",      xp:820, twist:"endurance",phrase:"Mille guerriers reposent à mes pieds. Viens les rejoindre."},
+  {id:"c12",acte:3,nom:"Le Cœur de Cendres",          pilier:"Amour",       icon:"❤️",diff:"Expert",      xp:900, twist:"passion",  phrase:"J'ai aimé, puis j'ai tout consumé. Ton tour approche."},
+  {id:"c13",acte:3,nom:"Le Roi sans Trône",           pilier:"Argent",      icon:"🪙",diff:"Expert",      xp:1000,twist:"jackpot",  phrase:"L'or du monde entier ne rachètera pas ta défaite."},
+  {id:"c14",acte:3,nom:"Le Prophète du Vide",         pilier:"Spiritualité",icon:"🕯️",diff:"Expert",      xp:1150,twist:"aveugle",  phrase:"Au bout de la Voie, il n'y a que le silence. Et moi."},
+  {id:"c15",acte:3,nom:"Le Maître Suprême",           pilier:"Équilibre",   icon:"🔮",diff:"Expert",      xp:1600,twist:"ultime",   phrase:"Tu as parcouru la Voie tout entière. Prouve maintenant que tu as trouvé l'Équilibre."},
 ];
 const BADGES=[
   {id:"b1",icon:"⚔️",name:"Stratège",   desc:"Gagner 3 manches de suite",       check:s=>s.streak>=3},
-  {id:"b2",icon:"🕯️",name:"Philosophe", desc:"Jouer Spiritualité 3 fois",        check:s=>(s.piliers["Spiritualité"]||0)>=3},
+  {id:"b2",icon:"🧘",name:"Philosophe", desc:"Jouer Spiritualité 3 fois",        check:s=>(s.piliers["Spiritualité"]||0)>=3},
   {id:"b3",icon:"💀",name:"Brakeur Pro",desc:"Gagner avec le Brakeur",           check:s=>s.brakeurWin},
   {id:"b4",icon:"✖️",name:"Doubleur",   desc:"Gagner avec le Multiplicateur",    check:s=>s.multiWin},
   {id:"b5",icon:"🔥",name:"En Feu",     desc:"Gagner 5+ manches dans une partie",check:s=>s.manchesGagnees>=5},
@@ -1325,9 +1352,9 @@ const BADGES=[
   {id:"camp_fini",icon:"🗺️",name:"Maître de la Voie",desc:"Terminer le mode Campagne",check:s=>!!(S.campagne&&S.campagne.progres>=CAMPAGNE.length)},
 ];
 const DEFIS=[
-  {id:"d1",icon:"🕯️",label:"Gagner une manche avec Spiritualité",xp:50,
+  {id:"d1",icon:"🧘",label:"Gagner une manche avec Spiritualité",xp:50,
     check:(h)=>h.some(m=>m.gagnant===1&&m.cb.includes("Spiritualité"))},
-  {id:"d2",icon:"❤️",label:"Jouer 3 cartes Amour en une partie",xp:40,
+  {id:"d2",icon:"🌹",label:"Jouer 3 cartes Amour en une partie",xp:40,
     check:(h)=>h.filter(m=>m.cJ1&&m.cJ1.combo.includes("Amour")).length>=3},
   {id:"d3",icon:"💀",label:"Utiliser le Brakeur avec succès",xp:60,
     check:(h)=>h.some(m=>m.jokerFinal&&m.jokerFinal.id==="j1"&&m.gagnant===1)},
@@ -2884,6 +2911,8 @@ const BONUS = {
 
     // Question
     document.getElementById("bonus-question").textContent = q.q;
+    // Lecture automatique à voix haute (question + options)
+    try{ if(S.voixGuide) setTimeout(function(){ _lireBonusQuestion(); }, 800); }catch(_){}
 
     // Réponses avec apparition décalée
     const repDiv = document.getElementById("bonus-reponses");
@@ -4584,7 +4613,7 @@ Object.assign(DUEL, {
     DUEL._send({type:"joker_used",id:"j4"});
     gs.phaseEchange=false;
     if(AUDIO.sfxBadge) AUDIO.sfxBadge();
-    showToast('🔄 Échange ! "'+nouvelle.name+'" ('+nouvelle.pts+' pts) intégrée !',"win",3000);
+    showToast('🔄 Échange ! "'+nouvelle.name+'" ('+nouvelle.pts+' pts) intégrée !',"win",3000,true);
     render();
   },
 
@@ -5631,8 +5660,34 @@ function _meilleureVoixFr(){
     return _voixFrCache;
   }catch(e){ return null; }
 }
-// Pré-chargement des voix (iOS/Android les chargent de façon asynchrone) + réinit. du cache au chargement
-try{ if(_voixDispo()){ window.speechSynthesis.getVoices(); window.speechSynthesis.onvoiceschanged=function(){ _voixFrCache=null; window.speechSynthesis.getVoices(); }; } }catch(_){}
+// Choix de la MEILLEURE voix MASCULINE française (pour les guerriers : disciples & chefs)
+var _voixMascCache=null;
+function _meilleureVoixMasc(){
+  if(_voixMascCache) return _voixMascCache;
+  try{
+    var voix=window.speechSynthesis.getVoices()||[];
+    var fr=voix.filter(function(v){ return /^fr($|[-_])/i.test(v.lang||""); });
+    if(!fr.length) return null;
+    function score(v){
+      var n=((v.name||"")+" "+(v.voiceURI||"")).toLowerCase();
+      var s=0;
+      if(/fr-fr/i.test(v.lang||"")) s+=3;
+      // Forte préférence pour une voix MASCULINE française
+      if(/thomas|nicolas|daniel|\bpaul\b|henri|guillaume|sébastien|sebastien|jacques|mathieu|antoine|bruno|yannick/.test(n)) s+=8;
+      // Écarter les voix féminines connues
+      if(/aurélie|aurelie|amélie|amelie|audrey|marie|virginie|charlotte|léa|\blea\b|céline|celine|julie|chloé|chloe|manon|sandrine/.test(n)) s-=7;
+      if(/premium|enhanced|neural|siri/.test(n)) s+=5;
+      if(/compact|eloquence|basique/.test(n)) s-=5;
+      if(v.localService) s+=1;
+      return s;
+    }
+    fr.sort(function(a,b){ return score(b)-score(a); });
+    _voixMascCache=fr[0];
+    return _voixMascCache;
+  }catch(e){ return null; }
+}
+// Pré-chargement des voix (iOS/Android les chargent de façon asynchrone) + réinit. des caches au chargement
+try{ if(_voixDispo()){ window.speechSynthesis.getVoices(); window.speechSynthesis.onvoiceschanged=function(){ _voixFrCache=null; _voixMascCache=null; window.speechSynthesis.getVoices(); }; } }catch(_){}
 function _stopVoixGuide(){ try{ if(_voixDispo()) window.speechSynthesis.cancel(); }catch(_){} }
 function _parlerGuide(txt, opts){
   if(!_voixDispo() || !txt) return false;
@@ -5644,13 +5699,24 @@ function _parlerGuide(txt, opts){
     u.rate=(typeof opts.rate==="number")?opts.rate:0.90;
     u.pitch=(typeof opts.pitch==="number")?opts.pitch:1.06;
     u.volume=1.0;
-    var pref=_meilleureVoixFr();
+    var pref=opts.masc?_meilleureVoixMasc():_meilleureVoixFr();
     if(pref) u.voice=pref;
+    if(typeof opts.onend==="function"){ u.onend=function(){ try{opts.onend();}catch(_){} }; u.onerror=function(){ try{opts.onend();}catch(_){} }; }
     window.speechSynthesis.speak(u);
     return true;
   }catch(e){ return false; }
 }
 
+// Lecture à voix haute du bonus question (question + options), déclenchée auto et par le bouton 🔊
+function _lireBonusQuestion(){
+  try{
+    if(!S.voixGuide) return;
+    var q=(typeof BONUS!=="undefined")&&BONUS.current; if(!q) return;
+    var txt=q.q;
+    if(q.rep && q.rep.length){ txt+=". "+q.rep.map(function(r,i){ return (i+1)+". "+r.t; }).join(". "); }
+    _parlerGuide(_sansEmoji(txt),{rate:0.95,pitch:1.04});
+  }catch(_){}
+}
 // ── Lecture à voix haute du MODE D'EMPLOI (guide complet, découpé en morceaux pour iOS) ──
 var _fileVoixRegles=[]; var _lectureReglesActive=false;
 function _sansEmoji(s){
@@ -5860,7 +5926,7 @@ function render(){
   app.innerHTML="";
   const fn={menu:renderMenu,selection:renderSelection,jeu:renderJeu,duel_menu:renderDuelMenu,duel_connecting:renderDuelConnecting,duel_lobby:renderDuelLobby,duel_jeu:renderDuelJeu,duel_resultat:renderDuelResultat,
     resultat:renderResultat,classement:renderClassement,statistiques:renderStats,defis:renderDefis,
-    badges:renderBadges,regles:renderRegles,apropos:renderApropos,collection:renderCollection,themes:renderThemes,campagne:renderCampagne,gardien_intro:renderGardienIntro,confidentialite:renderConfidentialite,
+    badges:renderBadges,regles:renderRegles,apropos:renderApropos,collection:renderCollection,themes:renderThemes,campagne:renderCampagne,gardien_intro:renderGardienIntro,temple:renderTemple,disciple_intro:renderDiscipleIntro,confidentialite:renderConfidentialite,
     }[S.ecran];
   try{ if(fn)fn(app); }catch(e){ if(window.__logErr) window.__logErr(e,"render:"+S.ecran); else throw e; }
   // Transition d'entrée d'écran (fondu + léger glissement) — relancée à chaque rendu
@@ -6070,6 +6136,14 @@ function emblemeMini(p,size){
   }
   return '<span style="font-size:'+size+'px;vertical-align:middle">'+(st.icon||'')+'</span>';
 }
+// Remplacer les emojis du splash d'accueil (piliers qui convergent) par les emblèmes personnalisés
+try{
+  var _spMap={'sp-p1':'Spiritualité','sp-p2':'Amour','sp-p3':'Santé','sp-p4':'Argent'};
+  Object.keys(_spMap).forEach(function(cls){
+    var el=document.querySelector('.'+cls);
+    if(el) el.innerHTML=emblemeMini(_spMap[cls],28);
+  });
+}catch(_){}
 // Avatar : affiche l'emblème personnalisé pour les 4 avatars-piliers, l'emoji brut sinon
 function avatarHTML(av, size){
   var map={'🕯️':'Spiritualité','❤️':'Amour','🌿':'Santé','🪙':'Argent'};
@@ -6169,7 +6243,7 @@ function carteRepHTML(c,opts={}){
         border:2px solid ${ptColor}99;border-radius:50px;
         padding:4px 10px;text-align:center;
         box-shadow:0 0 16px ${ptColor}44,inset 0 1px 0 rgba(255,255,255,0.08)">
-        <div class="pts-num" style="font-size:36px;color:${ptColor};text-shadow:${shadow};letter-spacing:-1px">${c.pts}</div>
+        <div class="pts-num" style="font-size:36px;color:${ptColor};text-shadow:${shadow};letter-spacing:-1px">${opts.masque?'?':c.pts}</div>
         <div style="font-size:6.5px;color:${ptColor}88;letter-spacing:3px;font-weight:700;margin-top:-4px">PTS</div>
       </div>
     </div>
@@ -6398,6 +6472,13 @@ function showJokerOverlay(joker, ptsReveal, who, callback){
       :"L'IA double le pot — attention !";
   }
 
+  // ── Annonce vocale du joker qui entre en action ──
+  try{
+    if(S.voixGuide && typeof _parlerGuide==="function"){
+      _parlerGuide(_sansEmoji((title.textContent||"")+". "+(subdesc.textContent||"")));
+    }
+  }catch(_){}
+
   // Points
   if(ptsReveal!==null){
     pts.style.display="block";
@@ -6444,6 +6525,8 @@ function showJokerOverlay(joker, ptsReveal, who, callback){
 const G={
   startJeu(survie=false, keepVies=false){
     S._lastCampagne=null;
+    S._templeNext=null;
+    S._ascNext=null; S._ascFin=null;
     S._lastSurvie=null;
     S.survieActif=survie;
     try{ S._nivDebut=getIdxNiv(S.xp||0); }catch(e){ S._nivDebut=0; }
@@ -6475,6 +6558,42 @@ const G={
     };
     S.jeu.bonusManches = initBonusManches();
     S.jeu.evenements = initEvenements();
+    // ── Modificateur SOLO (~25%, Solo uniquement : ni Campagne, ni Survie, ni Tournoi) ──
+    S.jeu.modif=null;
+    var _estSolo = !survie
+      && !(typeof TOURNOI!=="undefined" && TOURNOI.actif)
+      && !(typeof S.campagneEnCours==="number" && S.campagneEnCours>=0)
+      && !S.discipleEnCours;
+    S.jeu.estSolo = _estSolo;
+    if(S._ascLancement) _estSolo=false;   // l'Ascension n'est pas une partie Solo classique
+    if(_estSolo && Math.random()<0.25){
+      var _mid=MODIFS_IDS[Math.floor(Math.random()*MODIFS_IDS.length)];
+      S.jeu.modif=_mid;
+      if(_mid==="destin"){ S.jeu.modifDestinManche = 3+Math.floor(Math.random()*Math.max(1,(S.jeu.total-3))); }
+      if(_mid==="maudit"){ S.jeu.modifMaudit = PILIERS[Math.floor(Math.random()*PILIERS.length)]; }
+      var _mo=MODIFS_SOLO[_mid], _extra=(_mid==="maudit")?(" ("+S.jeu.modifMaudit+")"):"";
+      setTimeout(function(){ showToast(_mo.icon+" "+_mo.nom.toUpperCase()+_extra+" — "+_mo.desc, "badge", 5000, true); }, 600);
+    }
+    // ── Mode ASCENSION : palier court (7 manches), handicap croissant, modificateur dès le palier 4 ──
+    if(S._ascLancement){
+      S.jeu.ascension=true; S.jeu.estSolo=false; S.jeu.total=7;
+      var _ap=S.ascPalier||1;
+      var _hand=Math.max(0,(_ap-8))*8; if(_hand>0) S.jeu.s2=_hand;   // l'IA prend de l'avance au-delà du palier 8
+      if(_ap>=4){                                                     // un modificateur par palier dès le palier 4
+        var _amid=MODIFS_IDS[Math.floor(Math.random()*MODIFS_IDS.length)];
+        S.jeu.modif=_amid;
+        if(_amid==="destin"){ S.jeu.modifDestinManche = 2+Math.floor(Math.random()*Math.max(1,(S.jeu.total-2))); }
+        if(_amid==="maudit"){ S.jeu.modifMaudit = PILIERS[Math.floor(Math.random()*PILIERS.length)]; }
+      }
+      S._ascLancement=false;
+    }
+    // ── Twist de Campagne (Jackpot / Passion / Endurance / Aveugle / Ultime) ──
+    if(typeof S.campagneEnCours==="number" && S.campagneEnCours>=0 && CAMPAGNE[S.campagneEnCours] && CAMPAGNE[S.campagneEnCours].twist){
+      S.jeu.twist = CAMPAGNE[S.campagneEnCours].twist;
+      var _tw=S.jeu.twist;
+      if(_tw==="jackpot"||_tw==="ultime") S.jeu.jackpot = 40;   // Jackpot (aussi dans l'Épreuve Ultime)
+      if(_tw==="endurance") S.jeu.total = 16;                    // marathon d'endurance
+    }
     S.ecran="selection";
     render();
     AUDIO.sfxStart();
@@ -6770,7 +6889,7 @@ const G={
     j.repChoisie=nouvelleCarte;
 
     AUDIO.sfxBadge();
-    showToast(`🔄 Échange ! "${nouvelleCarte.name}" (${nouvelleCarte.pts} pts) intégrée !`,"win",3000);
+    showToast(`🔄 Échange ! "${nouvelleCarte.name}" (${nouvelleCarte.pts} pts) intégrée !`,"win",3000,true);
     render();
   },
 
@@ -6851,6 +6970,16 @@ const G={
     const j=S.jeu;
     const iaPr=IA_PROFILS[S.diff]||IA_PROFILS.Intermédiaire;
     let p1=cJ1?.pts||0,p2=cIA?.pts||0;
+    // ── Twist PASSION (Amour) : les combos contenant Amour valent ×1,5, des deux côtés ──
+    if(j.twist==="passion"){
+      if(cJ1 && cJ1.combo && cJ1.combo.indexOf("Amour")>=0) p1=Math.round(p1*1.5);
+      if(cIA && cIA.combo && cIA.combo.indexOf("Amour")>=0) p2=Math.round(p2*1.5);
+    }
+    // ── Modificateur SOLO : Pilier Maudit (tout combo contenant ce pilier vaut ½) ──
+    if(j.modif==="maudit" && j.modifMaudit){
+      if(cJ1 && cJ1.combo && cJ1.combo.indexOf(j.modifMaudit)>=0) p1=Math.round(p1/2);
+      if(cIA && cIA.combo && cIA.combo.indexOf(j.modifMaudit)>=0) p2=Math.round(p2/2);
+    }
     const tot=p1+p2; // total des deux cartes jouées cette manche
 
     // ── Brakeur joueur : vole TOUT le pot (p1+p2), même si IA ou joueur a passé ──
@@ -6877,6 +7006,8 @@ const G={
     // ── Manche ÉVÉNEMENT : Double Points (le pot compte double) ──
     var _evM = (j.evenements && j.evenements[j.manche]) ? j.evenements[j.manche] : null;
     if(_evM==="double"){ p1=p1*2; p2=p2*2; }
+    // ── Modificateur SOLO : Manche du Destin (cette manche vaut double) ──
+    if(j.modif==="destin" && j.manche===j.modifDestinManche){ p1=p1*2; p2=p2*2; }
 
     let msg="",xpG=0,gagnant=0;
     const j1p=!cJ1&&jokerFinal?.id!=="j1"; // passe réel = pas de carte ET pas de Brakeur
@@ -6927,6 +7058,19 @@ const G={
     else if(_evM==="vol" && gagnant===2){ var _v2=Math.min(10,j.s1); j.s1-=_v2; j.s2+=_v2; }
     // ── Frisson de fin de manche événement gagnée par le joueur ──
     if(_evM && gagnant===1){ try{ frissonEvenement(_evM); }catch(e){} }
+    // ── Twist Campagne : JACKPOT (Gardien de l'Argent) — grossit CHAQUE manche, le vainqueur rafle tout ──
+    if((j.twist==="jackpot"||j.twist==="ultime") && typeof j.jackpot==="number"){
+      j.jackpot += (gagnant===0 ? 40 : 15);   // +15 par manche, +40 (au total) sur une égalité
+      if(gagnant===1){ j.s1+=j.jackpot; xpG+=Math.round(j.jackpot/2); msg+=` · 💰 JACKPOT +${j.jackpot} !`; j.jackpot=40; }
+      else if(gagnant===2){ j.s2+=j.jackpot; msg+=` · 💰 L'IA rafle le JACKPOT (+${j.jackpot})`; j.jackpot=40; }
+      else { msg+=` · 💰 Jackpot → ${j.jackpot} !`; }   // égalité : personne ne rafle, il enfle
+    }
+    // ── Modificateur SOLO : Pot Gonflé (le vainqueur de chaque manche gagne un bonus) ──
+    if(j.modif==="pot" && gagnant){
+      var _potB=15;
+      if(gagnant===1){ j.s1+=_potB; xpG+=8; msg+=` · 💰 +${_potB} (pot)`; }
+      else { j.s2+=_potB; msg+=` · 💰 IA +${_potB} (pot)`; }
+    }
     j.manchesGagnees+=gagnant;
     var _streakAvant=j.streak;
     j.streak=gagnant?j.streak+1:0;
@@ -7023,6 +7167,8 @@ const G={
   _doMancheSuivante(j){
     const prochain=j.premier==="j1"?"ia":"j1";
     j.premier=prochain;j.manche++;
+    // Modificateur SOLO : annonce de la Manche du Destin à son arrivée
+    if(j.modif==="destin" && j.manche===j.modifDestinManche){ setTimeout(function(){ showToast("🎲 MANCHE DU DESTIN — elle vaut DOUBLE !","badge",3500,true); },300); }
     j.b1=null;j.b2=null;j.cb=null;
     j.repChoisie=null;j.repIA=null;j.msg="";j.lastBonusQ=j.lastBonusQ||null;
     j.jActif=null;j.jIA=null;j.espionActif=false;j.repIAVues=[];j.phaseEchange=false;j.gainFinal=null;
@@ -7109,28 +7255,83 @@ const G={
     } else {
       S._lastSurvie=null;
     }
-    // ── Progression CAMPAGNE ──
+    // ── CAMPAGNE : combat du CHEF (gardien) ──
     try{
       if(typeof S.campagneEnCours==="number" && S.campagneEnCours>=0){
-        var _gi=S.campagneEnCours;
+        var _gi=S.campagneEnCours; S.campagneEnCours=-1;
         if(!S.campagne) S.campagne={progres:0};
-        S._lastCampagne={gi:_gi, gagne:!!(S.jeu && S.jeu.s1>S.jeu.s2)};   // contexte pour l'écran de résultat
-        if(S.jeu && S.jeu.s1>S.jeu.s2 && _gi===S.campagne.progres){
+        var _chefWin=!!(S.jeu && S.jeu.s1>S.jeu.s2);
+        S._lastCampagne={gi:_gi, gagne:_chefWin};
+        var _g=CAMPAGNE[_gi];
+        if(_chefWin && _gi===S.campagne.progres){
           S.campagne.progres=_gi+1;
-          var _g=CAMPAGNE[_gi];
-          var _xpG=(_g&&_g.xp)||100;
-          S.xp+=_xpG;
-          if(S.campagne.progres>=CAMPAGNE.length){
+          S.xp+=(_g&&_g.xp)||100;
+          var _fini=S.campagne.progres>=CAMPAGNE.length;
+          if(_fini){
             if(!S.badgesTotal) S.badgesTotal=[];
             if(S.badgesTotal.indexOf("camp_fini")<0) S.badgesTotal.push("camp_fini");
-            setTimeout(function(){ showToast("🏆 CAMPAGNE TERMINÉE ! +"+_xpG+" XP · Tu as trouvé l'Équilibre !","badge",5500); },700);
+            S._templeNext={type:"fini"};
+            setTimeout(function(){ showToast("🏆 CAMPAGNE TERMINÉE ! Tu as trouvé l'Équilibre !","badge",6000,true); },1600);
           } else {
-            setTimeout(function(){ showToast("✅ "+(_g?_g.nom:"Gardien")+" vaincu ! +"+_xpG+" XP · Prochain gardien débloqué 🔓","badge",4500); },700);
+            S._templeNext={type:"disciple", g:S.campagne.progres, rang:0};   // 1er disciple du gardien suivant
           }
+          // Annonce vocale du chef vaincu (après la célébration des résultats)
+          setTimeout(function(){ try{ if(S.voixGuide) _parlerGuide((_g?_g.nom:"Le chef")+" vaincu !"); }catch(_){} },700);
         }
-        S.campagneEnCours=-1;
+        // (défaite chef : S._templeNext reste null → l'écran de résultat propose « Réessayer ce gardien »)
       }
     }catch(e){ if(window.__logErr) window.__logErr(e,"campagne"); }
+    // ── DISCIPLE (temple) ──
+    if(S.discipleEnCours){
+      var _de=S.discipleEnCours; S.discipleEnCours=null;
+      var _win=!!(S.jeu && S.jeu.s1>S.jeu.s2);
+      if(!S.campagne) S.campagne={progres:0};
+      if(!S.campagne.disciples) S.campagne.disciples={};
+      if(_win){
+        var _cur=S.campagne.disciples[_de.g]||0;
+        if(_de.rang===_cur){ S.campagne.disciples[_de.g]=_cur+1; }
+        S.xp += 30 + _de.rang*10;
+        var _nv=S.campagne.disciples[_de.g];
+        S._templeNext = (_nv<4) ? {type:"disciple", g:_de.g, rang:_nv} : {type:"chef", g:_de.g};
+        // Annonce vocale (après la célébration des résultats)
+        setTimeout(function(){ try{ if(S.voixGuide) _parlerGuide("Disciple vaincu !"); }catch(_){} },700);
+        // → tombe dans le flux normal : célébration + écran de résultat (bouton « Continuer → »)
+      } else {
+        // Défaite → le tableau du temple s'affiche pour relancer ce disciple
+        S._templeNext=null;
+        S.templeEnCours=_de.g; S.ecran="temple";
+        sauvegarder(); render();
+        setTimeout(function(){ showToast("💀 Le disciple t'a vaincu. Reprends ton souffle et réessaie.","lose",3200,true); },400);
+        return;
+      }
+    }
+    // ── Mode ASCENSION : palier suivant (victoire) ou fin du run (défaite) ──
+    if(S.jeu && S.jeu.ascension){
+      if(!S.stats) S.stats={};
+      var _pal=S.ascPalier||1;
+      if(S.jeu.s1>S.jeu.s2){
+        if(_pal>(S.stats.ascensionRecord||0)) S.stats.ascensionRecord=_pal;
+        S._ascNext={palier:_pal+1};
+        setTimeout(function(){ try{ if(S.voixGuide) _parlerGuide("Palier "+_pal+" franchi !"); }catch(_){} },700);
+      } else {
+        S._ascFin={palier:_pal, record:(S.stats.ascensionRecord||0)};
+        setTimeout(function(){ try{ if(S.voixGuide) _parlerGuide("Ton ascension s'achève au palier "+_pal+"."); }catch(_){} },700);
+      }
+    }
+    // ── Progression SOLO : série de victoires ──
+    if(S.jeu && S.jeu.estSolo){
+      if(!S.stats) S.stats={};
+      if(S.jeu.s1>S.jeu.s2){
+        S.stats.serieSolo=(S.stats.serieSolo||0)+1;
+        if(S.stats.serieSolo>(S.stats.recordSolo||0)) S.stats.recordSolo=S.stats.serieSolo;
+        if([3,5,10,15,20,30].indexOf(S.stats.serieSolo)>=0){
+          var _bxp=S.stats.serieSolo*5; S.xp+=_bxp;
+          setTimeout(function(){ showToast("🔥 Série de "+S.stats.serieSolo+" victoires ! +"+_bxp+" XP","badge",3200,true); },900);
+        }
+      } else {
+        S.stats.serieSolo=0;
+      }
+    }
     if(S.jeu&&S.jeu.s1>S.jeu.s2)celebrerVictoire(S.jeu.s1);
     try{ localStorage.setItem("equilibre_onboarding_fait","1"); }catch(e){}
     S.ecran="resultat";sauvegarder();render();
@@ -7290,16 +7491,221 @@ function lancerGardien(i){
     S.campagneEnCours=i;
     S.survieActif=false;
     G.startJeu(false);
+    // Annonce de l'épreuve (twist) — lue à voix haute
+    var _tw=CAMPAGNE[i].twist, _msgTw={
+      jackpot:"💰 ÉPREUVE DE L'ARGENT — un jackpot grossit à chaque manche ; le vainqueur d'une manche le rafle !",
+      passion:"❤️ ÉPREUVE DE LA PASSION — les combos d'Amour valent une fois et demie, des deux côtés.",
+      endurance:"🌿 ÉPREUVE D'ENDURANCE — un combat de longue haleine : seize manches. Tiens bon.",
+      aveugle:"🕯️ ÉPREUVE DE L'AVEUGLE — la valeur de tes cartes est masquée. Joue à l'instinct.",
+      ultime:"🔮 ÉPREUVE ULTIME — jackpot ET cartes masquées. Que l'Équilibre te guide."
+    };
+    if(_tw && _msgTw[_tw]){
+      setTimeout(function(){ showToast(_msgTw[_tw],"badge",5500,true); }, 500);
+    }
   }catch(e){ if(window.__logErr) window.__logErr(e,"lancerGardien"); }
 }
 
 function introGardien(i){
   if(!S.campagne) S.campagne={progres:0};
   if(i<0||i>=CAMPAGNE.length||i>(S.campagne.progres||0)) return;
-  S.gardienIntro=i; S.ecran="gardien_intro"; render();
-  // Le gardien récite sa phrase (voix plus grave et lente pour la gravité)
-  try{ if(S.voixGuide && CAMPAGNE[i] && CAMPAGNE[i].phrase) _parlerGuide(CAMPAGNE[i].phrase,{rate:0.9,pitch:0.82}); }catch(_){}
+  if(typeof _disciplesVaincus==="function" && _disciplesVaincus(i)<4){ ouvrirTemple(i); return; } // il faut d'abord les 4 disciples
+  S.gardienIntro=i;
+  S._phraseFinie=false;                     // bouton du chef bloqué tant qu'il parle
+  S.ecran="gardien_intro"; render();
+  // Le chef se présente d'abord (nom), puis prononce sa phrase ; le bouton se débloque à la fin.
+  var _g=CAMPAGNE[i];
+  if(S.voixGuide && _voixDispo() && _g){
+    setTimeout(function(){
+      if(S.ecran!=="gardien_intro"){ return; }
+      if(!S.voixGuide){ _debloquerCombatChef(); return; }
+      _parlerGuide(_g.nom+". "+(_g.phrase||""),{masc:!_g.fem,rate:0.9,pitch:_g.fem?1.0:0.86,onend:function(){ if(S.ecran==="gardien_intro") _debloquerCombatChef(); }});
+      setTimeout(function(){ if(S.ecran==="gardien_intro" && !S._phraseFinie) _debloquerCombatChef(); }, 16000); // filet de sécurité
+    }, 1000);
+  } else {
+    setTimeout(function(){ if(S.ecran==="gardien_intro") _debloquerCombatChef(); }, 1400);
+  }
 }
+function _debloquerCombatChef(){
+  S._phraseFinie=true;
+  var b=document.getElementById('btn-combattre-chef');
+  if(b){ b.disabled=false; b.style.opacity='1'; b.style.pointerEvents='auto'; b.textContent='⚔️ Commencer le combat'; }
+}
+// ═══════════════════════════════════════════════════════════
+// TEMPLES & DISCIPLES — chaque gardien est gardé par 4 disciples
+// (combats courts de 5 manches) qu'il faut vaincre avant le chef.
+// ═══════════════════════════════════════════════════════════
+const MENACES_DISCIPLE={
+  Argent:[
+    ["L'or ne ment jamais. Toi, si.","Tes piles d'or ne sont qu'un mirage.","Compte tes pièces tant que tu le peux encore."],
+    ["Ce que tu gagnes ici, tu le paieras au centuple.","La richesse fuit les mains qui tremblent.","Ton trésor a déjà changé de maître."],
+    ["Chaque manche te coûtera plus que tu ne possèdes.","L'avarice t'a mené jusqu'ici ; elle t'y enterrera.","Je lis ta ruine dans tes yeux."],
+    ["Tout ce que tu possèdes finira poussière entre mes doigts.","Les rois se sont agenouillés devant moi. Toi, tu ramperas.","Ton dernier sou paiera ta défaite."]
+  ],
+  Amour:[
+    ["Ton cœur bat trop fort ; je l'entends déjà faiblir.","L'amour t'a rendu faible, et je m'en nourris.","Tu aimes trop pour vaincre."],
+    ["Ceux que tu chéris ne te sauveront pas ici.","Ton affection sera ta faille.","J'ai vu des cœurs plus vaillants se briser."],
+    ["Chaque battement te rapproche de ta perte.","L'amour aveugle ; la défaite, elle, voit clair.","Tes larmes couleront avant la dernière manche."],
+    ["J'ai brisé des âmes plus nobles que la tienne.","Ton cœur finira glacé, comme tous les autres.","Aime une dernière fois : c'est un adieu."]
+  ],
+  Santé:[
+    ["Le souffle te manquera avant la fin.","Ton corps te trahira au premier faux pas.","La fatigue coule déjà dans tes veines."],
+    ["Tes forces s'écoulent comme du sable.","Chaque manche t'épuisera davantage.","Ta vigueur n'est qu'un emprunt."],
+    ["Je viderai tes réserves une à une.","Ton endurance a une limite, et je la connais.","Bientôt, tes jambes ne te porteront plus."],
+    ["La vie t'a prêté ses forces ; je viens les reprendre.","Ton dernier souffle m'appartient déjà.","Aucun remède ne te sauvera de moi."]
+  ],
+  Spiritualité:[
+    ["Tu cherches la lumière ? Ici règne l'ombre.","Ton esprit vacille, je le sens.","La paix que tu cherches n'existe pas ici."],
+    ["Tes certitudes se fissurent déjà.","L'illusion te guide ; je suis la vérité.","Ton âme n'est pas prête pour ce qui l'attend."],
+    ["Je hante des esprits plus forts que le tien.","Le doute te rongera à chaque manche.","Ferme les yeux : tu ne verras que ta chute."],
+    ["Ton âme n'a pas fini de trembler.","J'ai éteint des lumières plus vives que la tienne.","Le vide t'attend, et il a mon visage."]
+  ]
+};
+var _derniereMenace="";
+function menaceDisciple(pilier,rang){
+  var pool=(MENACES_DISCIPLE[pilier]&&MENACES_DISCIPLE[pilier][rang])||["Approche, si tu l'oses."];
+  var choix=pool.filter(function(m){return m!==_derniereMenace;});
+  if(!choix.length) choix=pool;
+  var m=choix[Math.floor(Math.random()*choix.length)];
+  _derniereMenace=m;
+  return m;
+}
+// Noms de disciples, teintés par pilier (tirés au hasard à chaque apparition)
+const NOMS_DISCIPLE={
+  Santé:["Morbus","Le Fléau","Vermine","La Langueur","L'Épuisé","La Fièvre"],
+  Amour:["Le Cœur Noir","Amara","Le Deuil","Rancœur","La Jalouse","Le Serment Rompu"],
+  Argent:["Mammon","L'Usurier","Le Créancier","Vénal","Cupide","Le Thésauriseur"],
+  Spiritualité:["Le Doute","L'Ombre","Néant","Le Silence","L'Illusion","Vacuité"],
+  "Équilibre":["Discorde","La Faille","Le Basculement","Chaos","L'Arbitre","Le Néant"]
+};
+var _dernierNomDisc="";
+function nomDisciple(pilier){
+  var pool=NOMS_DISCIPLE[pilier]||["L'Inconnu"];
+  var choix=pool.filter(function(n){return n!==_dernierNomDisc;});
+  if(!choix.length) choix=pool;
+  var n=choix[Math.floor(Math.random()*choix.length)];
+  _dernierNomDisc=n;
+  return n;
+}
+var DIFF_DISCIPLE=["Débutant","Intermédiaire","Intermédiaire","Expert"];
+var ROMAINS=["I","II","III","IV"];
+function _disciplesVaincus(i){ return (S.campagne&&S.campagne.disciples&&S.campagne.disciples[i])||0; }
+function ouvrirTemple(i){
+  if(!S.campagne) S.campagne={progres:0};
+  if(i<0||i>=CAMPAGNE.length||i>(S.campagne.progres||0)) return;
+  _stopVoixGuide(); S.templeEnCours=i; S.ecran="temple"; render();
+}
+function _continuerTemple(){
+  var tn=S._templeNext; S._templeNext=null; _stopVoixGuide();
+  if(!tn){ S.ecran="campagne"; render(); return; }
+  if(tn.type==="disciple"){ introDisciple(tn.g, tn.rang); }
+  else if(tn.type==="chef"){ introGardien(tn.g); }
+  else { S.ecran="campagne"; render(); }   // fin de campagne
+}
+function lancerAscension(palier){
+  palier=palier||1;
+  S.ascPalier=palier;
+  S.diff = palier<=3?"Débutant":palier<=6?"Intermédiaire":"Expert";
+  S.survieActif=false; S.campagneEnCours=-1; S.discipleEnCours=null;
+  S._ascNext=null; S._ascFin=null; S._templeNext=null;
+  _stopVoixGuide();
+  S._ascLancement=true;
+  G.startJeu(false);
+  setTimeout(function(){
+    var _m=(S.jeu&&S.jeu.modif)?(" · "+MODIFS_SOLO[S.jeu.modif].icon+" "+MODIFS_SOLO[S.jeu.modif].nom):"";
+    showToast("⛰️ PALIER "+palier+" · "+S.diff+_m, "badge", 4200, true);
+  }, 550);
+}
+function _debloquerCombattre(){
+  S._menaceFinie=true;
+  var b=document.getElementById('btn-combattre-disc');
+  if(b){ b.disabled=false; b.style.opacity='1'; b.style.pointerEvents='auto'; b.textContent='⚔️ Combattre'; }
+}
+function introDisciple(i,rang){
+  var g=CAMPAGNE[i]; if(!g) return;
+  if(rang!==_disciplesVaincus(i)) return; // seulement le disciple courant
+  S.discipleIntro={g:i,rang:rang};
+  S._discipleNom=nomDisciple(g.pilier);
+  S._menaceCourante=menaceDisciple(g.pilier,rang);
+  S._menaceFinie=false;                     // le bouton Combattre reste bloqué tant que la menace n'est pas finie
+  S.ecran="disciple_intro"; render();
+  // Le disciple se présente d'abord (nom + rang), PUIS profère sa menace ; le bouton se débloque à la fin.
+  var _rangMots=["un","deux","trois","quatre"];
+  var _annonce=S._discipleNom+". Disciple de rang "+(_rangMots[rang]||"")+". "+S._menaceCourante;
+  var _r=rang;
+  if(S.voixGuide && _voixDispo()){
+    setTimeout(function(){
+      if(S.ecran!=="disciple_intro"){ return; }
+      if(!S.voixGuide){ _debloquerCombattre(); return; }
+      _parlerGuide(_annonce,{masc:true,rate:0.92,pitch:0.94-_r*0.05,onend:function(){ if(S.ecran==="disciple_intro") _debloquerCombattre(); }});
+      setTimeout(function(){ if(S.ecran==="disciple_intro" && !S._menaceFinie) _debloquerCombattre(); }, 16000); // filet de sécurité
+    }, 1000);
+  } else {
+    // Pas de voix : on laisse un court temps de présentation puis on débloque
+    setTimeout(function(){ if(S.ecran==="disciple_intro") _debloquerCombattre(); }, 1400);
+  }
+}
+function lancerDisciple(i,rang){
+  var g=CAMPAGNE[i]; if(!g) return;
+  _stopVoixGuide();
+  S.diff=DIFF_DISCIPLE[rang]||"Intermédiaire";
+  S.campagneEnCours=-1;                 // ce n'est PAS le combat du chef
+  S.discipleEnCours={g:i,rang:rang};
+  S.survieActif=false;
+  G.startJeu(false);
+  if(S.jeu) S.jeu.total=5;              // combat court
+}
+function renderTemple(app){
+  var i=(typeof S.templeEnCours==="number")?S.templeEnCours:0;
+  var g=CAMPAGNE[i]; if(!g){ S.ecran="campagne"; render(); return; }
+  var st=PILIER[g.pilier]||{accent:"#D4AF37",bg:"#1a0a35"};
+  var vaincus=_disciplesVaincus(i);
+  var chefPret=vaincus>=4;
+  var disc=[0,1,2,3].map(function(r){
+    var done=r<vaincus, cur=r===vaincus;
+    var etat=done?"✅":cur?"⚔️":"🔒";
+    var bord=cur?st.accent:done?"#45c97a":"rgba(255,255,255,0.12)";
+    var attrs=cur?('onclick="introDisciple('+i+','+r+')" style="cursor:pointer"'):('style="opacity:'+(done?"0.7":"0.4")+'"');
+    return '<div '+attrs+' style="border:2px solid '+bord+';border-radius:14px;padding:12px;margin-bottom:10px;background:rgba(10,6,20,0.5);display:flex;align-items:center;gap:12px">'
+      +'<div style="font-size:24px">'+etat+'</div>'
+      +'<div style="flex:1;text-align:left"><div style="font-family:Cinzel,serif;font-weight:900;font-size:14px;color:'+(done||cur?"var(--goldL)":"var(--muted)")+'">Disciple '+ROMAINS[r]+'</div>'
+      +'<div style="font-size:10px;color:var(--muted)">'+(done?"Vaincu":cur?"À affronter · 5 manches":"Verrouillé")+'</div></div></div>';
+  }).join("");
+  var chefAttrs=chefPret?('onclick="introGardien('+i+')" style="cursor:pointer"'):'style="opacity:0.45"';
+  app.innerHTML=`
+  <div class="center" style="min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(ellipse at center,${st.bg||'#1a0a35'} 0%,#070514 74%)">
+    <div class="w100" style="max-width:440px;text-align:center;position:relative">
+      <button class="btn-ghost" style="position:absolute;left:0;top:0;width:auto;padding:8px 14px" onclick="S.ecran='campagne';render()">←</button>
+      <div style="font-size:11px;color:var(--muted);letter-spacing:3px;margin-bottom:10px;padding-top:6px">LE TEMPLE DE</div>
+      <div style="margin-bottom:6px">${emblemeMini(g.pilier,54)}</div>
+      <div style="font-family:'Cinzel',serif;font-size:22px;font-weight:900;color:var(--goldL);margin-bottom:4px">${g.nom}</div>
+      <div style="font-size:11px;color:${st.accent};letter-spacing:1px;margin-bottom:18px">Vaincs les 4 disciples, puis le chef · ${vaincus}/4</div>
+      ${disc}
+      <div ${chefAttrs} style="border:2px solid ${chefPret?'#F0D060':'rgba(255,255,255,0.12)'};border-radius:14px;padding:14px;margin-top:8px;background:linear-gradient(135deg,${st.bg||'#1a0a35'},rgba(10,6,20,0.6));display:flex;align-items:center;gap:12px;${chefPret?'box-shadow:0 0 20px '+st.accent+'66':''}">
+        <div style="font-size:30px">${chefPret?'👑':'🔒'}</div>
+        <div style="flex:1;text-align:left"><div style="font-family:Cinzel,serif;font-weight:900;font-size:14px;color:${chefPret?'var(--goldL)':'var(--muted)'}">${g.nom} — le Chef</div>
+        <div style="font-size:10px;color:var(--muted)">${chefPret?'Le chef est prêt · 12 manches':'Vaincs les 4 disciples avant'}</div></div></div>
+    </div>
+  </div>`;
+}
+function renderDiscipleIntro(app){
+  var di=S.discipleIntro||{g:0,rang:0};
+  var g=CAMPAGNE[di.g]; if(!g){ S.ecran="campagne"; render(); return; }
+  var st=PILIER[g.pilier]||{accent:"#D4AF37",bg:"#1a0a35"};
+  var menace=S._menaceCourante||"Approche, si tu l'oses.";
+  app.innerHTML=`
+  <div class="center" style="min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:22px;background:radial-gradient(ellipse at center,${st.bg||'#1a0a35'} 0%,#070514 72%)">
+    <div class="w100" style="max-width:440px;text-align:center">
+      <div style="font-size:11px;color:var(--muted);letter-spacing:3px;margin-bottom:12px">UN DISCIPLE TE BARRE LA VOIE</div>
+      <div style="filter:drop-shadow(0 0 22px ${st.accent}aa);animation:celebFloat 3s ease-in-out infinite">${emblemeMini(g.pilier,70)}</div>
+      <div style="font-family:'Cinzel',serif;font-size:24px;font-weight:900;color:var(--goldL);margin-top:12px">${S._discipleNom||'Disciple'}</div>
+      <div style="font-size:11px;color:${st.accent};letter-spacing:2px;margin-top:5px">DISCIPLE · RANG ${ROMAINS[di.rang]} · TEMPLE DE ${g.pilier.toUpperCase()}</div>
+      <div style="background:rgba(0,0,0,0.4);border:1px solid ${st.accent}55;border-radius:16px;padding:18px;margin:20px 0;font-style:italic;font-size:15px;color:#e8e0f5;line-height:1.6">« ${menace} »</div>
+      <button id="btn-combattre-disc" ${S._menaceFinie?'':'disabled'} onclick="lancerDisciple(${di.g},${di.rang})" style="width:100%;min-height:56px;border-radius:16px;cursor:pointer;border:none;background:linear-gradient(135deg,${st.accent},#F0D060);color:#12082e;font-family:'Cinzel',serif;font-size:16px;font-weight:900;letter-spacing:1px;box-shadow:0 4px 24px ${st.accent}77;${S._menaceFinie?'':'opacity:0.45;pointer-events:none'}">${S._menaceFinie?'⚔️ Combattre':'⚔️ Écoute-le…'}</button>
+      <button onclick="_stopVoixGuide();S.ecran='temple';render()" style="width:100%;min-height:44px;border-radius:14px;cursor:pointer;border:1px solid rgba(255,255,255,0.15);background:transparent;color:var(--muted);font-family:'Cinzel',serif;font-size:12px;margin-top:10px">← Retour au temple</button>
+    </div>
+  </div>`;
+}
+
 function renderGardienIntro(app){
   var i=(typeof S.gardienIntro==="number")?S.gardienIntro:0;
   var g=CAMPAGNE[i];
@@ -7310,12 +7716,12 @@ function renderGardienIntro(app){
   <div class="center" style="min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:22px;background:radial-gradient(ellipse at center,${st.bg||'#1a0a35'} 0%,#070514 72%)">
     <div class="w100" style="max-width:440px;text-align:center">
       <div style="font-size:11px;color:var(--muted);letter-spacing:3px;margin-bottom:12px">UN GARDIEN SE DRESSE DEVANT TOI</div>
-      <div style="font-size:82px;filter:drop-shadow(0 0 26px ${st.accent}aa);animation:celebFloat 3s ease-in-out infinite">${g.icon}</div>
+      <div style="font-size:82px;filter:drop-shadow(0 0 26px ${st.accent}aa);animation:celebFloat 3s ease-in-out infinite">${(g.pilier&&PILIER[g.pilier])?emblemeMini(g.pilier,82):g.icon}</div>
       <div style="font-family:'Cinzel',serif;font-size:24px;font-weight:900;color:var(--goldL);margin-top:12px">${g.nom}</div>
       <div style="font-size:11px;color:${st.accent};letter-spacing:2px;margin-top:5px">${emblemeMini(g.pilier,12)} PILIER : ${g.pilier.toUpperCase()} · NIVEAU ${g.diff.toUpperCase()}</div>
       <div style="background:rgba(0,0,0,0.35);border:1px solid ${st.accent}55;border-radius:16px;padding:18px;margin:20px 0;font-style:italic;font-size:14px;color:#e8e0f5;line-height:1.6">« ${g.phrase} »</div>
       <div style="font-size:12px;color:var(--goldL);margin-bottom:18px">🎁 Récompense : <strong>+${g.xp} XP</strong>${dejaVaincu?' <span style="color:var(--muted)">(déjà obtenue)</span>':''}</div>
-      <button onclick="_stopVoixGuide();lancerGardien(${i})" style="width:100%;min-height:56px;border-radius:16px;cursor:pointer;border:none;background:linear-gradient(135deg,${st.accent},#F0D060);color:#12082e;font-family:'Cinzel',serif;font-size:16px;font-weight:900;letter-spacing:1px;box-shadow:0 4px 24px ${st.accent}77">⚔️ Commencer le combat</button>
+      <button id="btn-combattre-chef" ${S._phraseFinie?'':'disabled'} onclick="_stopVoixGuide();lancerGardien(${i})" style="width:100%;min-height:56px;border-radius:16px;cursor:pointer;border:none;background:linear-gradient(135deg,${st.accent},#F0D060);color:#12082e;font-family:'Cinzel',serif;font-size:16px;font-weight:900;letter-spacing:1px;box-shadow:0 4px 24px ${st.accent}77;${S._phraseFinie?'':'opacity:0.45;pointer-events:none'}">${S._phraseFinie?'⚔️ Commencer le combat':'⚔️ Il parle…'}</button>
       <button onclick="_stopVoixGuide();S.ecran='campagne';render()" style="width:100%;min-height:44px;border-radius:14px;cursor:pointer;border:1px solid rgba(255,255,255,0.15);background:transparent;color:var(--muted);font-family:'Cinzel',serif;font-size:12px;margin-top:10px">← Retour</button>
     </div>
   </div>`;
@@ -7330,11 +7736,13 @@ function renderCampagne(app){
     var vaincu=i<prog, actuel=i===prog, verrou=i>prog;
     var jouable=i<=prog;
     var statut=vaincu?'<span style="color:#45c97a;font-weight:700">✅ Vaincu</span>':actuel?'<span style="color:var(--goldL);font-weight:700">🔓 À affronter</span>':'<span style="color:var(--muted)">🔒 Verrouillé</span>';
-    var attrs=jouable?('onclick="introGardien('+i+')" style="cursor:pointer"'):'style="opacity:0.5"';
+    var attrs=jouable?('onclick="ouvrirTemple('+i+')" style="cursor:pointer"'):'style="opacity:0.5"';
     var bord=actuel?st.accent:vaincu?'#45c97a':'rgba(255,255,255,0.12)';
-    return '<div '+attrs+' style="border:2px solid '+bord+';border-radius:16px;padding:14px;margin-bottom:12px;background:linear-gradient(135deg,'+(actuel?(st.bg||'#1a0a35'):'rgba(255,255,255,0.03)')+',rgba(10,6,20,0.55));'+(actuel?'box-shadow:0 0 22px '+st.accent+'55':'')+'">'
+    var acteNoms={1:"ACTE I · L'ÉVEIL",2:"ACTE II · L'ÉPREUVE",3:"ACTE III · L'ASCENSION"};
+    var acteHead=(g.acte && (i===0||CAMPAGNE[i-1].acte!==g.acte))?('<div style="text-align:center;font-family:\'Cinzel\',serif;font-size:12px;font-weight:900;color:var(--goldL);letter-spacing:2px;margin:'+(i===0?'2px':'20px')+' 0 12px">— '+(acteNoms[g.acte]||'')+' —</div>'):'';
+    return acteHead+'<div '+attrs+' style="border:2px solid '+bord+';border-radius:16px;padding:14px;margin-bottom:12px;background:linear-gradient(135deg,'+(actuel?(st.bg||'#1a0a35'):'rgba(255,255,255,0.03)')+',rgba(10,6,20,0.55));'+(actuel?'box-shadow:0 0 22px '+st.accent+'55':'')+'">'
       +'<div style="display:flex;align-items:center;gap:12px">'
-      +'<div style="font-size:38px;filter:'+(verrou?'grayscale(1) opacity(0.6)':'drop-shadow(0 0 8px '+st.accent+'88)')+'">'+(verrou?'❓':g.icon)+'</div>'
+      +'<div style="font-size:38px;filter:'+(verrou?'grayscale(1) opacity(0.6)':'drop-shadow(0 0 8px '+st.accent+'88)')+'">'+(verrou?'❓':((g.pilier&&PILIER[g.pilier])?emblemeMini(g.pilier,38):g.icon))+'</div>'
       +'<div style="flex:1;min-width:0">'
       +'<div style="font-size:14px;font-weight:900;color:'+(verrou?'var(--muted)':'var(--goldL)')+';font-family:\'Cinzel\',serif">'+(verrou?'Gardien inconnu':g.nom)+'</div>'
       +'<div style="font-size:10px;color:var(--muted);margin-top:2px">Niveau : '+g.diff+(verrou?'':' · '+emblemeMini(g.pilier,11)+' '+g.pilier)+'</div>'
@@ -7635,6 +8043,15 @@ function renderMenu(app){
           display:flex;align-items:center;justify-content:center;gap:8px;text-shadow:0 1px 0 rgba(255,255,255,0.3)">
           🏆 Mode Tournoi <span style="font-size:9px;font-family:sans-serif;opacity:0.9">3 manches · Classement</span>
         </button>
+        <button onclick="lancerAscension(1)" style="
+          width:100%;min-height:54px;border-radius:14px;cursor:pointer;
+          border:1px solid rgba(120,180,255,0.55);
+          background:linear-gradient(180deg,rgba(255,255,255,0.28),rgba(255,255,255,0.04) 44%,rgba(0,0,0,0.12)),linear-gradient(180deg,#1a3a6b,#0c1d3a);
+          color:#fff;font-family:Cinzel,serif;font-size:14px;font-weight:800;
+          letter-spacing:1px;box-shadow:0 5px 20px rgba(60,110,200,0.4),inset 0 1px 0 rgba(255,255,255,0.28);
+          display:flex;align-items:center;justify-content:center;gap:8px;text-shadow:0 1px 3px rgba(0,0,0,0.4)">
+          ⛰️ Mode Ascension <span style="font-size:9px;font-family:sans-serif;opacity:0.9">Record : ${(S.stats&&S.stats.ascensionRecord)||0}</span>
+        </button>
       </div>
     </div>
 
@@ -7820,8 +8237,13 @@ function _dessinerResultat(cv,d,qr){
   x.strokeStyle="rgba(212,175,55,0.55)";x.lineWidth=6;x.strokeRect(28,28,W-56,H-56);
   x.textAlign="center";x.textBaseline="middle";
   x.globalAlpha=0.92;x.font="58px serif";
-  var pil=["🕯️","❤️","🌿","🪙"],px=[W*0.34,W*0.45,W*0.56,W*0.67];
-  pil.forEach(function(em,i){x.fillText(em,px[i],168);});
+  var _pilN=["Spiritualité","Amour","Santé","Argent"],px=[W*0.34,W*0.45,W*0.56,W*0.67];
+  _pilN.forEach(function(nom,i){
+    var col=(PILIER[nom]&&PILIER[nom].accent)||"#D4AF37";
+    x.beginPath();x.arc(px[i],168,22,0,Math.PI*2);
+    x.fillStyle=col;x.shadowColor=col;x.shadowBlur=18;x.fill();x.shadowBlur=0;
+    x.lineWidth=2;x.strokeStyle="rgba(255,255,255,0.6)";x.stroke();
+  });
   x.globalAlpha=1;
   x.font="bold 62px 'Cinzel',Georgia,serif";x.fillStyle="#F0D060";
   x.fillText("⚖️ ÉQUILIBRE",W/2,282);
@@ -7928,7 +8350,7 @@ function _partagerFallback(txt){
 // Partage de la Carte de Sagesse
 function partagerSagesse(){
   var s=S._sagesseActuelle; if(!s){ showToast("Rien à partager","info",1500); return; }
-  var txt="✨ Ma Carte de Sagesse — ÉQUILIBRE\n"+s.emoji+" Pilier : "+s.pilier+"\n\n« "+s.texte+" »\n\n⚖️ Découvre la tienne : https://lamicisse33-dotcom.github.io/equilibre-jeu/\n#Equilibre #4Piliers";
+  var txt="✨ Ma Carte de Sagesse — ÉQUILIBRE\n"+"Pilier : "+s.pilier+"\n\n« "+s.texte+" »\n\n⚖️ Découvre la tienne : https://lamicisse33-dotcom.github.io/equilibre-jeu/\n#Equilibre #4Piliers";
   try {
     if(navigator && navigator.share){
       navigator.share({title:"ÉQUILIBRE — Carte de Sagesse",text:txt}).catch(function(err){
@@ -8155,7 +8577,7 @@ function renderResultat(app){
         ${[
           {i:"⚔️",l:"Manches",v:`${manchesG}/${j.historique.length}`},
           {i:"🔥",l:"Streak max",v:`×${j.maxStreak}`},
-          {i:"🪙",l:"Best gain",v:Math.max(...j.historique.filter(h=>h.gagnant===1).map(h=>(h.cJ1?.pts||0)+(h.cIA?.pts||0)),0)+" pts"},
+          {i:"🏆",l:"Best gain",v:Math.max(...j.historique.filter(h=>h.gagnant===1).map(h=>(h.cJ1?.pts||0)+(h.cIA?.pts||0)),0)+" pts"},
         ].map(x=>`<div style="flex:1;text-align:center;padding:8px 4px;background:rgba(255,255,255,0.05);border-radius:10px;border:1px solid rgba(255,255,255,0.08)">
           <div style="font-size:16px">${x.i}</div>
           <div style="font-size:16px;font-weight:900;color:var(--goldL);font-family:'Cinzel',serif">${x.v}</div>
@@ -8168,10 +8590,29 @@ function renderResultat(app){
     ${(function(){
       var primStyle="width:100%;min-height:56px;border-radius:16px;cursor:pointer;border:none;color:#fff;font-family:Cinzel,serif;font-size:16px;font-weight:900;letter-spacing:1px;animation:btnRainbow 2s linear infinite;box-shadow:0 6px 30px rgba(212,175,55,0.5);text-shadow:0 1px 4px rgba(0,0,0,0.4);margin-bottom:10px";
       var subStyle="flex:1;min-height:46px;border-radius:12px;cursor:pointer;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.15);color:var(--muted);font-size:13px;font-weight:700";
+      if(S._ascNext){
+        return '<button onclick="lancerAscension('+S._ascNext.palier+')" style="'+primStyle+'">⛰️ Palier '+S._ascNext.palier+' →</button>'
+          +'<div style="display:flex;gap:8px;margin-bottom:18px">'
+          +'<button onclick="S._ascNext=null;S.ecran=\'menu\';render()" style="'+subStyle+'">🏠 Menu (record gardé)</button></div>';
+      }
+      if(S._ascFin){
+        return '<div style="text-align:center;font-family:Cinzel,serif;font-size:14px;font-weight:900;color:var(--goldL);margin-bottom:12px">⛰️ Palier atteint : '+S._ascFin.palier+'<div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-top:2px">RECORD : '+S._ascFin.record+'</div></div>'
+          +'<button onclick="lancerAscension(1)" style="'+primStyle+'">⛰️ Nouvelle ascension</button>'
+          +'<div style="display:flex;gap:8px;margin-bottom:18px">'
+          +'<button onclick="S._ascFin=null;S.ecran=\'menu\';render()" style="'+subStyle+'">🏠 Menu</button></div>';
+      }
+      if(S._templeNext){
+        var _tn=S._templeNext;
+        var _lbl=_tn.type==="chef"?"⚔️ Affronter le Chef →":_tn.type==="fini"?"🏆 Voir la Campagne":"⚔️ Disciple suivant →";
+        return '<button onclick="_continuerTemple()" style="'+primStyle+'">'+_lbl+'</button>'
+          +'<div style="display:flex;gap:8px;margin-bottom:18px">'
+          +'<button onclick="S._templeNext=null;_stopVoixGuide();S.ecran=\'campagne\';render()" style="'+subStyle+'">🗺️ Campagne</button>'
+          +'<button onclick="S._templeNext=null;_stopVoixGuide();S.ecran=\'menu\';render()" style="'+subStyle+'">🏠 Menu</button></div>';
+      }
       if(S._lastCampagne){
         var lc=S._lastCampagne, prog=(S.campagne&&S.campagne.progres)||0;
         if(lc.gagne && prog<CAMPAGNE.length){
-          return '<button onclick="introGardien('+prog+')" style="'+primStyle+'">⚔️ Défi suivant →</button>'
+          return '<button onclick="ouvrirTemple('+prog+')" style="'+primStyle+'">⚔️ Défi suivant →</button>'
             +'<div style="display:flex;gap:8px;margin-bottom:18px">'
             +'<button onclick="S.ecran=\'campagne\';render()" style="'+subStyle+'">🗺️ Campagne</button>'
             +'<button onclick="S.ecran=\'menu\';render()" style="'+subStyle+'">🏠 Menu</button></div>';
@@ -8199,9 +8640,14 @@ function renderResultat(app){
           +'<button onclick="G.startJeu(false)" style="'+subStyle+'">⚔️ Solo</button>'
           +'<button onclick="S.ecran=\'menu\';render()" style="'+subStyle+'">🏠 Menu</button>'+_partage+'</div>';
       }
-      // ── SOLO : rejouer + (si victoire) proposer la difficulté supérieure ──
+      // ── SOLO : série de victoires + rejouer + (si victoire) difficulté supérieure ──
       var NEXT_DIFF={"Débutant":"Intermédiaire","Intermédiaire":"Expert"};
-      var htmlSolo='<button onclick="G.startJeu(false)" style="'+primStyle+'">🔄 Rejouer — Une nouvelle partie !</button>';
+      var _srS=(S.stats&&S.stats.serieSolo)||0, _rcS=(S.stats&&S.stats.recordSolo)||0;
+      var _serieHtml='<div style="text-align:center;margin-bottom:14px">'
+        +'<div style="font-family:Cinzel,serif;font-size:15px;font-weight:900;color:'+(_srS>0?'#f39c12':'var(--muted)')+';text-shadow:'+(_srS>0?'0 0 12px rgba(243,156,18,0.5)':'none')+'">🔥 Série : '+_srS+' victoire'+(_srS>1?'s':'')+'</div>'
+        +'<div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-top:2px">RECORD : '+_rcS+'</div></div>';
+      var _btnLabel=gagne?('🔥 Continuer la série ('+_srS+') →'):'🔄 Rejouer — Nouvelle partie';
+      var htmlSolo=_serieHtml+'<button onclick="G.startJeu(false)" style="'+primStyle+'">'+_btnLabel+'</button>';
       if(gagne && NEXT_DIFF[S.diff]){
         var nd=NEXT_DIFF[S.diff], ip=IA_PROFILS[nd]||{};
         htmlSolo+='<button onclick="S.diff=\''+nd+'\';sauvegarder();G.startJeu(false)" style="width:100%;min-height:50px;border-radius:14px;cursor:pointer;border:1px solid rgba(240,208,96,0.5);background:linear-gradient(180deg,rgba(255,255,255,0.22),rgba(255,255,255,0.03) 45%),linear-gradient(135deg,#3a2358,#1c0f30);color:#fff;font-family:Cinzel,serif;font-size:14px;font-weight:800;letter-spacing:1px;margin-bottom:10px;box-shadow:0 4px 16px rgba(110,60,170,0.35)">⬆️ Difficulté supérieure · '+(ip.icon||'')+' '+(ip.nom||nd)+'</button>';
@@ -8225,7 +8671,7 @@ function renderResultat(app){
       <!-- Carte de Sagesse (pilier dominant) -->
       ${pilierDom?`<div class="card" style="margin-bottom:12px;text-align:center;border-color:${PILIER[_pdNom]?.accent}66;background:linear-gradient(160deg,rgba(212,175,55,0.09),rgba(45,27,105,0.20))">
         <div style="font-size:11px;color:var(--goldL);font-family:'Cinzel',serif;font-weight:700;letter-spacing:2px;margin-bottom:8px">✨ CARTE DE SAGESSE ✨</div>
-        <div style="font-size:34px;margin-bottom:2px">${PILIER[_pdNom]?.icon}</div>
+        <div style="font-size:34px;margin-bottom:2px">${(_pdNom&&PILIER[_pdNom])?emblemeMini(_pdNom,34):(PILIER[_pdNom]?.icon||'')}</div>
         <div style="font-size:11px;color:${PILIER[_pdNom]?.accent};font-weight:700;letter-spacing:1px;margin-bottom:12px">Ton pilier dominant : ${_pdNom}</div>
         <div style="font-family:'Crimson Text',serif;font-style:italic;font-size:17px;line-height:1.7;color:#f0e6ff;padding:0 6px">« ${_sagesseTxt} »</div>
         <button onclick="partagerSagesse()" style="margin-top:16px;padding:9px 20px;border-radius:12px;border:1px solid ${PILIER[_pdNom]?.accent}66;background:rgba(255,255,255,0.06);color:var(--goldL);font-size:12px;font-weight:700;cursor:pointer;font-family:'Cinzel',serif">📤 Partager cette sagesse</button>
@@ -9177,7 +9623,7 @@ function renderJeu(app){
     content=`<div class="fade">
       <div style="text-align:center;margin-bottom:10px">
         <div style="font-size:13px;font-weight:700;color:var(--gold);margin-bottom:2px">
-          ✅ ${PILIER[j.b1]?.icon} <strong style="color:var(--goldL)">${j.b1}</strong> joué !
+          ✅ ${(j.b1&&PILIER[j.b1])?emblemeMini(j.b1,18):''} <strong style="color:var(--goldL)">${j.b1}</strong> joué !
         </div>
         <div style="font-size:10px;color:var(--muted)">${iaPr.nom} réfléchit à sa réponse…</div>
       </div>
@@ -9325,7 +9771,7 @@ function renderJeu(app){
             <div style="font-size:9px;color:var(--muted);text-align:center;margin-bottom:8px;font-style:italic">👆 Touche une carte pour la jouer immédiatement</div>
             ${vIA.length===0?`<div style="font-size:10px;color:#45c97a;text-align:center;margin-bottom:8px;font-weight:700">💡 L'IA n'a pas de carte valide — jouez et gagnez vos points !</div>`:""}
             <div style="--card-w:86px;--card-h:114px;display:flex;flex-wrap:wrap;justify-content:center;gap:min(7px,1.8vw)">
-              ${validesJ1.map(x=>`<div onclick="G.selRep('${x.id}')" draggable="false" style="cursor:pointer;touch-action:manipulation;-webkit-user-drag:none;-webkit-touch-callout:none;user-select:none">${carteMainHTML(x,{selected:j.repChoisie?.id===x.id})}</div>`).join("")}
+              ${validesJ1.map(x=>`<div onclick="G.selRep('${x.id}')" draggable="false" style="cursor:pointer;touch-action:manipulation;-webkit-user-drag:none;-webkit-touch-callout:none;user-select:none">${carteMainHTML(x,{selected:j.repChoisie?.id===x.id,masque:(S.jeu&&((S.jeu.twist==="aveugle"||S.jeu.twist==="ultime")||(S.jeu.modif==="brouillard"&&S.jeu.manche%2===0)))})}</div>`).join("")}
             </div>
           `}
         </div>
@@ -9452,7 +9898,7 @@ function renderJeu(app){
           background:${PILIER[j.b1]?.accent||'#888'}0d">
           <div style="font-size:8px;color:${PILIER[j.b1]?.accent||'var(--goldL)'};font-weight:700;letter-spacing:1px">${S.nom}</div>
           <div style="display:flex;align-items:center;gap:4px">
-            <span style="font-size:16px">${PILIER[j.b1]?.icon||''}</span>
+            <span style="font-size:16px">${(j.b1&&PILIER[j.b1])?emblemeMini(j.b1,16):''}</span>
             <span style="font-size:10px;font-weight:900;color:${PILIER[j.b1]?.accent||'var(--goldL)'};font-family:'Cinzel',serif">${j.b1||''}</span>
           </div>
         </div>
@@ -9469,7 +9915,7 @@ function renderJeu(app){
           box-shadow:0 0 10px ${PILIER[j.b2]?.accent||'#888'}22">
           <div style="font-size:8px;color:${PILIER[j.b2]?.accent||'var(--red)'};font-weight:700;letter-spacing:1px">${iaPr.icon} IA</div>
           <div style="display:flex;align-items:center;gap:4px">
-            <span style="font-size:16px">${PILIER[j.b2]?.icon||''}</span>
+            <span style="font-size:16px">${(j.b2&&PILIER[j.b2])?emblemeMini(j.b2,16):''}</span>
             <span style="font-size:10px;font-weight:900;color:${PILIER[j.b2]?.accent||'var(--red)'};font-family:'Cinzel',serif">${j.b2||''}</span>
           </div>
         </div>
@@ -9543,6 +9989,8 @@ function renderJeu(app){
     <div style="flex-shrink:0;width:100%">
       ${progrBar}
       ${scoreBarHTML(j.s1,j.s2,S.nom)}
+      ${(j.twist==="jackpot"||j.twist==="ultime")?`<div style="text-align:center;font-size:11px;color:#F39C12;font-weight:800;letter-spacing:1px;margin:2px 0;text-shadow:0 0 10px rgba(243,156,18,0.5)">💰 JACKPOT : ${j.jackpot} pts</div>`:""}
+      ${j.modif?`<div style="text-align:center;font-size:11px;font-weight:800;letter-spacing:1px;margin:2px 0;color:#c9a0ff">${MODIFS_SOLO[j.modif].icon} ${MODIFS_SOLO[j.modif].nom.toUpperCase()}${j.modif==="maudit"?" · "+j.modifMaudit+" ½":""}${j.modif==="destin"?(j.manche===j.modifDestinManche?" · ×2 MAINTENANT !":" · manche "+j.modifDestinManche):""}${j.modif==="brouillard"?(j.manche%2===0?" · 🌫️ actif":""):""}</div>`:""}
       ${j.iaDlg||j.iaTyping?iaBulle(iaPr,j.iaDlg,j.iaTyping):""}
       ${_cTop}
     </div>
