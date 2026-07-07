@@ -1145,7 +1145,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v94.04";
+const BUILD_TAG="v94.12";
 // ── Diagnostic : révèle le détail réel des erreurs (un « Script error. » nu = erreur d'un script tiers cross-origin, ex. PeerJS) ──
 window.addEventListener("error", function(ev){
   // Erreur tierce sans détail (ex. Google Analytics gêné par la prévention du tracking) : bruit bénin → on n'encombre pas la console
@@ -2409,7 +2409,7 @@ function showToast(msg,type="info",ms=2800,parler=false){
   clearTimeout(toastTimer);
   toastTimer=setTimeout(()=>el.style.display="none",ms);
   // Lecture vocale optionnelle (uniquement pour les bannières de jeu marquées, si la voix est activée)
-  try{ if(parler && S.voixGuide && typeof _voixDispo==="function" && _voixDispo()){ _parlerGuide(_sansEmoji(msg)); } }catch(_){}
+  try{ if(parler && S.voixGuide && typeof _voixDispo==="function" && _voixDispo()){ _parlerGuide(_sansEmoji(msg), {masc: parler==="masc"}); } }catch(_){}
 }
 
 let animTimer=null;
@@ -4587,7 +4587,7 @@ Object.assign(DUEL, {
       .sort(function(a,b){return b.pts-a.pts;}).slice(0,3);
     gs.repAdvVues=vues; gs.espionActif=true;
     if(AUDIO.sfxJoker) AUDIO.sfxJoker();
-    showToast("👁 Espion — 3 meilleures cartes de l'adversaire révélées !","win",3000,true);
+    showToast("👁 Espion — 3 meilleures cartes de l'adversaire révélées !","win",3000,"masc");
     render();
     setTimeout(function(){ if(DUEL.gs){ DUEL.gs.espionActif=false; render(); } },6000);
   },
@@ -4613,7 +4613,7 @@ Object.assign(DUEL, {
     DUEL._send({type:"joker_used",id:"j4"});
     gs.phaseEchange=false;
     if(AUDIO.sfxBadge) AUDIO.sfxBadge();
-    showToast('🔄 Échange ! "'+nouvelle.name+'" ('+nouvelle.pts+' pts) intégrée !',"win",3000,true);
+    showToast('🔄 Échange ! "'+nouvelle.name+'" ('+nouvelle.pts+' pts) intégrée !',"win",3000,"masc");
     render();
   },
 
@@ -5395,12 +5395,12 @@ function renderDuelJeu(app){
             var box='<div style="background:rgba(45,27,105,0.44);border:1px solid rgba(212,175,55,0.55);border-radius:12px;padding:12px 10px;margin-top:12px;text-align:left">'
               +'<div style="font-size:13px;color:var(--gold);font-weight:700;margin-bottom:4px;text-align:center">🃏 Veux-tu jouer un joker ?</div>'
               +'<div style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:10px">⏱ <span id="duel-joker-sec" style="color:var(--goldL);font-weight:900">5</span> s pour décider · sinon résultat normal</div>'
-              +'<div style="display:flex;gap:min(8px,2vw);margin-bottom:10px;justify-content:center;flex-wrap:nowrap">';
+              +'<button class="btn-ghost" style="width:100%;margin-bottom:10px" onclick="DUEL.jokerFinal(null)">✗ Ne pas utiliser — résultat normal</button>'
+              +'<div style="display:flex;gap:min(8px,2vw);margin-bottom:2px;justify-content:center;flex-wrap:nowrap">';
             mesJoksOff.forEach(function(jk){
               box+='<div style="width:var(--card-w);min-height:var(--card-h);display:flex;flex-shrink:0">'+jokerCardHTML(jk,{bonus:(jk.id==="j1"?tot2:tot2*2),onClick:"DUEL.jokerFinal('"+jk.id+"')"})+'</div>';
             });
             box+='</div>'
-              +'<button class="btn-ghost" onclick="DUEL.jokerFinal(null)">✗ Non — résultat normal</button>'
               +'</div>';
             DUEL._armerJokerCountdown();
             return box;
@@ -6475,7 +6475,7 @@ function showJokerOverlay(joker, ptsReveal, who, callback){
   // ── Annonce vocale du joker qui entre en action ──
   try{
     if(S.voixGuide && typeof _parlerGuide==="function"){
-      _parlerGuide(_sansEmoji((title.textContent||"")+". "+(subdesc.textContent||"")));
+      _parlerGuide(_sansEmoji((title.textContent||"")+". "+(subdesc.textContent||"")),{masc:true});
     }
   }catch(_){}
 
@@ -6847,7 +6847,7 @@ const G={
     j.mainJokJ1=j.mainJokJ1.filter(x=>x.id!=="j3");
     const vues=j.mainRepJ2.filter(c=>c.combo===j.cb).sort((a,b)=>b.pts-a.pts).slice(0,3);
     j.repIAVues=vues;j.espionActif=true;
-    showToast("👁 Espion — 3 cartes de l'IA révélées !","win",3000,true);
+    showToast("👁 Espion — 3 cartes de l'IA révélées !","win",3000,"masc");
     render();
     setTimeout(()=>{j.espionActif=false;render();},5000);
   },
@@ -6889,7 +6889,7 @@ const G={
     j.repChoisie=nouvelleCarte;
 
     AUDIO.sfxBadge();
-    showToast(`🔄 Échange ! "${nouvelleCarte.name}" (${nouvelleCarte.pts} pts) intégrée !`,"win",3000,true);
+    showToast(`🔄 Échange ! "${nouvelleCarte.name}" (${nouvelleCarte.pts} pts) intégrée !`,"win",3000,"masc");
     render();
   },
 
@@ -7142,7 +7142,7 @@ const G={
     if(gain>0) j.s2=Math.max(0,(j.s2||0)+gain);
     var iaPr=IA_PROFILS[S.diff]||IA_PROFILS.Intermédiaire;
     render();
-    showToast((iaPr.icon||"🔮")+" "+(iaPr.nom||"IA")+" — Bonus +"+gain+" pts !","lose",2600);
+    showToast((iaPr.icon||"🔮")+" "+(iaPr.nom||"IA")+" — Bonus +"+gain+" pts !","lose",2600,true);
     if(G._apresInt) clearTimeout(G._apresInt);
     // En Tournoi, l'avancement est MANUEL (bouton « Continuer ») → ne pas auto-avancer.
     if(typeof TOURNOI!=="undefined" && TOURNOI.actif){
@@ -7172,6 +7172,7 @@ const G={
     j.b1=null;j.b2=null;j.cb=null;
     j.repChoisie=null;j.repIA=null;j.msg="";j.lastBonusQ=j.lastBonusQ||null;
     j.jActif=null;j.jIA=null;j.espionActif=false;j.repIAVues=[];j.phaseEchange=false;j.gainFinal=null;
+    j._espionMasque=false;j._echangeMasque=false;
     if(prochain==="ia"){
       // Choisir un pilier où l'IA a encore des cartes disponibles
       const piliersDispo=PILIERS.filter(p=>
@@ -7462,23 +7463,36 @@ function showTutoriel(force){
       +'<div onclick="__tutoSkip()" style="position:absolute;top:12px;right:14px;font-size:11px;color:var(--muted);cursor:pointer;letter-spacing:1px">Passer ✕</div>'
       +'<div style="font-size:58px;margin-bottom:12px;line-height:1">'+e.i+'</div>'
       +'<div style="font-family:Cinzel,serif;font-size:19px;font-weight:900;color:var(--goldL);margin-bottom:12px;line-height:1.3">'+e.t+'</div>'
-      +'<div style="font-size:14px;color:var(--text);line-height:1.7;margin-bottom:20px">'+e.d+'</div>'
+      +'<div style="font-size:14px;color:var(--text);line-height:1.7;margin-bottom:14px">'+e.d+'</div>'
+      +'<div style="margin-bottom:16px"><button id="tuto-read-btn" onclick="__tutoLire()" style="background:rgba(212,175,55,0.15);border:1px solid rgba(212,175,55,0.5);border-radius:20px;padding:6px 16px;color:var(--goldL);font-size:12px;font-weight:700;cursor:pointer;font-family:Cinzel,serif">🔊 Écouter</button></div>'
       +'<div style="display:flex;justify-content:center;gap:6px;margin-bottom:20px">'+dots+'</div>'
       +'<div style="display:flex;gap:10px">'
       +(idx>0?'<button onclick="__tutoPrev()" style="flex:1;min-height:46px;border-radius:12px;border:1px solid rgba(192,132,87,0.5);background:transparent;color:var(--goldL);font-weight:700;font-size:14px;cursor:pointer">← Précédent</button>':'')
       +'<button onclick="__tutoNext()" style="flex:2;min-height:46px;border-radius:12px;border:none;background:linear-gradient(135deg,var(--gold),var(--goldL));color:#12082e;font-family:Cinzel,serif;font-weight:900;font-size:15px;cursor:pointer">'+(dernier?'🎮 Commencer !':'Suivant →')+'</button>'
       +'</div></div>';
-    // Lecture à voix haute de l'étape (titre + description), si la voix est activée
-    try{
-      if(S.voixGuide && typeof _parlerGuide==="function"){
-        var _vt=_sansEmoji(String(e.t+". "+e.d).replace(/<[^>]*>/g," ").replace(/&amp;/g," et ").replace(/&nbsp;/g," "));
-        _parlerGuide(_vt);
-      }
-    }catch(_){}
+    // Lecture à voix haute de l'étape (titre + description), voix masculine
+    var _vt=_sansEmoji(String(e.t+". "+e.d).replace(/<[^>]*>/g," ").replace(/&amp;/g," et ").replace(/&nbsp;/g," "));
+    window.__tutoTxt=_vt;
+    try{ if(S.voixGuide && typeof _parlerGuide==="function"){
+      _parlerGuide(_vt,{masc:true,onend:function(){ var b=document.getElementById('tuto-read-btn'); if(b) b.innerHTML='🔊 Écouter'; }});
+      var _rb=document.getElementById('tuto-read-btn'); if(_rb) _rb.innerHTML='⏹️ Arrêter';
+    } }catch(_){}
   }
   window.__tutoNext=function(){ if(idx<etapes.length-1){ idx++; dessine(); } else { fermer(); } };
   window.__tutoPrev=function(){ if(idx>0){ idx--; dessine(); } };
   window.__tutoSkip=function(){ fermer(); };
+  window.__tutoLire=function(){
+    try{
+      var b=document.getElementById('tuto-read-btn');
+      if(typeof _voixDispo==="function" && _voixDispo() && window.speechSynthesis.speaking){
+        _stopVoixGuide(); if(b) b.innerHTML='🔊 Écouter'; return;
+      }
+      if(S.voixGuide && typeof _parlerGuide==="function"){
+        _parlerGuide(window.__tutoTxt,{masc:true,onend:function(){ var bb=document.getElementById('tuto-read-btn'); if(bb) bb.innerHTML='🔊 Écouter'; }});
+        if(b) b.innerHTML='⏹️ Arrêter';
+      }
+    }catch(_){}
+  };
   dessine();
 }
 
@@ -7494,9 +7508,9 @@ function lancerGardien(i){
     // Annonce de l'épreuve (twist) — lue à voix haute
     var _tw=CAMPAGNE[i].twist, _msgTw={
       jackpot:"💰 ÉPREUVE DE L'ARGENT — un jackpot grossit à chaque manche ; le vainqueur d'une manche le rafle !",
-      passion:"❤️ ÉPREUVE DE LA PASSION — les combos d'Amour valent une fois et demie, des deux côtés.",
-      endurance:"🌿 ÉPREUVE D'ENDURANCE — un combat de longue haleine : seize manches. Tiens bon.",
-      aveugle:"🕯️ ÉPREUVE DE L'AVEUGLE — la valeur de tes cartes est masquée. Joue à l'instinct.",
+      passion:"🌹 ÉPREUVE DE LA PASSION — les combos d'Amour valent une fois et demie, des deux côtés.",
+      endurance:"⏳ ÉPREUVE D'ENDURANCE — un combat de longue haleine : seize manches. Tiens bon.",
+      aveugle:"🌑 ÉPREUVE DE L'AVEUGLE — la valeur de tes cartes est masquée. Joue à l'instinct.",
       ultime:"🔮 ÉPREUVE ULTIME — jackpot ET cartes masquées. Que l'Équilibre te guide."
     };
     if(_tw && _msgTw[_tw]){
@@ -8876,14 +8890,15 @@ function renderRegles(app){
       </div>
 
       <!-- Modes de jeu -->
-      <div style="font-size:13px;color:var(--gold);font-weight:700;font-family:'Cinzel',serif;margin-bottom:10px;letter-spacing:1px">🎮 LES 5 MODES DE JEU</div>
+      <div style="font-size:13px;color:var(--gold);font-weight:700;font-family:'Cinzel',serif;margin-bottom:10px;letter-spacing:1px">🎮 LES 6 MODES DE JEU</div>
       <div class="card" style="margin-bottom:14px">
         ${[
-          {i:"⚔️",n:"Solo vs IA",c:"var(--goldL)",t:"Affrontez l'IA sur 12 manches. Choisissez parmi 3 niveaux : Rara (Débutante), Magey (Intermédiaire) ou Bolito (Expert). Après une victoire, un bouton vous propose de <strong style='color:var(--goldL)'>monter d'un cran</strong> vers la difficulté supérieure. Idéal pour apprendre et progresser. À la fin, vos stats de piliers et votre score sont affichés."},
-          {i:"🗺️",n:"Mode Campagne",c:"#b06bff",t:"« La Voie des 4 Piliers » : affrontez 5 gardiens, chacun lié à un pilier, avec une difficulté croissante — du Gardien de la Santé jusqu'au Maître Suprême. Chaque gardien vous défie avec une phrase avant le combat. Le vaincre débloque le suivant et rapporte de l'XP bonus. Terminez la Voie pour obtenir le trophée « Maître de la Voie » !"},
-          {i:"❤️",n:"Mode Survie",c:"#e05555",t:"Parties enchainées sans limite. Vous avez 3 vies ❤️❤️❤️ — chaque défaite de manche en coûte une. L'IA joue toujours en mode Expert. Après chaque partie, vous <strong style='color:var(--goldL)'>continuez avec vos vies restantes</strong> ; le run ne repart à 3 vies qu'après un Game Over (0 vie). Battez votre propre record !"},
+          {i:"⚔️",n:"Solo vs IA",c:"var(--goldL)",t:"Affrontez l'IA sur 12 manches (3 niveaux : Rara, Magey, Bolito). Enchaînez les victoires pour faire grandir votre <strong style='color:var(--goldL)'>série 🔥</strong> — record sauvegardé, paliers récompensés en XP. Environ une partie sur quatre tire un <strong style='color:var(--goldL)'>modificateur</strong> surprise, annoncé à voix haute : Manche du Destin (×2), Pilier Maudit (½), Pot Gonflé ou Brouillard."},
+          {i:"🗺️",n:"Mode Campagne",c:"#b06bff",t:"« La Voie des 4 Piliers » : <strong style='color:var(--goldL)'>15 gardiens</strong> en 3 actes — L'Éveil, L'Épreuve, L'Ascension. Chaque gardien est un <strong style='color:var(--goldL)'>temple</strong> gardé par 4 disciples (combats courts de 5 manches) qui vous <strong style='color:var(--goldL)'>défient à voix haute</strong> avant chaque affrontement. Battez les 4 pour affronter le chef (12 manches), qui impose souvent son <strong style='color:var(--goldL)'>épreuve</strong> (Jackpot, Passion, Endurance, Aveugle…). Au sommet : le Maître Suprême et son Épreuve Ultime."},
+          {i:"❤️",n:"Mode Survie",c:"#e05555",t:"Parties enchainées sans limite. Vous avez 3 vies — chaque défaite de manche en coûte une. L'IA joue toujours en mode Expert. Après chaque partie, vous <strong style='color:var(--goldL)'>continuez avec vos vies restantes</strong> ; le run ne repart à 3 vies qu'après un Game Over (0 vie). Battez votre propre record !"},
           {i:"⚔️",n:"Duel 1v1 en ligne",c:"#45c97a",t:"Affrontez un vrai adversaire en temps réel (2 téléphones). L'hôte crée un duel → un code de 4 lettres est généré → l'invité le saisit → la partie démarre. Un deck de 24 cartes Réponses est tiré (parmi les 48 du jeu) puis réparti équitablement — 12 chacun. Chat intégré 💬, reconnexion automatique en cas de coupure, et revanche en un clic. Les manches s'enchaînent automatiquement."},
-          {i:"🏆",n:"Mode Tournoi",c:"#f1c40f",t:"Enchaînez 3 parties contre les 3 IA de difficulté croissante — Rara (Débutant), puis Magey (Intermédiaire), puis Bolito (Expert). Vos scores s'additionnent dans un classement final. Le vrai test de régularité !"},
+          {i:"🏆",n:"Mode Tournoi",c:"#f1c40f",t:"Enchaînez 3 parties contre les 3 IA de difficulté croissante — Rara, puis Magey, puis Bolito. Vos scores s'additionnent dans un classement final. Le vrai test de régularité !"},
+          {i:"⛰️",n:"Mode Ascension",c:"#6ab0ff",t:"Grimpez palier par palier, sans fin ! Chaque palier est une partie courte de 7 manches. La difficulté monte : Débutant → Intermédiaire → Expert, puis un <strong style='color:var(--goldL)'>modificateur par palier</strong> dès le 4ᵉ et une <strong style='color:var(--goldL)'>avance de l'IA</strong> qui grandit au-delà du 8ᵉ. Votre score = le palier atteint, avec un record à battre. Le mode « encore une partie »."},
         ].map(m=>`
           <div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.06)">
             <div style="font-size:28px;flex-shrink:0;width:36px;text-align:center">${m.i}</div>
@@ -9040,12 +9055,11 @@ function renderRegles(app){
           {i:"📅",n:"Défi du jour",t:"Un défi <strong style='color:var(--goldL)'>différent chaque jour</strong>, avec bonus d'XP. Réussis-le plusieurs jours d'affilée pour faire monter ta <strong style='color:#ff6b35'>série 🔥</strong>."},
           {i:"🏆",n:"Trophées",t:"8 badges à débloquer selon tes exploits (séries, jokers gagnants, remontées, IA Expert battue…), consultables dans <strong style='color:var(--goldL)'>🏆 Trophées</strong>."},
           {i:"⚖️",n:"Écran d'accueil animé",t:"Une intro où les 4 piliers convergent vers la balance — l'esprit du jeu dès la première seconde."},
-          {i:"🌟",n:"Niveaux & progression",t:"Gagnez de l'XP à chaque partie et grimpez les rangs : Novice → Apprenti → Initié → Gardien → Sage → Maître → Maître Suprême. Chaque montée de niveau déclenche une célébration et débloque du contenu."},
           {i:"🎨",n:"Thèmes débloquables",t:"Personnalisez l'ambiance du jeu avec des thèmes de fond (Nuit Mystique, Aurore Boréale, Cosmos, Coucher de Soleil), à débloquer en montant de niveau, via le menu 🎨 Thèmes."},
           {i:"⚡",n:"Mode léger",t:"Dans <strong style='color:var(--goldL)'>🎨 Thèmes</strong>, un réglage réduit les animations pour une fluidité maximale sur les téléphones plus modestes. Il s'active aussi tout seul si votre téléphone est réglé sur « réduire les animations »."},
           {i:"🎴",n:"Cartes illustrées",t:"Les 4 piliers et leurs emblèmes (méditation, cœur, arbre, pièces) sont de véritables illustrations dorées, présentes sur toutes les cartes — de base comme réponses — pour une identité visuelle riche et cohérente."},
           {i:"🎵",n:"Musique d'ambiance",t:"Une musique douce et joyeuse accompagne vos parties, du début à la fin. Elle démarre quand la partie commence. Activez ou coupez le son à tout moment avec le bouton 🔊."},
-          {i:"🔊",n:"Lecture à voix haute",t:"Le jeu peut <strong style='color:var(--goldL)'>parler</strong> : le Sage lit ses conseils, les gardiens récitent leur défi avant le combat, et le mode d'emploi se lit d'un bouton « 🔊 Écouter le guide » (en haut à gauche). Les bannières importantes — le <strong style='color:var(--goldL)'>Défi du jour</strong>, le joker <strong style='color:var(--goldL)'>Espion</strong>, le guide de première partie — sont aussi énoncées. Coupez ou réactivez la voix d'un simple bouton 🔊. Aucun fichier à télécharger : la voix vient de votre téléphone."},
+          {i:"🔊",n:"Lecture à voix haute",t:"Le jeu <strong style='color:var(--goldL)'>parle</strong> : le Sage lit ses conseils ; en Campagne, les <strong style='color:var(--goldL)'>gardiens et leurs disciples</strong> déclament leur nom et leur menace avant chaque combat (voix grave de guerrier, voix féminine pour les gardiennes) ; les <strong style='color:var(--goldL)'>épreuves</strong> et <strong style='color:var(--goldL)'>modificateurs</strong> sont annoncés ; <strong style='color:var(--goldL)'>tous les jokers</strong> sont énoncés quand ils entrent en action ; et le <strong style='color:var(--goldL)'>bonus question</strong> se lit tout seul (avec un bouton « 🔊 Écouter »). Le mode d'emploi aussi, via « 🔊 Écouter le guide ». Coupez ou réactivez la voix d'un bouton 🔊 — aucun fichier à télécharger, elle vient de votre téléphone."},
           {i:"⚖️",n:"Bonus équilibrés",t:"Les bonus surprise (Sage, Questions) <strong style='color:var(--goldL)'>alternent désormais entre toi et l'IA</strong> en Solo, Campagne et Tournoi. L'IA reçoit un gain calculé avec la même mécanique que toi : le jeu reste juste, sans avantage pour un seul camp."},
         ].map(f=>`
           <div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
@@ -9776,8 +9790,9 @@ function renderJeu(app){
           `}
         </div>
 
-        ${!j.phaseEchange&&j.mainJokJ1.find(x=>x.id==="j4")&&validesJ1.length>0?`
+        ${!j.phaseEchange&&j.mainJokJ1.find(x=>x.id==="j4")&&validesJ1.length>0&&!j._echangeMasque?`
           <div style="margin-bottom:8px">
+            <button class="btn-ghost" style="width:100%;margin-bottom:6px;font-size:11px" onclick="S.jeu._echangeMasque=true;render()">✗ Ne pas utiliser l'Échange</button>
             <div style="font-size:10px;color:#9B59B6;font-weight:700;margin-bottom:5px;text-align:center">
               🔄 Joker Échange disponible — remplacez une carte
             </div>
@@ -9790,23 +9805,24 @@ function renderJeu(app){
 
       ${validesJ1.length===0&&!j.phaseEchange?`<div style="margin-bottom:10px">
         ${j.mainJokJ1.find(x=>x.id==="j4")?`
-          <div style="font-size:11px;color:var(--red);text-align:center;margin-bottom:6px">
+          <div style="font-size:11px;color:var(--red);text-align:center;margin-bottom:8px">
             ⚠️ Aucune carte valide pour <strong>${j.cb}</strong>
           </div>
+          <button class="btn-ghost" style="width:100%;margin-bottom:10px" onclick="G.passerTour()">⏭️ Passer ce tour (0 pts)</button>
           <div style="font-size:10px;color:#9B59B6;text-align:center;margin-bottom:8px;font-weight:700">
-            🔄 Utilisez l'Échange — piochez une carte du combo !
+            🔄 …ou utilisez l'Échange pour piocher une carte du combo
           </div>
-          <div style="display:flex;gap:7px;margin-bottom:8px">
+          <div style="display:flex;gap:7px">
             ${jokerCardHTML(j.mainJokJ1.find(x=>x.id==="j4"),{onClick:"G.useEchangeLibre()"})}
           </div>
-          <button class="btn-ghost" onclick="G.passerTour()">Passer ce tour (0 pts)</button>
         `:`<div style="font-size:11px;color:var(--red);text-align:center;margin-bottom:4px">
             ⚡ Aucune carte valide pour <strong>${j.cb}</strong> — passage automatique…
           </div>`}
       </div>`:""}
 
-      ${j.mainJokJ1.find(x=>x.id==="j3")&&validesJ1.length>0&&!j.phaseEchange?`
+      ${j.mainJokJ1.find(x=>x.id==="j3")&&validesJ1.length>0&&!j.phaseEchange&&!j._espionMasque?`
         <div style="margin-bottom:8px">
+          <button class="btn-ghost" style="width:100%;margin-bottom:6px;font-size:11px" onclick="S.jeu._espionMasque=true;render()">✗ Ne pas utiliser l'Espion</button>
           <div style="font-size:10px;color:var(--gold);font-weight:700;margin-bottom:5px">👁 Joker Espion disponible</div>
           <div style="display:flex;gap:7px">${jokerCardHTML(j.mainJokJ1.find(x=>x.id==="j3"),{onClick:"G.useEspion()"})}</div>
         </div>`:""}
@@ -9874,13 +9890,13 @@ function renderJeu(app){
         <div style="background:rgba(45,27,105,0.44);border:1px solid rgba(212,175,55,0.55);border-radius:12px;padding:12px 10px;margin-bottom:10px;text-align:left">
           <div style="font-size:13px;color:var(--gold);font-weight:700;margin-bottom:4px;text-align:center">🃏 Veux-tu jouer un joker ?</div>
           <div style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:10px">⏱ <span id="joker-sec" style="color:var(--goldL);font-weight:900">${j._jokerSec!=null?j._jokerSec:5}</span> s pour décider · sinon résultat normal</div>
-          <div style="display:flex;gap:8px;margin-bottom:10px">
+          <button class="btn-ghost" style="width:100%;margin-bottom:10px" onclick="G.appliquerJoker(null)">✗ Ne pas utiliser — résultat normal</button>
+          <div style="display:flex;gap:8px;margin-bottom:2px">
             ${j.mainJokJ1.filter(x=>x.id==="j1"||x.id==="j2").map(jk=>`
               <div style="flex:1">
                 ${jokerCardHTML(jk,{bonus:jk.id==="j1"?tot:tot*2,onClick:`G.appliquerJoker('${jk.id}')`})}
               </div>`).join("")}
           </div>
-          <button class="btn-ghost" onclick="G.appliquerJoker(null)">✗ Non — résultat normal</button>
         </div>`:`<button class="btn-gold" onclick="G.appliquerJoker(null)">Voir le résultat →</button>`}
     </div>`;
   }
