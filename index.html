@@ -1048,6 +1048,11 @@ body.guide-touch-hide #guide-fab{ opacity:0!important; pointer-events:none!impor
         font-family:'Cinzel',serif;letter-spacing:0.3px;
         text-shadow:0 0 20px rgba(212,175,55,0.4)"></div>
 
+      <!-- Bouton lecture manuelle (pas d'auto-lecture) -->
+      <div style="text-align:center;margin-bottom:12px">
+        <button id="bonus-read-btn" onclick="_lireBonusQuestion()" style="background:rgba(212,175,55,0.15);border:1px solid rgba(212,175,55,0.5);border-radius:20px;padding:6px 16px;color:var(--goldL);font-size:12px;font-weight:700;cursor:pointer;font-family:'Cinzel',serif;letter-spacing:0.5px">🔊 Écouter la question</button>
+      </div>
+
       <!-- Réponses -->
       <div id="bonus-reponses" style="display:flex;flex-direction:column;gap:8px"></div>
 
@@ -1140,7 +1145,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v94.31";
+const BUILD_TAG="v94.33";
 // ── Diagnostic : révèle le détail réel des erreurs (un « Script error. » nu = erreur d'un script tiers cross-origin, ex. PeerJS) ──
 window.addEventListener("error", function(ev){
   // Erreur tierce sans détail (ex. Google Analytics gêné par la prévention du tracking) : bruit bénin → on n'encombre pas la console
@@ -7222,9 +7227,18 @@ const G={
 
     if(j.bonusManches&&j.bonusManches.has(j.manche)){
       setTimeout(()=>{
+        // ── VERROU anti-télescopage : ne jamais lancer un bonus si la partie se termine
+        //    ou si une autre séquence occupe déjà l'écran (joker, célébration, cartes légendaires). ──
+        if(!S.jeu || S.jeu!==j) return;                          // partie changée / terminée
+        if(j.manche>=j.total || j.mainRepJ1.length===0) return;  // dernière manche → on va finir la partie, pas de bonus
         const sbOv=document.getElementById("sage-bonus-overlay");
         const bOv=document.getElementById("bonus-overlay");
-        if(sbOv?.classList.contains("active")||bOv?.classList.contains("active")) return;
+        const jkOv=document.getElementById("joker-overlay");
+        if((sbOv&&sbOv.classList.contains("active")) ||
+           (bOv&&bOv.classList.contains("active")) ||
+           (jkOv&&jkOv.classList.contains("active")) ||
+           document.getElementById("celebration-badge") ||
+           document.getElementById("speciales-reveal")) return;
         // Annuler le setTimeout et laisser le bonus gérer la manche suivante
         if(G._apresInt){ clearTimeout(G._apresInt); G._apresInt=null; }
         // Équilibrage Solo : alterner le bénéficiaire du bonus (joueur ↔ IA).
