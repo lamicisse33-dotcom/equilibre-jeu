@@ -895,17 +895,19 @@ body.guide-touch-hide #guide-fab{ opacity:0!important; pointer-events:none!impor
 #bd-balance-wrap{position:relative;width:min(90vw,420px,58vh);max-height:100%;
   transform:translateY(-44vh) scale(0.34);opacity:0;transform-origin:50% 32%;
   filter:drop-shadow(0 14px 34px rgba(0,0,0,0.6));}
-#bd-balance-wrap.bd-tremble{animation:bdTremble 1s ease-in-out;}
+#bd-balance-wrap.bd-tremble{animation:bdTremble 1.8s ease-in-out;}
 @keyframes bdTremble{
   0%,100%{transform:translateY(-44vh) scale(0.34) rotate(0deg);opacity:1;}
-  20%{transform:translateY(-44vh) scale(0.34) rotate(-1.6deg);}
-  40%{transform:translateY(-43.4vh) scale(0.345) rotate(1.8deg);}
-  60%{transform:translateY(-44vh) scale(0.34) rotate(-1.3deg);}
-  80%{transform:translateY(-43.6vh) scale(0.345) rotate(1deg);}
+  14%{transform:translateY(-44vh) scale(0.34) rotate(-2.5deg);}
+  28%{transform:translateY(-43.1vh) scale(0.349) rotate(2.7deg);}
+  42%{transform:translateY(-44vh) scale(0.34) rotate(-2.3deg);}
+  56%{transform:translateY(-43.2vh) scale(0.347) rotate(2.1deg);}
+  70%{transform:translateY(-44vh) scale(0.34) rotate(-1.6deg);}
+  85%{transform:translateY(-43.5vh) scale(0.344) rotate(1deg);}
 }
 #bd-balance-wrap.bd-anchored{
   transform:translateY(0) scale(1);opacity:1;
-  transition:transform 0.85s cubic-bezier(.16,.9,.28,1.15),opacity 0.5s ease;}
+  transition:transform 1.5s cubic-bezier(.18,.86,.3,1.06),opacity 0.6s ease;}
 #bd-balance{width:100%;height:auto;display:block;overflow:visible;}
 
 /* Plateaux enflammés : bougie (joueur) + flamme bleue (adversaire) */
@@ -1032,6 +1034,47 @@ html.lite .bd-ball{transition:opacity 0.2s ease;}
 #spc-non{background:rgba(255,255,255,0.06);color:var(--muted);border:1px solid rgba(255,255,255,0.18);
   font-family:'Cinzel',serif;font-weight:700;letter-spacing:0.5px;font-size:13px;
   padding:10px 20px;border-radius:24px;cursor:pointer;}
+/* ══ LE JACKPOT DES FANTÔMES ══ */
+#jf-overlay{position:fixed;inset:0;z-index:5300;display:none;flex-direction:column;
+  align-items:center;justify-content:flex-start;overflow:hidden;
+  background:radial-gradient(ellipse at 50% 30%,#2a1256,#140828 55%,#050208);
+  -webkit-tap-highlight-color:transparent;}
+#jf-overlay.active{display:flex;animation:jfFade .4s ease;}
+@keyframes jfFade{from{opacity:0}to{opacity:1}}
+#jf-title{margin-top:calc(env(safe-area-inset-top,0px) + 5vh);font-family:'Cinzel',serif;
+  font-size:clamp(19px,6.4vw,30px);font-weight:900;letter-spacing:1px;text-align:center;padding:0 12px;
+  color:#F0D060;text-shadow:0 0 24px rgba(240,208,96,.6);opacity:0;transform:scale(.5) translateY(-16px);}
+#jf-title.show{animation:jfTitle .7s cubic-bezier(.3,1.5,.5,1) forwards;}
+@keyframes jfTitle{to{opacity:1;transform:scale(1) translateY(0)}}
+#jf-sub{margin-top:8px;font-size:13px;color:#c8b8e0;font-style:italic;min-height:18px;text-align:center;padding:0 16px;}
+#jf-arena{flex:1;display:flex;align-items:center;justify-content:center;gap:min(5vw,24px);width:100%;padding:10px;}
+.jf-card{position:relative;width:min(38vw,150px);border-radius:18px;padding:16px 10px;text-align:center;
+  background:radial-gradient(ellipse at 50% 30%,#1c1236,#0a0612 72%);border:2px solid rgba(150,110,210,.5);
+  box-shadow:inset 0 0 22px rgba(120,80,200,.25),0 8px 26px rgba(0,0,0,.8);transition:transform .4s ease,box-shadow .4s ease,opacity .4s ease,border-color .4s ease,background .4s ease,filter .4s ease;}
+.jf-ghost{font-size:clamp(30px,9vw,44px);filter:drop-shadow(0 0 12px rgba(170,120,255,.8));}
+.jf-name{font-family:'Cinzel',serif;font-size:11px;letter-spacing:1px;color:#c9b3f0;margin-top:2px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.jf-num{font-family:'Cinzel',serif;font-weight:900;font-size:clamp(34px,11vw,54px);line-height:1;
+  color:#fff;margin:8px 0 6px;text-shadow:0 0 16px rgba(160,110,240,.7);min-height:1em;}
+.jf-score{font-size:12px;color:var(--muted);}.jf-score b{color:#F0D060;font-size:15px;}
+.jf-card.rolling{animation:jfShake .11s linear infinite;}
+@keyframes jfShake{0%,100%{transform:translateY(0)}50%{transform:translateY(-2px)}}
+.jf-card.locked{border-color:#c79bff;box-shadow:0 0 0 1px #c79bff88,0 0 28px rgba(160,110,240,.8),0 10px 30px rgba(0,0,0,.85);}
+.jf-card.win{border-color:var(--gold);transform:scale(1.12);
+  background:radial-gradient(ellipse at 50% 30%,#3a2c10,#140b02 72%);
+  box-shadow:0 0 0 2px var(--gold),0 0 42px rgba(240,208,96,.9);}
+.jf-card.win .jf-num{color:#F0D060;text-shadow:0 0 22px rgba(240,208,96,.95);}
+.jf-card.lose{opacity:.38;transform:scale(.82);filter:grayscale(.7);}
+.jf-vs{font-family:'Cinzel',serif;font-weight:900;font-size:18px;color:#e05a7a;text-shadow:0 0 12px rgba(224,90,122,.7);}
+#jf-banner{font-family:'Cinzel',serif;font-weight:900;font-size:clamp(18px,5.4vw,26px);letter-spacing:1px;
+  color:#F0D060;text-shadow:0 0 26px rgba(240,208,96,.8);opacity:0;transform:scale(.6);text-align:center;padding:0 16px;min-height:1.2em;}
+#jf-banner.show{animation:jfBanner .6s cubic-bezier(.3,1.6,.5,1) forwards;}
+@keyframes jfBanner{to{opacity:1;transform:scale(1)}}
+#jf-payout{font-family:'Cinzel',serif;font-weight:900;font-size:clamp(26px,9vw,44px);color:#45c97a;
+  text-shadow:0 0 20px rgba(69,201,122,.7);min-height:1em;margin-top:2px;}
+#jf-hint{margin-bottom:calc(env(safe-area-inset-bottom,0px) + 20px);font-size:11px;color:var(--muted);
+  font-style:italic;opacity:0;transition:opacity .4s ease;}
+
 
 
 </style>
@@ -1450,6 +1493,30 @@ html.lite .bd-ball{transition:opacity 0.2s ease;}
   </div>
 </div>
 
+<!-- Le Jackpot des Fantômes -->
+<div id="jf-overlay">
+  <div id="jf-title">🎰 LE JACKPOT DES FANTÔMES 🎰</div>
+  <div id="jf-sub"></div>
+  <div id="jf-arena">
+    <div class="jf-card" id="jf-card-me">
+      <div class="jf-ghost">👻</div>
+      <div class="jf-name" id="jf-me-name">Toi</div>
+      <div class="jf-num" id="jf-me-num" data-locked="0">?</div>
+      <div class="jf-score">Score : <b id="jf-me-score">0</b></div>
+    </div>
+    <div class="jf-vs">VS</div>
+    <div class="jf-card" id="jf-card-adv">
+      <div class="jf-ghost">👻</div>
+      <div class="jf-name" id="jf-adv-name">Adversaire</div>
+      <div class="jf-num" id="jf-adv-num" data-locked="0">?</div>
+      <div class="jf-score">Score : <b id="jf-adv-score">0</b></div>
+    </div>
+  </div>
+  <div id="jf-banner"></div>
+  <div id="jf-payout"></div>
+  <div id="jf-hint">Touchez pour continuer</div>
+</div>
+
 <script>
 // Journalisation d'erreurs discrète : console uniquement, aucune boîte à l'écran.
 // (Les garde-fous try/catch autour du rendu continuent de protéger l'application.)
@@ -1517,7 +1584,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v94.42";
+const BUILD_TAG="v94.46";
 // ── Diagnostic : révèle le détail réel des erreurs (un « Script error. » nu = erreur d'un script tiers cross-origin, ex. PeerJS) ──
 window.addEventListener("error", function(ev){
   // Erreur tierce sans détail (ex. Google Analytics gêné par la prévention du tracking) : bruit bénin → on n'encombre pas la console
@@ -3298,6 +3365,147 @@ const BONUS_SAGE = {
 // Mini-jeu : la balance du score se décroche et devient jouable.
 // Le retard de l'IA est matérialisé en poids réel sur le plateau adverse ;
 // le joueur pose ses boules pour ramener le fléau à l'équilibre pile.
+// ══════════════════════════════════════════════════
+// LE JACKPOT DES FANTÔMES — cinématique ~12 s, pilotée par données.
+// data = { myName, advName, myVal, advVal, iWin, butin, myBefore, advBefore, myAfter, advAfter }
+// (les valeurs sont déjà départagées : myVal !== advVal)
+// ══════════════════════════════════════════════════
+const JACKPOT_FANTOME = {
+  _rollInt:null, _onDone:null, _closable:false, _closeT:null, _bound:false, _timers:[],
+
+  show(data, onDone){
+    var self=this;
+    this._onDone = onDone || function(){};
+    this._closable=false;
+    this._clearTimers();
+    try{ if(typeof AUDIO!=="undefined") AUDIO.init(); }catch(e){}
+    var ov=document.getElementById("jf-overlay");
+    if(!ov){ this._finish(); return; }
+
+    // ── Reset ──
+    var t=document.getElementById("jf-title"); if(t) t.classList.remove("show");
+    var sub=document.getElementById("jf-sub"); if(sub) sub.textContent="";
+    var meCard=document.getElementById("jf-card-me"), advCard=document.getElementById("jf-card-adv");
+    if(meCard) meCard.className="jf-card"; if(advCard) advCard.className="jf-card";
+    var meN=document.getElementById("jf-me-num"), advN=document.getElementById("jf-adv-num");
+    if(meN){ meN.textContent="?"; meN.setAttribute("data-locked","0"); }
+    if(advN){ advN.textContent="?"; advN.setAttribute("data-locked","0"); }
+    this._set("jf-me-name", data.myName||"Toi");
+    this._set("jf-adv-name", data.advName||"Adversaire");
+    this._set("jf-me-score", data.myBefore);
+    this._set("jf-adv-score", data.advBefore);
+    var ban=document.getElementById("jf-banner"); if(ban){ ban.classList.remove("show"); ban.textContent=""; }
+    this._set("jf-payout","");
+    var hint=document.getElementById("jf-hint"); if(hint) hint.style.opacity="0";
+    ov.classList.add("active");
+
+    // ── Beat 1 : titre (0.2 s) ──
+    this._after(200, function(){
+      if(t) t.classList.add("show");
+      if(sub) sub.textContent="Les deux ont os\u00e9 le Fant\u00f4me\u2026";
+      try{ if(AUDIO.vibrer) AUDIO.vibrer([0,40,60,40]); }catch(e){}
+    });
+    // ── Beat 2 : les slots tournent (1.8 s) ──
+    this._after(1800, function(){ self._spin(); if(sub) sub.textContent="Les Fant\u00f4mes r\u00e9v\u00e8lent leur pouvoir\u2026"; });
+    // ── Beat 3 : mon num\u00e9ro se fige (4.2 s) ──
+    this._after(4200, function(){ self._lock("me", data.myVal); });
+    // ── Beat 4 : num\u00e9ro adverse (5.6 s) ──
+    this._after(5600, function(){ self._lock("adv", data.advVal); });
+    // ── Beat 5 : vainqueur (6.7 s) ──
+    this._after(6700, function(){ self._winner(data); });
+    // ── Beat 6 : JACKPOT — transfert total (7.7 s) ──
+    this._after(7700, function(){ self._payout(data); });
+    // ── Beat 7 : fin, tap pour continuer (10.9 s) ──
+    this._after(10900, function(){
+      if(hint) hint.style.opacity="1";
+      self._closable=true;
+      self._closeT=setTimeout(function(){ self._finish(); }, 4500); // backstop
+    });
+
+    this._ensureBind();
+  },
+
+  _spin(){
+    var me=document.getElementById("jf-me-num"), adv=document.getElementById("jf-adv-num");
+    var cm=document.getElementById("jf-card-me"), ca=document.getElementById("jf-card-adv");
+    if(cm) cm.classList.add("rolling"); if(ca) ca.classList.add("rolling");
+    if(this._rollInt) clearInterval(this._rollInt);
+    this._rollInt=setInterval(function(){
+      if(me && me.getAttribute("data-locked")!=="1") me.textContent=Math.floor(Math.random()*101);
+      if(adv && adv.getAttribute("data-locked")!=="1") adv.textContent=Math.floor(Math.random()*101);
+      try{ if(AUDIO.sfxBoule) AUDIO.sfxBoule(); }catch(e){}
+    }, 70);
+  },
+
+  _lock(who, val){
+    var el=document.getElementById(who==="me"?"jf-me-num":"jf-adv-num");
+    var card=document.getElementById(who==="me"?"jf-card-me":"jf-card-adv");
+    if(el){ el.setAttribute("data-locked","1"); el.textContent=val; }
+    if(card){ card.classList.remove("rolling"); card.classList.add("locked"); }
+    try{ if(AUDIO.sfxExplosion) AUDIO.sfxExplosion(); if(AUDIO.vibrer) AUDIO.vibrer([0,30,20,50]); }catch(e){}
+    var me=document.getElementById("jf-me-num"), adv=document.getElementById("jf-adv-num");
+    if(me && adv && me.getAttribute("data-locked")==="1" && adv.getAttribute("data-locked")==="1"){
+      if(this._rollInt){ clearInterval(this._rollInt); this._rollInt=null; }
+    }
+  },
+
+  _winner(data){
+    var meCard=document.getElementById("jf-card-me"), advCard=document.getElementById("jf-card-adv");
+    var winCard=data.iWin?meCard:advCard, loseCard=data.iWin?advCard:meCard;
+    if(winCard) winCard.classList.add("win");
+    if(loseCard) loseCard.classList.add("lose");
+    var sub=document.getElementById("jf-sub");
+    if(sub) sub.textContent = data.iWin ? "Ton Fant\u00f4me l'emporte !" : "Le Fant\u00f4me adverse l'emporte\u2026";
+    try{ if(data.iWin && AUDIO.playCelebration) AUDIO.playCelebration(); else if(AUDIO.sfxLose) AUDIO.sfxLose(); }catch(e){}
+  },
+
+  _payout(data){
+    var ban=document.getElementById("jf-banner");
+    if(ban){ ban.textContent = data.iWin ? "\uD83C\uDFB0 TU RAFLES TOUT ! \uD83C\uDFB0" : "L'adversaire rafle tout\u2026"; ban.classList.add("show"); }
+    var pay=document.getElementById("jf-payout");
+    if(pay){
+      if(data.iWin){ pay.style.color="#45c97a"; pay.textContent="+"+data.butin; }
+      else { pay.style.color="#e0708a"; pay.textContent="\u2013"+data.myBefore; }
+    }
+    this._countTo("jf-me-score", data.myBefore, data.myAfter, 2500);
+    this._countTo("jf-adv-score", data.advBefore, data.advAfter, 2500);
+    try{ if(AUDIO.sfxWin) AUDIO.sfxWin(); if(AUDIO.vibrer) AUDIO.vibrer([0,60,40,60,40,120]); }catch(e){}
+  },
+
+  _countTo(id, from, to, dur){
+    var el=document.getElementById(id); if(!el) return;
+    from=+from||0; to=+to||0;
+    var t0=Date.now();
+    var raf=(typeof requestAnimationFrame==="function")?requestAnimationFrame:function(f){return setTimeout(function(){f(Date.now());},16);};
+    function step(){
+      var p=Math.min(1,(Date.now()-t0)/dur);
+      var e=1-Math.pow(1-p,3);
+      el.textContent=Math.round(from+(to-from)*e);
+      if(p<1) raf(step); else el.textContent=to;
+    }
+    raf(step);
+  },
+
+  _ensureBind(){
+    if(this._bound) return; this._bound=true;
+    var self=this, ov=document.getElementById("jf-overlay"); if(!ov) return;
+    ov.addEventListener("click", function(){ if(self._closable) self._finish(); });
+  },
+
+  _finish(){
+    if(this._rollInt){ clearInterval(this._rollInt); this._rollInt=null; }
+    if(this._closeT){ clearTimeout(this._closeT); this._closeT=null; }
+    this._clearTimers();
+    var ov=document.getElementById("jf-overlay"); if(ov) ov.classList.remove("active");
+    var cb=this._onDone; this._onDone=null; this._closable=false;
+    if(cb){ try{ cb(); }catch(e){} }
+  },
+
+  _after(ms, fn){ this._timers.push(setTimeout(fn, ms)); },
+  _clearTimers(){ if(this._timers){ this._timers.forEach(function(t){ clearTimeout(t); }); } this._timers=[]; },
+  _set(id, v){ var el=document.getElementById(id); if(el) el.textContent=v; }
+};
+
 const BONUS_DESTIN = {
   PIVOT_X:200, PIVOT_Y:90, K_ANGLE:0.17, ANGLE_MAX:13,
   balls:[], W:0, diff:"Intermédiaire", sealed:false,
@@ -3413,32 +3621,33 @@ const BONUS_DESTIN = {
 
     var self=this;
     // — Beat 2/3 : rupture + ancrage au centre —
-    setTimeout(function(){ wrap.classList.add("bd-anchored"); }, 950);
+    // Décrochement RALENTI : la balance tremble longuement puis se décroche lourdement.
+    setTimeout(function(){ wrap.classList.add("bd-anchored"); }, 1800);
     setTimeout(function(){
       stage.classList.add("bd-shake");
       document.getElementById("bd-flash").classList.add("go");
       document.getElementById("bd-shock").classList.add("go");
       if(AUDIO.sfxExplosion) AUDIO.sfxExplosion();
       // le plateau adverse s'enfonce : on montre le poids du Destin
-      grp.style.transition="transform 0.7s cubic-bezier(.34,1.5,.5,1)";
+      grp.style.transition="transform 0.9s cubic-bezier(.34,1.5,.5,1)";
       self._render();
-    }, 1720);
-    setTimeout(function(){ stage.classList.remove("bd-shake"); }, 2220);
+    }, 3200);
+    setTimeout(function(){ stage.classList.remove("bd-shake"); }, 3720);
 
     // — Beat 4 : éveil + tourbillon des 4 piliers —
-    setTimeout(function(){ self._swirlPiliers(); }, 2050);
+    setTimeout(function(){ self._swirlPiliers(); }, 3500);
 
     // — Beat 5 : boules + consigne —
     setTimeout(function(){
       readout.classList.add("show");
       self._render();
-    }, 2550);
+    }, 3850);
     setTimeout(function(){
       trayZone.classList.add("show");
       sealZone.classList.add("show");
       self._revealBalls();
-      self._startTimer();
-    }, 2750);
+      if(!self._duel) self._startTimer();   // pas de compte à rebours en Duel
+    }, 4100);
   },
 
   _swirlPiliers(){
@@ -4213,6 +4422,15 @@ const DUEL = {
     }
   },
 
+  // gs allégé pour les mises à jour fréquentes : on retire les données statiques
+  // (pools de cartes/jokers, événements) jamais modifiées après la distribution → réseau plus fluide.
+  _gsSync(){
+    var g=DUEL.gs; if(!g) return g;
+    var lite={}; for(var k in g){ if(Object.prototype.hasOwnProperty.call(g,k)) lite[k]=g[k]; }
+    delete lite.allRepJ1; delete lite.allRepJ2; delete lite.allJokJ1; delete lite.allJokJ2; delete lite.evenements;
+    return lite;
+  },
+
   // ── Initialiser l'état de jeu ──
   _initGS(){
     const r=genererDeck24();
@@ -4229,6 +4447,7 @@ const DUEL = {
       mainJokJ1:joks.slice(0,2).map(function(j){return Object.assign({},j);}),
       mainJokJ2:joks.slice(2,4).map(function(j){return Object.assign({},j);}),
       espionActif:false, repAdvVues:[], phaseEchange:false,
+      supUseJ1:false, supUseJ2:false, fanUseJ1:false, fanUseJ2:false,
       selJ1Done:false, selJ2Done:false,
       premierValideur:null,
       s1:0, s2:0, manche:1, total:12,
@@ -4323,6 +4542,19 @@ const DUEL = {
           DUEL._bonusEnCours=false;
           var _cr=(msg.winner==="guest")?"win":((msg.winner==="host")?"lose":"none");
           if(typeof BONUS_DESTIN!=="undefined" && BONUS_DESTIN.finDuel) BONUS_DESTIN.finDuel(_cr);
+        }
+        break;
+      case "jackpot_fantome":
+        // Invité : l'hôte a tranché le Jackpot des Fantômes → scores autoritaires + animation
+        if(!DUEL.isHost && DUEL.gs){
+          DUEL.gs.s1=msg.s1; DUEL.gs.s2=msg.s2;
+          var _iwJ=(msg.winner===2); // invité = J2
+          var _advJ=(DUEL.adversaire&&DUEL.adversaire.nom)?DUEL.adversaire.nom:"Adversaire";
+          if(typeof JACKPOT_FANTOME!=="undefined") JACKPOT_FANTOME.show({
+            myName:(S.nom||"Toi"), advName:_advJ,
+            myVal:msg.b, advVal:msg.a, iWin:_iwJ, butin:msg.butin,
+            myBefore:msg.s2b, advBefore:msg.s1b, myAfter:msg.s2, advAfter:msg.s1
+          }, function(){});
         }
         break;
 
@@ -4483,6 +4715,7 @@ const DUEL = {
         if(DUEL.isHost){
           DUEL.gs.repJ2=msg.rep||0; // 0 = passe (pas null pour que _checkBothPlayed le détecte)
           if(msg.rep&&DUEL.gs.mainRepJ2) DUEL.gs.mainRepJ2=DUEL.gs.mainRepJ2.filter(function(x){return x.id!==msg.rep.id;});
+          if(msg.rep&&msg.rep.id){ if(msg.rep.id.indexOf("sup_")===0) DUEL.gs.supUseJ2=true; else if(msg.rep.id.indexOf("fan_")===0) DUEL.gs.fanUseJ2=true; }
         } else {
           DUEL.gs.repJ1=msg.rep||0;
           if(msg.rep&&DUEL.gs.mainRepJ1) DUEL.gs.mainRepJ1=DUEL.gs.mainRepJ1.filter(function(x){return x.id!==msg.rep.id;});
@@ -4515,6 +4748,11 @@ const DUEL = {
         if(!DUEL.isHost&&msg.gs){
           // Je reste maître de MA main de jokers : un joker que j'ai utilisé ne doit pas revenir
           var _monJok=(DUEL.gs&&DUEL.gs.mainJokJ2)?DUEL.gs.mainJokJ2:msg.gs.mainJokJ2;
+          // Préserver les données statiques non transmises (allègement réseau des state_update)
+          var _prevGs=DUEL.gs||{};
+          ["allRepJ1","allRepJ2","allJokJ1","allJokJ2","evenements"].forEach(function(k){
+            if(msg.gs[k]===undefined && _prevGs[k]!==undefined) msg.gs[k]=_prevGs[k];
+          });
           DUEL.gs=msg.gs;
           DUEL.gs.mainJokJ2=_monJok;
           render();
@@ -4757,8 +4995,12 @@ const DUEL = {
   // Jouer par ID — appelé depuis le onclick HTML (évite les problèmes de référence)
   jouerCarteById(id){
     var gs=DUEL.gs; if(!gs) return;
-    // Jeu immédiat : toucher une carte la joue directement (plus de double-tap ni de validation)
     DUEL._repSel=null;
+    // Cartes spéciales (Suprême/Fantôme) : confirmation « Jouer / Pas maintenant »
+    if(id.indexOf("sup_")===0 || id.indexOf("fan_")===0){
+      DUEL._demanderSpeciale(id, id.indexOf("sup_")===0?"supreme":"fantome");
+      return;
+    }
     var main=DUEL.isHost?gs.mainRepJ1:gs.mainRepJ2;
     var carte=main?main.find(function(x){return x.id===id;}):null;
     // Si pas dans la main (déjà retirée), chercher dans allRep
@@ -4767,6 +5009,49 @@ const DUEL = {
       carte=pool?pool.find(function(x){return x.id===id;}):null;
     }
     DUEL.jouerCarte(carte||null);
+  },
+
+  // ── Cartes spéciales en Duel : confirmation + jeu (usage unique par joueur) ──
+  _demanderSpeciale(id, kind){
+    var gs=DUEL.gs; if(!gs) return;
+    DUEL._pendingSpecial=id;
+    DUEL._stopTimer();
+    var ov=document.getElementById("special-confirm-overlay");
+    if(!ov){ DUEL._jouerSpecialeDirect(id); return; }
+    var icon=document.getElementById("spc-icon"), titre=document.getElementById("spc-titre"),
+        desc=document.getElementById("spc-desc"), card=document.getElementById("spc-card"),
+        oui=document.getElementById("spc-oui");
+    if(kind==="supreme"){
+      if(icon)icon.textContent="\uD83D\uDD2E"; if(titre)titre.textContent="Carte Suprême";
+      if(desc)desc.innerHTML="<strong style='color:#F0D060'>50 points garantis</strong> \u2014 la plus forte du jeu.<br>Une seule par partie. La jouer maintenant ?";
+      if(card)card.innerHTML=carteMainHTML(carteSupreme(gs.cb),{});
+      if(oui)oui.textContent="\u26A1 JOUER MAINTENANT";
+    } else {
+      if(icon)icon.textContent="\uD83D\uDC7B"; if(titre)titre.textContent="Carte Fantôme";
+      if(desc)desc.innerHTML="Valeur <strong style='color:#c9b3f0'>inconnue : 0 à 100 pts</strong>.<br>Le pari du money-time. Tenter le Destin ?";
+      if(card)card.innerHTML=carteMainHTML(carteFantome(gs.cb),{});
+      if(oui)oui.textContent="\uD83D\uDC7B TENTER LE FANTÔME";
+    }
+    ov.classList.add("active");
+    try{ if(typeof AUDIO!=="undefined" && AUDIO.sfxClick) AUDIO.sfxClick(); }catch(e){}
+  },
+  _jouerSpeciale(){
+    var id=DUEL._pendingSpecial; DUEL._pendingSpecial=null;
+    var ov=document.getElementById("special-confirm-overlay"); if(ov) ov.classList.remove("active");
+    if(id) DUEL._jouerSpecialeDirect(id);
+  },
+  _annulerSpeciale(){
+    DUEL._pendingSpecial=null;
+    var ov=document.getElementById("special-confirm-overlay"); if(ov) ov.classList.remove("active");
+    if(DUEL.gs && DUEL.gs.phase==="afficheBases" && !DUEL._myRepPlayed()) DUEL._startTimer(20);
+  },
+  _jouerSpecialeDirect(id){
+    var gs=DUEL.gs; if(!gs) return;
+    var carte;
+    if(id.indexOf("sup_")===0){ carte=carteSupreme(gs.cb); if(DUEL.isHost) gs.supUseJ1=true; else gs.supUseJ2=true; }
+    else if(id.indexOf("fan_")===0){ carte=carteFantome(gs.cb); carte.pts=Math.floor(Math.random()*101); if(DUEL.isHost) gs.fanUseJ1=true; else gs.fanUseJ2=true; }
+    else return;
+    DUEL.jouerCarte(carte);
   },
 
   // ── Vérifier si les deux ont joué ──
@@ -4783,7 +5068,7 @@ const DUEL = {
       gs.jokDecidJ1=!DUEL._hasOffensive(1);
       gs.jokDecidJ2=!DUEL._hasOffensive(2);
       // Broadcaster l'état aux deux joueurs
-      if(DUEL.isHost) DUEL._send({type:"state_update",gs:gs});
+      if(DUEL.isHost) DUEL._send({type:"state_update",gs:DUEL._gsSync()});
       render();
       // L'hôte résout quand les deux ont décidé (avec garde-fou anti-blocage)
       DUEL._verifierResolution();
@@ -4849,9 +5134,32 @@ const DUEL = {
   },
 
   // ── Manche suivante ──
+  _jackpotFantome(){
+    var gs=DUEL.gs; if(!gs) return;
+    DUEL._bonusEnCours=true; // bloque toute autre résolution pendant le jackpot
+    var a=(gs.repJ1&&gs.repJ1.pts)||0, b=(gs.repJ2&&gs.repJ2.pts)||0, guard=0;
+    while(a===b && guard<200){ a=Math.floor(Math.random()*101); b=Math.floor(Math.random()*101); guard++; }
+    var host1Gagne=a>b;
+    var s1b=gs.s1||0, s2b=gs.s2||0, butin;
+    if(host1Gagne){ butin=s2b+b; gs.s1=s1b+butin; gs.s2=0; }
+    else          { butin=s1b+a; gs.s2=s2b+butin; gs.s1=0; }
+    DUEL._send({type:"jackpot_fantome", a:a, b:b, winner:host1Gagne?1:2, s1:gs.s1, s2:gs.s2, s1b:s1b, s2b:s2b, butin:butin});
+    var advNom=(DUEL.adversaire&&DUEL.adversaire.nom)?DUEL.adversaire.nom:"Adversaire";
+    JACKPOT_FANTOME.show({
+      myName:(S.nom||"Toi"), advName:advNom,
+      myVal:a, advVal:b, iWin:host1Gagne, butin:butin,
+      myBefore:s1b, advBefore:s2b, myAfter:gs.s1, advAfter:gs.s2
+    }, function(){ DUEL._bonusEnCours=false; DUEL._avancerManche(); });
+  },
+
   _mancheSuivante(){
     if(DUEL._bonusEnCours) return; // un bonus est en cours → ne pas recalculer/avancer
     var gs=DUEL.gs; if(!gs) return;
+    // ── Jackpot des Fantômes : les DEUX ont joué un Fantôme (hôte autoritaire) ──
+    if(DUEL.isHost && gs.repJ1 && gs.repJ1.id && gs.repJ2 && gs.repJ2.id &&
+       gs.repJ1.id.indexOf("fan_")===0 && gs.repJ2.id.indexOf("fan_")===0){
+      DUEL._jackpotFantome(); return;
+    }
     // Calculer résultat avec pénalité passe
     var j1Passe=!gs.repJ1||gs.repJ1===0||gs.repJ1.pts===0;
     var j2Passe=!gs.repJ2||gs.repJ2===0||gs.repJ2.pts===0;
@@ -5252,7 +5560,7 @@ Object.assign(DUEL, {
         DUEL.gs.s1=Math.max(0,(DUEL.gs.s1||0)+gain);
         DUEL._send({type:"bonus_end", gain:gain});
         if(DUEL._bonusPendingAdvance && DUEL._avancerManche){ DUEL._bonusPendingAdvance=false; DUEL._avancerManche(); }
-        DUEL._send({type:"state_update", gs:DUEL.gs});
+        DUEL._send({type:"state_update", gs:DUEL._gsSync()});
       } else {
         // invité actif : l'hôte applique le gain à s2 (+avance si prévu)
         DUEL._send({type:"bonus_end", gain:gain});
@@ -5268,7 +5576,7 @@ Object.assign(DUEL, {
     DUEL._bonusEnCours=false;
     DUEL._hideSpectate();
     if(DUEL._bonusPendingAdvance && DUEL._avancerManche){ DUEL._bonusPendingAdvance=false; DUEL._avancerManche(); }
-    if(DUEL.isHost && DUEL.gs) DUEL._send({type:"state_update", gs:DUEL.gs});
+    if(DUEL.isHost && DUEL.gs) DUEL._send({type:"state_update", gs:DUEL._gsSync()});
     render();
   },
 
@@ -5341,7 +5649,7 @@ Object.assign(DUEL, {
     DUEL._bonusEnCours=false;
     if(DUEL.isHost){
       if(DUEL._bonusPendingAdvance && DUEL._avancerManche){ DUEL._bonusPendingAdvance=false; DUEL._avancerManche(); }
-      if(DUEL.gs) DUEL._send({type:"state_update", gs:DUEL.gs});
+      if(DUEL.gs) DUEL._send({type:"state_update", gs:DUEL._gsSync()});
     }
   }
 });
@@ -6506,6 +6814,12 @@ function renderDuelJeu(app){
     } else {
       // Phase afficheBases — jouer sa carte
       var cartesValides=maMain.filter(function(c){return c.combo===gs.cb;});
+      if(gs.manche>=6 && gs.cb){
+        var _mySup = isJ1 ? gs.supUseJ1 : gs.supUseJ2;
+        var _myFan = isJ1 ? gs.fanUseJ1 : gs.fanUseJ2;
+        if(!_mySup) cartesValides=cartesValides.concat([carteSupreme(gs.cb)]);
+        if(!_myFan) cartesValides=cartesValides.concat([carteFantome(gs.cb)]);
+      }
       html+=header
         +'<!--HAND--><div class="card" style="padding:14px">';
       if(maRep!==null&&maRep!==undefined&&maRep!==false){
@@ -7869,11 +8183,13 @@ const G={
     try{ if(typeof AUDIO!=="undefined" && AUDIO.sfxClick) AUDIO.sfxClick(); }catch(e){}
   },
   _jouerSpeciale(){
+    if(typeof DUEL!=="undefined" && DUEL._pendingSpecial){ DUEL._jouerSpeciale(); return; }
     var id=G._pendingSpecial; G._pendingSpecial=null;
     var ov=document.getElementById("special-confirm-overlay"); if(ov) ov.classList.remove("active");
     if(id) G.selRep(id, true);
   },
   _annulerSpeciale(){
+    if(typeof DUEL!=="undefined" && DUEL._pendingSpecial){ DUEL._annulerSpeciale(); return; }
     var id=G._pendingSpecial; G._pendingSpecial=null;
     var ov=document.getElementById("special-confirm-overlay"); if(ov) ov.classList.remove("active");
     // La carte spéciale déclinée se retire de la main pour cette manche — elle revient à la manche suivante.
@@ -8109,8 +8425,31 @@ const G={
     }
   },
 
+  _fantomeDuel(cJ1, cIA){
+    const j=S.jeu;
+    // Départage : égalité → on relance les deux jusqu'à un vainqueur
+    var a=cJ1.pts||0, b=cIA.pts||0, guard=0;
+    while(a===b && guard<200){ a=Math.floor(Math.random()*101); b=Math.floor(Math.random()*101); guard++; }
+    cJ1.pts=a; cIA.pts=b;
+    var jeGagne=a>b;
+    var s1b=j.s1||0, s2b=j.s2||0, butin;
+    if(jeGagne){ butin=s2b+b; j.s1=s1b+butin; j.s2=0; }   // je rafle : score IA + Fantôme perdant ; IA → 0
+    else       { butin=s1b+a; j.s2=s2b+butin; j.s1=0; }   // l'IA rafle ; moi → 0
+    j.gainFinal={p1:(jeGagne?butin:0), p2:(jeGagne?0:butin), joker:null, jackpot:true};
+    j.msg = jeGagne ? "\uD83C\uDFB0 Jackpot des Fant\u00f4mes \u2014 tu rafles tout !" : "\uD83C\uDFB0 Jackpot des Fant\u00f4mes \u2014 l'IA rafle tout";
+    j.phase="fin";
+    var advNom=(typeof IA_PROFILS!=="undefined" && IA_PROFILS[S.diff] && IA_PROFILS[S.diff].nom) ? IA_PROFILS[S.diff].nom : "l'IA";
+    JACKPOT_FANTOME.show({
+      myName:"Toi", advName:advNom,
+      myVal:a, advVal:b, iWin:jeGagne, butin:butin,
+      myBefore:s1b, advBefore:s2b, myAfter:j.s1, advAfter:j.s2
+    }, function(){ if(S.jeu) G.mancheSuivante(); });
+  },
+
   resoudre(cJ1,cIA,jokerFinal){
     const j=S.jeu;
+    // ── Jackpot des Fantômes : les deux ont joué un Fantôme ──
+    if(cJ1 && cJ1.fantome && cIA && cIA.fantome){ G._fantomeDuel(cJ1, cIA); return; }
     let jIAUsed=null;
     if(j.mainJokJ2.length>0){
       const p1=cJ1?.pts||0,p2=cIA?.pts||0;
