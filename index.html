@@ -1140,7 +1140,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v94.24";
+const BUILD_TAG="v94.25";
 // ── Diagnostic : révèle le détail réel des erreurs (un « Script error. » nu = erreur d'un script tiers cross-origin, ex. PeerJS) ──
 window.addEventListener("error", function(ev){
   // Erreur tierce sans détail (ex. Google Analytics gêné par la prévention du tracking) : bruit bénin → on n'encombre pas la console
@@ -3363,8 +3363,13 @@ const DUEL = {
         break;
 
       case "resync_state":
-        // On reçoit l'état complet après reconnexion → on se réaligne.
-        if(msg.gs) DUEL.gs=msg.gs;
+        // On reçoit l'état complet après reconnexion → on se réaligne,
+        // MAIS on n'adopte jamais un état EN ARRIÈRE du nôtre (sinon retour à la sélection sur un resync périmé).
+        if(msg.gs){
+          var _poRS={selection:0,afficheBases:1,apresReponses:2,fin:3};
+          var _progRS=function(g){ return g?((g.manche||1)*100+(_poRS[g.phase]||0)):-1; };
+          if(!DUEL.gs || _progRS(msg.gs) >= _progRS(DUEL.gs)) DUEL.gs=msg.gs;
+        }
         if(msg.nom){
           DUEL.adversaire={
             nom:msg.nom,
