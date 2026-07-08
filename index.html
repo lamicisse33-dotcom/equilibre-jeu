@@ -6,7 +6,7 @@
   Créé par: le couple Khalam (Khadi & Lamine)
   ─────────────────────────────────────
   MODES : Solo vs IA · Duel 1v1 · Survie · Tournoi
-  IA    : Rara (Débutant) · Magey (Intermédiaire) · Bolito (Expert)
+  IA    : Rara (Débutant) · Maguy (Intermédiaire) · Bolito (Expert)
   ─────────────────────────────────────
   CORRECTIONS v3.0 :
   • Popup avatar (_setAvatar / _validerNom) sans crash
@@ -1140,7 +1140,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v94.25";
+const BUILD_TAG="v94.31";
 // ── Diagnostic : révèle le détail réel des erreurs (un « Script error. » nu = erreur d'un script tiers cross-origin, ex. PeerJS) ──
 window.addEventListener("error", function(ev){
   // Erreur tierce sans détail (ex. Google Analytics gêné par la prévention du tracking) : bruit bénin → on n'encombre pas la console
@@ -1288,7 +1288,7 @@ const IA_PROFILS={
       gagne:["Je n'aurais pas cru gagner !","C'était ma chance ! 🍀","J'apprends vite !"],
       perd:["Bien joué… je m'entraînerai.","Tu es trop fort(e) !","Je progresserai 💪"],
       egal:["Égalité ! C'est amusant !","On se tient bien !"],bluff:["Hmm…","Je ne suis pas sûre."]}},
-  Intermédiaire:{nom:"Magey",icon:"⚡",couleur:"#2196F3",desc:"Stratégique, anticipe les combos.",
+  Intermédiaire:{nom:"Maguy",icon:"⚡",couleur:"#2196F3",desc:"Stratégique, anticipe les combos.",
     dlg:{debut:["Intéressant adversaire…","Prépare-toi !","Que le meilleur gagne."],
       gagne:["Ma stratégie fonctionne !","J'avais prévu ça.","Pas assez ! 😏"],
       perd:["Tu as bien joué.","Je n'avais pas anticipé.","Bonne partie !"],
@@ -2370,6 +2370,54 @@ function validesAvecSpeciales(j){
   }
   return base;
 }
+// Révélation cinématique des cartes spéciales (Suprême + Fantôme) — jouée une fois, à l'entrée de la manche 6
+function animerCartesSpeciales(){
+  try{
+    if(document.getElementById("speciales-reveal")) return;
+    if(!document.getElementById("speciales-kf")){
+      var st=document.createElement("style"); st.id="speciales-kf";
+      st.textContent=
+        "@keyframes specIn{from{opacity:0}to{opacity:1}}"
+        +"@keyframes specOut{to{opacity:0}}"
+        +"@keyframes specBan{0%{opacity:0;transform:translateY(-16px) scale(0.9)}22%{opacity:1;transform:translateY(0) scale(1)}100%{opacity:1}}"
+        +"@keyframes specSup{0%{opacity:0;transform:translateX(-150%) translateY(34%) rotate(-42deg) scale(0.45)}"
+          +"32%{opacity:1;transform:translateX(6%) translateY(-8%) rotate(7deg) scale(1.14)}"
+          +"58%{transform:translateX(6%) translateY(-8%) rotate(-4deg) scale(1.14)}"
+          +"82%{transform:translateX(-3%) translateY(0) rotate(0deg) scale(1)}100%{transform:translateX(-3%) translateY(0) rotate(0) scale(1)}}"
+        +"@keyframes specFan{0%{opacity:0;transform:translateX(150%) translateY(34%) rotate(42deg) scale(0.45)}"
+          +"32%{opacity:1;transform:translateX(-6%) translateY(-8%) rotate(-7deg) scale(1.14)}"
+          +"58%{transform:translateX(-6%) translateY(-8%) rotate(4deg) scale(1.14)}"
+          +"82%{transform:translateX(3%) translateY(0) rotate(0deg) scale(1)}100%{transform:translateX(3%) translateY(0) rotate(0) scale(1)}}";
+      document.head.appendChild(st);
+    }
+    var ov=document.createElement("div");
+    ov.id="speciales-reveal";
+    ov.style.cssText="position:fixed;inset:0;z-index:9997;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;background:radial-gradient(ellipse at center,rgba(22,11,44,0.94),rgba(5,3,12,0.97));animation:specIn 0.35s ease both;pointer-events:auto";
+    var ban='<div style="animation:specBan 1s ease both;text-align:center">'
+      +'<div style="font-family:Cinzel,serif;font-size:12px;letter-spacing:4px;color:var(--goldL);opacity:0.85;margin-bottom:5px">✦ MANCHE 6 ✦</div>'
+      +'<div style="font-family:Cinzel,serif;font-size:22px;font-weight:900;color:#F5D678;text-shadow:0 0 22px rgba(243,156,18,0.65)">LES CARTES LÉGENDAIRES</div></div>';
+    var sup='<div style="animation:specSup 3s cubic-bezier(0.2,0.85,0.25,1) both;width:120px;height:168px;border-radius:16px;'
+      +'background:linear-gradient(160deg,#fff 0%,#ffe9a8 55%,#f6c34d 100%);border:2.5px solid #F0D060;'
+      +'box-shadow:0 0 36px rgba(243,200,80,0.85),0 12px 40px rgba(0,0,0,0.7);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px">'
+      +'<div style="font-size:34px">👑</div>'
+      +'<div style="font-family:Cinzel,serif;font-size:14px;font-weight:900;color:#5a3d00;letter-spacing:2px">SUPRÊME</div>'
+      +'<div style="font-size:42px;font-weight:900;color:#3a2600;line-height:1">50</div>'
+      +'<div style="font-size:8px;color:#7a5500;letter-spacing:3px;font-weight:700">POINTS</div></div>';
+    var fan='<div style="animation:specFan 3s cubic-bezier(0.2,0.85,0.25,1) both;width:120px;height:168px;border-radius:16px;'
+      +'background:radial-gradient(ellipse at 50% 34%,#1c1236 0%,#0a0612 68%,#05030a 100%);border:2.5px solid #b98bff;'
+      +'box-shadow:0 0 36px rgba(160,110,240,0.8),0 12px 40px rgba(0,0,0,0.85);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px">'
+      +'<div style="font-size:40px;filter:drop-shadow(0 0 12px rgba(170,120,255,0.9))">👻</div>'
+      +'<div style="font-family:Cinzel,serif;font-size:13px;font-weight:900;color:#d9c5ff;letter-spacing:2px;text-shadow:0 0 10px rgba(160,110,240,0.7)">FANTÔME</div>'
+      +'<div style="font-size:34px;color:#a892d8;font-weight:900;line-height:1">?</div>'
+      +'<div style="font-size:8px;color:rgba(200,180,240,0.7);letter-spacing:1px">0 à 100</div></div>';
+    ov.innerHTML=ban+'<div style="display:flex;gap:24px;align-items:center">'+sup+fan+'</div>'
+      +'<div style="animation:specBan 1.5s ease both;font-size:12px;color:var(--muted);letter-spacing:1px;text-align:center;padding:0 20px">Une de chaque, une seule fois par partie — dès maintenant.</div>';
+    document.body.appendChild(ov);
+    try{ if(S.voixGuide && typeof _parlerGuide==="function") setTimeout(function(){ _parlerGuide("Les cartes légendaires se révèlent. La Suprême... et le Fantôme !",{masc:true}); }, 450); }catch(_){}
+    try{ if(typeof AUDIO!=="undefined"){ if(AUDIO.sfxFanfare) AUDIO.sfxFanfare(); else if(AUDIO.playCelebration) AUDIO.playCelebration(); } }catch(_){}
+    setTimeout(function(){ try{ ov.style.animation="specOut 0.45s ease both"; setTimeout(function(){ if(ov.parentNode) ov.parentNode.removeChild(ov); },470); }catch(_){} }, 3500);
+  }catch(e){}
+}
 const pick=arr=>arr[Math.floor(Math.random()*arr.length)];
 const getNiveau=xp=>[...NIVEAUX].reverse().find(n=>xp>=n.min)||NIVEAUX[0];
 const getIdxNiv=xp=>NIVEAUX.indexOf(getNiveau(xp));
@@ -3368,7 +3416,15 @@ const DUEL = {
         if(msg.gs){
           var _poRS={selection:0,afficheBases:1,apresReponses:2,fin:3};
           var _progRS=function(g){ return g?((g.manche||1)*100+(_poRS[g.phase]||0)):-1; };
-          if(!DUEL.gs || _progRS(msg.gs) >= _progRS(DUEL.gs)) DUEL.gs=msg.gs;
+          var _mainRS=function(g){ if(!g) return 0; return (DUEL.isHost?(g.mainRepJ1||[]):(g.mainRepJ2||[])).length; };
+          var _in=msg.gs, _loc=DUEL.gs;
+          // Adopter l'état reçu s'il est plus avancé, OU aussi avancé avec une main au moins aussi fournie,
+          // OU si notre main locale est vide alors que celle reçue contient des cartes (répare la reprise).
+          var _adopt = !_loc
+            || _progRS(_in) > _progRS(_loc)
+            || (_progRS(_in) === _progRS(_loc) && _mainRS(_in) >= _mainRS(_loc))
+            || (_mainRS(_loc) === 0 && _mainRS(_in) > 0);
+          if(_adopt) DUEL.gs=_in;
         }
         if(msg.nom){
           DUEL.adversaire={
@@ -4467,6 +4523,19 @@ Object.assign(DUEL, {
     DUEL._cacherSuspension();
     showToast("✅ Reconnecté — la partie reprend","win",2500);
     render();
+    // Sécurité reprise : si MA main est vide alors que la partie est engagée, redemander l'état complet au pair.
+    try{
+      var g=DUEL.gs;
+      var maMain=g?(DUEL.isHost?g.mainRepJ1:g.mainRepJ2):null;
+      if(g && g.phase && g.phase!=="selection" && (!maMain || maMain.length===0)){
+        if((DUEL._resyncTries||0) < 3){
+          DUEL._resyncTries=(DUEL._resyncTries||0)+1;
+          setTimeout(function(){ try{ if(DUEL.conn && DUEL.conn.open) DUEL._send({type:"resync_req", nom:S.nom||"Joueur"}); }catch(e){} }, 500);
+        }
+      } else {
+        DUEL._resyncTries=0;   // main OK → on réarme le compteur pour un éventuel futur incident
+      }
+    }catch(e){}
   },
 
   // ── Reprise après redémarrage complet de l'app ──
@@ -5950,6 +6019,13 @@ function render(){
       else DUEL._removeChatUI();
     }
   }catch(e){}
+  // Musique d'ambiance : uniquement pendant les manches (écran de jeu). Ni menu, ni sélection, ni résultat.
+  try{
+    if(typeof AUDIO!=="undefined"){
+      if(S.ecran==="jeu"||S.ecran==="duel_jeu"){ if(AUDIO.startBg) AUDIO.startBg(); }
+      else if(AUDIO.stopBg){ AUDIO.stopBg(); }
+    }
+  }catch(e){}
   // Sauvegarde automatique de la partie en cours
   try{ sauvegarderPartieEnCours(); sauvegarderDuelEnCours(); }catch(e){ if(window.__logErr) window.__logErr(e,"sauvegarde"); }
 }
@@ -6621,7 +6697,6 @@ const G={
     S.ecran="selection";
     render();
     AUDIO.sfxStart();
-    AUDIO.startBg();
     setTimeout(()=>{
       const iaPr=IA_PROFILS[S.diff]||IA_PROFILS.Intermédiaire;
       G.showIADlg(pick(iaPr.dlg.debut));
@@ -7208,6 +7283,8 @@ const G={
   _doMancheSuivante(j){
     const prochain=j.premier==="j1"?"ia":"j1";
     j.premier=prochain;j.manche++;
+    // Révélation cinématique des cartes spéciales à l'entrée de la manche 6 (une fois par partie)
+    if(j.manche===6 && !j._specialesRevelees){ j._specialesRevelees=true; setTimeout(function(){ animerCartesSpeciales(); }, 350); }
     // Modificateur SOLO : annonce de la Manche du Destin à son arrivée
     if(j.modif==="destin" && j.manche===j.modifDestinManche){ setTimeout(function(){ showToast("🎲 MANCHE DU DESTIN — elle vaut DOUBLE !","badge",3500,true); },300); }
     j.b1=null;j.b2=null;j.cb=null;
@@ -7971,7 +8048,7 @@ function renderApropos(app){
         <button onclick="contactEmail()" style="width:100%;min-height:50px;border-radius:14px;cursor:pointer;border:none;margin-top:14px;background:linear-gradient(135deg,#128C7E,#25D366);color:#fff;font-family:'Cinzel',serif;font-size:13px;font-weight:700;letter-spacing:1px;box-shadow:0 4px 16px rgba(37,211,102,0.4)">💬 Une idée ? Écris-nous sur WhatsApp</button>
         <button onclick="S.ecran='confidentialite';render()" style="width:100%;min-height:42px;border-radius:12px;cursor:pointer;border:1px solid rgba(255,255,255,0.14);background:transparent;color:var(--muted);font-family:'Cinzel',serif;font-size:11px;margin-top:10px">🔒 Politique de confidentialité</button>
         <div style="text-align:center;font-size:10px;color:var(--muted);margin-top:16px;line-height:1.7">
-          Version ${(typeof BUILD_TAG!=="undefined")?BUILD_TAG:""} · Jeu 100% gratuit<br>Merci de jouer à ÉQUILIBRE 🙏
+          Version ${(typeof BUILD_TAG!=="undefined")?BUILD_TAG:""} · Phase test<br>Merci de jouer à ÉQUILIBRE 🙏
         </div>
       </div>
     </div>
@@ -8924,11 +9001,11 @@ function renderRegles(app){
       <div style="font-size:13px;color:var(--gold);font-weight:700;font-family:'Cinzel',serif;margin-bottom:10px;letter-spacing:1px">🎮 LES 6 MODES DE JEU</div>
       <div class="card" style="margin-bottom:14px">
         ${[
-          {i:"⚔️",n:"Solo vs IA",c:"var(--goldL)",t:"Affrontez l'IA sur 12 manches (3 niveaux : Rara, Magey, Bolito). Enchaînez les victoires pour faire grandir votre <strong style='color:var(--goldL)'>série 🔥</strong> — record sauvegardé, paliers récompensés en XP. Environ une partie sur quatre tire un <strong style='color:var(--goldL)'>modificateur</strong> surprise, annoncé à voix haute : Manche du Destin (×2), Pilier Maudit (½), Pot Gonflé ou Brouillard."},
+          {i:"⚔️",n:"Solo vs IA",c:"var(--goldL)",t:"Affrontez l'IA sur 12 manches (3 niveaux : Rara, Maguy, Bolito). Enchaînez les victoires pour faire grandir votre <strong style='color:var(--goldL)'>série 🔥</strong> — record sauvegardé, paliers récompensés en XP. Environ une partie sur quatre tire un <strong style='color:var(--goldL)'>modificateur</strong> surprise, annoncé à voix haute : Manche du Destin (×2), Pilier Maudit (½), Pot Gonflé ou Brouillard."},
           {i:"🗺️",n:"Mode Campagne",c:"#b06bff",t:"« La Voie des 4 Piliers » : <strong style='color:var(--goldL)'>15 gardiens</strong> en 3 actes — L'Éveil, L'Épreuve, L'Ascension. Chaque gardien est un <strong style='color:var(--goldL)'>temple</strong> gardé par 4 disciples (combats de 10 manches) qui vous <strong style='color:var(--goldL)'>défient à voix haute</strong> avant chaque affrontement. Battez les 4 pour affronter le chef (12 manches), qui impose souvent son <strong style='color:var(--goldL)'>épreuve</strong> (Jackpot, Passion, Endurance, Aveugle…). Au sommet : le Maître Suprême et son Épreuve Ultime."},
           {i:"❤️",n:"Mode Survie",c:"#e05555",t:"Parties enchainées sans limite. Vous avez 3 vies — chaque défaite de manche en coûte une. L'IA joue toujours en mode Expert. Après chaque partie, vous <strong style='color:var(--goldL)'>continuez avec vos vies restantes</strong> ; le run ne repart à 3 vies qu'après un Game Over (0 vie). Battez votre propre record !"},
           {i:"⚔️",n:"Duel 1v1 en ligne",c:"#45c97a",t:"Affrontez un vrai adversaire en temps réel (2 téléphones). L'hôte crée un duel → un code de 4 lettres est généré → l'invité le saisit → la partie démarre. Un deck de 24 cartes Réponses est tiré (parmi les 48 du jeu) puis réparti équitablement — 12 chacun. Chat intégré 💬, reconnexion automatique en cas de coupure, et revanche en un clic. Les manches s'enchaînent automatiquement."},
-          {i:"🏆",n:"Mode Tournoi",c:"#f1c40f",t:"Enchaînez 3 parties contre les 3 IA de difficulté croissante — Rara, puis Magey, puis Bolito. Vos scores s'additionnent dans un classement final. Le vrai test de régularité !"},
+          {i:"🏆",n:"Mode Tournoi",c:"#f1c40f",t:"Enchaînez 3 parties contre les 3 IA de difficulté croissante — Rara, puis Maguy, puis Bolito. Vos scores s'additionnent dans un classement final. Le vrai test de régularité !"},
           {i:"⛰️",n:"Mode Ascension",c:"#6ab0ff",t:"Grimpez palier par palier, sans fin ! Chaque palier est une partie courte de 7 manches. La difficulté monte : Débutant → Intermédiaire → Expert, puis un <strong style='color:var(--goldL)'>modificateur par palier</strong> dès le 4ᵉ et une <strong style='color:var(--goldL)'>avance de l'IA</strong> qui grandit au-delà du 8ᵉ. Votre score = le palier atteint, avec un record à battre. Le mode « encore une partie »."},
         ].map(m=>`
           <div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.06)">
@@ -9044,7 +9121,7 @@ function renderRegles(app){
       <div style="font-size:13px;color:var(--gold);font-weight:700;font-family:'Cinzel',serif;margin-bottom:10px;letter-spacing:1px">🎁 BONUS IMPRÉVISIBLES</div>
       <div class="card" style="margin-bottom:14px;border-color:rgba(155,89,182,0.4);background:rgba(155,89,182,0.06)">
         <div style="font-size:11px;color:var(--muted);margin-bottom:12px;line-height:1.7">
-          Entre certaines manches, un <strong style="color:var(--goldL)">bonus surprise</strong> se déclenche (de temps en temps, avec au moins 3 manches d'écart entre deux bonus). <strong style="color:var(--goldL)">Nouveau — équilibrage :</strong> en Solo, Campagne et Tournoi, les bonus <strong style="color:var(--goldL)">alternent maintenant entre toi et l'IA</strong>. Quand c'est ton tour, tu joues le mini-jeu ; quand c'est le tour de l'IA, elle reçoit un gain calculé avec <strong style="color:var(--goldL)">la même mécanique</strong> (mêmes valeurs, même chance de multiplicateur) — plus d'avantage pour un seul camp. En <strong style="color:var(--goldL)">Duel</strong>, pendant qu'un joueur joue son bonus, l'autre voit un écran « spectateur » et patiente — rien n'est interrompu, puis la partie reprend et le gain s'ajoute au score.
+          Entre certaines manches, un <strong style="color:var(--goldL)">bonus surprise</strong> se déclenche (de temps en temps, avec au moins 3 manches d'écart entre deux bonus). <strong style="color:var(--goldL)">Nouveau — équilibrage :</strong> dans tous les modes contre l'IA, les bonus <strong style="color:var(--goldL)">alternent entre toi et l'IA</strong>. Quand c'est ton tour, tu joues le mini-jeu ; quand c'est le tour de l'IA, elle reçoit un gain calculé avec <strong style="color:var(--goldL)">la même mécanique</strong> (mêmes valeurs, même chance de multiplicateur) — plus d'avantage pour un seul camp. En <strong style="color:var(--goldL)">Duel</strong>, pendant qu'un joueur joue son bonus, l'autre voit un écran « spectateur » et patiente — rien n'est interrompu, puis la partie reprend et le gain s'ajoute au score.
         </div>
         <div style="display:flex;gap:12px;padding:12px;border-radius:14px;margin-bottom:10px;background:linear-gradient(135deg,rgba(212,175,55,0.12),rgba(26,13,61,0.8));border:1.5px solid rgba(212,175,55,0.35)">
           <div style="font-size:30px;flex-shrink:0">🎯</div>
@@ -9073,7 +9150,6 @@ function renderRegles(app){
           {i:"📊",n:"Points par pilier",t:"Après chaque partie, visualisez vos points par pilier avec des barres de progression colorées."},
           {i:"📤",n:"Partager en image",t:"Partagez une <strong style='color:var(--goldL)'>belle image de résultat</strong> (badge de palier 🥈🥇💎, scores, QR code du jeu) sur WhatsApp, TikTok, Instagram… De quoi attirer de nouveaux joueurs !"},
           {i:"🏆",n:"Historique",t:"Vos 10 dernières parties sont sauvegardées automatiquement avec date, score et résultat."},
-          {i:"🎬",n:"Animation distribution",t:"Vos cartes volent depuis les 4 coins de l'écran après la sélection — spectaculaire !"},
           {i:"🎊",n:"Célébrations à 3 paliers",t:"Selon ton score total, la victoire déclenche une célébration <strong style='color:var(--goldL)'>Argent 🥈, Or 🥇 ou Diamant 💎</strong> — confettis, badge et fanfare de plus en plus spectaculaires."},
           {i:"📱",n:"Installable (PWA)",t:"Ajoutez ÉQUILIBRE à votre écran d'accueil comme une vraie application iPhone/Android."},
           {i:"💬",n:"Chat & spectateur en Duel",t:"Discutez avec votre adversaire pendant le Duel. Quand l'un joue un bonus, l'autre le suit en mode spectateur, sans que la partie ne s'interrompe."},
@@ -9082,6 +9158,7 @@ function renderRegles(app){
           {i:"📳",n:"Sons & vibrations",t:"Effets sonores et retours haptiques (vibrations) aux moments clés — victoire de manche, joker, bonus. Tout respecte le mode muet."},
           {i:"💬",n:"Contact WhatsApp",t:"Le bouton <strong style='color:var(--goldL)'>WhatsApp</strong> ouvre une discussion pré-remplie, pour envoyer vos idées et retours directement au couple KHALAM."},
           {i:"🎓",n:"Apprentissage guidé",t:"Au premier lancement, un <strong style='color:var(--goldL)'>tutoriel</strong> en quelques étapes présente les règles (revoyable via « 🎓 Revoir le tutoriel »). Et pendant ta toute première partie, de petites astuces <strong style='color:var(--goldL)'>« 👋 Guide »</strong> t'accompagnent au bon moment — chacune une seule fois."},
+          {i:"✨",n:"Cartes légendaires",t:"Dès la <strong style='color:var(--goldL)'>manche 6</strong>, deux cartes d'exception entrent en jeu — leur arrivée est <strong style='color:var(--goldL)'>mise en scène</strong> : elles survolent l'écran avant de se poser. La <strong style='color:var(--goldL)'>Suprême</strong> vaut 50 points (la plus forte du jeu) ; le <strong style='color:var(--goldL)'>Fantôme 👻</strong> reste masqué et, une fois joué, révèle un score aléatoire entre 0 et 100 — le pari du money-time ! Une de chaque par partie, pour toi comme pour l'IA."},
           {i:"🃏",n:"Collection de 48 cartes",t:"Un pool de <strong style='color:var(--goldL)'>48 cartes</strong> ! Chaque partie tire une main différente. L'écran <strong style='color:var(--goldL)'>🃏 Collection</strong> révèle les cartes découvertes et garde les autres en silhouette — collectionne-les toutes."},
           {i:"📅",n:"Défi du jour",t:"Un défi <strong style='color:var(--goldL)'>différent chaque jour</strong>, avec bonus d'XP. Réussis-le plusieurs jours d'affilée pour faire monter ta <strong style='color:#ff6b35'>série 🔥</strong>."},
           {i:"🏆",n:"Trophées",t:"8 badges à débloquer selon tes exploits (séries, jokers gagnants, remontées, IA Expert battue…), consultables dans <strong style='color:var(--goldL)'>🏆 Trophées</strong>."},
@@ -9089,9 +9166,8 @@ function renderRegles(app){
           {i:"🎨",n:"Thèmes débloquables",t:"Personnalisez l'ambiance du jeu avec des thèmes de fond (Nuit Mystique, Aurore Boréale, Cosmos, Coucher de Soleil), à débloquer en montant de niveau, via le menu 🎨 Thèmes."},
           {i:"⚡",n:"Mode léger",t:"Dans <strong style='color:var(--goldL)'>🎨 Thèmes</strong>, un réglage réduit les animations pour une fluidité maximale sur les téléphones plus modestes. Il s'active aussi tout seul si votre téléphone est réglé sur « réduire les animations »."},
           {i:"🎴",n:"Cartes illustrées",t:"Les 4 piliers et leurs emblèmes (méditation, cœur, arbre, pièces) sont de véritables illustrations dorées, présentes sur toutes les cartes — de base comme réponses — pour une identité visuelle riche et cohérente."},
-          {i:"🎵",n:"Musique d'ambiance",t:"Une musique douce et joyeuse accompagne vos parties, du début à la fin. Elle démarre quand la partie commence. Activez ou coupez le son à tout moment avec le bouton 🔊."},
-          {i:"🔊",n:"Lecture à voix haute",t:"Le jeu <strong style='color:var(--goldL)'>parle</strong> : le Sage lit ses conseils ; en Campagne, les <strong style='color:var(--goldL)'>gardiens et leurs disciples</strong> déclament leur nom et leur menace avant chaque combat (voix grave de guerrier, voix féminine pour les gardiennes) ; les <strong style='color:var(--goldL)'>épreuves</strong> et <strong style='color:var(--goldL)'>modificateurs</strong> sont annoncés ; <strong style='color:var(--goldL)'>tous les jokers</strong> sont énoncés quand ils entrent en action ; et le <strong style='color:var(--goldL)'>bonus question</strong> se lit tout seul (avec un bouton « 🔊 Écouter »). Le mode d'emploi aussi, via « 🔊 Écouter le guide ». Coupez ou réactivez la voix d'un bouton 🔊 — aucun fichier à télécharger, elle vient de votre téléphone."},
-          {i:"⚖️",n:"Bonus équilibrés",t:"Les bonus surprise (Sage, Questions) <strong style='color:var(--goldL)'>alternent désormais entre toi et l'IA</strong> en Solo, Campagne et Tournoi. L'IA reçoit un gain calculé avec la même mécanique que toi : le jeu reste juste, sans avantage pour un seul camp."},
+          {i:"🎵",n:"Musique d'ambiance",t:"Une musique douce accompagne vos manches. Elle démarre au début de la partie et s'arrête à la fin (aucune musique dans le menu). Activez ou coupez le son à tout moment avec le bouton 🔊."},
+          {i:"🔊",n:"Lecture à voix haute",t:"Le jeu <strong style='color:var(--goldL)'>parle</strong> : le Sage lit ses conseils ; en Campagne, les <strong style='color:var(--goldL)'>gardiens et leurs disciples</strong> déclament leur nom et leur menace avant chaque combat (voix grave de guerrier, voix féminine pour les gardiennes) ; les <strong style='color:var(--goldL)'>épreuves</strong> et <strong style='color:var(--goldL)'>modificateurs</strong> sont annoncés ; les <strong style='color:var(--goldL)'>jokers</strong>, le <strong style='color:var(--goldL)'>bonus de l'IA</strong> et l'arrivée des <strong style='color:var(--goldL)'>cartes légendaires</strong> sont proclamés d'une voix masculine. Le mode d'emploi se lit aussi via « 🔊 Écouter » (en haut). Coupez ou réactivez la voix d'un bouton 🔊 — aucun fichier à télécharger, elle vient de votre téléphone."},
         ].map(f=>`
           <div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
             <div style="font-size:22px;flex-shrink:0;width:30px;text-align:center">${f.i}</div>
@@ -9129,7 +9205,7 @@ function renderRegles(app){
           "✖️ <strong style='color:var(--goldL)'>Multiplicateur</strong> : parfait avec une carte 40 pts — le pot devient énorme.",
           "👁 <strong style='color:var(--goldL)'>Espion</strong> : avant une manche décisive, vous donne un avantage informationnel crucial.",
           "⚠️ <strong style='color:var(--goldL)'>Pénalité passe</strong> : évitez de passer — vous perdez 5 pts et l'adversaire en gagne 5 bonus.",
-          "🤖 <strong style='color:var(--goldL)'>IA par niveau</strong> : Bolito joue toujours optimal. Magey fait parfois des erreurs. Rara joue au hasard.",
+          "🤖 <strong style='color:var(--goldL)'>IA par niveau</strong> : Bolito joue toujours optimal. Maguy fait parfois des erreurs. Rara joue au hasard.",
           "📅 <strong style='color:var(--goldL)'>Défis quotidiens</strong> : complétez les défis chaque jour pour gagner de l'XP bonus et débloquer des badges.",
           "🏆 <strong style='color:var(--goldL)'>Mode Survie</strong> : votre record est sauvegardé. Battez-le pour progresser dans les badges.",
         ].map(t=>`<div style="padding:9px 0;border-bottom:1px solid rgba(255,255,255,0.05);font-size:12px;color:var(--muted);line-height:1.6">${t}</div>`).join("")}
@@ -9221,7 +9297,7 @@ var TOURNOI = {
   etape: 0, // 0=débutant, 1=intermédiaire, 2=expert
   scores: [],
   niveaux: ["Débutant","Intermédiaire","Expert"],
-  iaNames: ["Rara","Magey","Bolito"],
+  iaNames: ["Rara","Maguy","Bolito"],
 
   start: function(){
     TOURNOI.actif = true;
