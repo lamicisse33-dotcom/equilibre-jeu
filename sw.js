@@ -3,7 +3,7 @@
    - HTML : réseau d'abord (tes mises à jour s'appliquent en ligne), repli cache hors-ligne.
    - Icônes/manifeste : cache d'abord.
    Pense à changer VERSION quand tu déploies une nouvelle version du jeu. */
-const VERSION = "equilibre-v94-57";
+const VERSION = "equilibre-v94-62";
 const SHELL = [
   "./",
   "./index.html",

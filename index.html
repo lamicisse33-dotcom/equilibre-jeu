@@ -1588,7 +1588,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v94.57";
+const BUILD_TAG="v94.62";
 // ── Diagnostic : révèle le détail réel des erreurs (un « Script error. » nu = erreur d'un script tiers cross-origin, ex. PeerJS) ──
 window.addEventListener("error", function(ev){
   // Erreur tierce sans détail (ex. Google Analytics gêné par la prévention du tracking) : bruit bénin → on n'encombre pas la console
@@ -2892,9 +2892,38 @@ function animerCartesSpeciales(_essai){
     ov.innerHTML=ban+'<div style="display:flex;gap:24px;align-items:center">'+sup+fan+'</div>'
       +'<div style="animation:specBan 1.5s ease both;font-size:12px;color:var(--muted);letter-spacing:1px;text-align:center;padding:0 20px">Une de chaque, une seule fois par partie — dès maintenant.</div>';
     document.body.appendChild(ov);
-    try{ if(S.voixGuide && typeof _parlerGuide==="function") setTimeout(function(){ _parlerGuide("Les cartes légendaires se révèlent. La Suprême... et le Fantôme !",{masc:true}); }, 450); }catch(_){}
+
     try{ if(typeof AUDIO!=="undefined"){ if(AUDIO.sfxFanfare) AUDIO.sfxFanfare(); else if(AUDIO.playCelebration) AUDIO.playCelebration(); } }catch(_){}
-    setTimeout(function(){ try{ _stopVoixGuide(); }catch(_){} try{ ov.style.animation="specOut 0.45s ease both"; setTimeout(function(){ if(ov.parentNode) ov.parentNode.removeChild(ov); },470); }catch(_){} }, 3500);
+    // La révélation reste à l'écran tant que la voix parle : on ferme à la FIN de la phrase,
+    // jamais avant. Sans voix, on garde le minutage d'origine.
+    var _revealClos=false;
+    var _fermerReveal=function(){
+      if(_revealClos) return; _revealClos=true;
+      try{ _stopVoixGuide(); }catch(_){}
+      try{
+        ov.style.animation="specOut 0.45s ease both";
+        setTimeout(function(){ if(ov.parentNode) ov.parentNode.removeChild(ov); },470);
+      }catch(_){}
+    };
+    var _minFin=Date.now()+3500;                       // durée minimale à l'écran
+    var _voixLancee=false;
+    try{
+      if(S.voixGuide && typeof _parlerGuide==="function"){
+        setTimeout(function(){
+          if(_revealClos) return;
+          _voixLancee = _parlerGuide("Les cartes légendaires se révèlent. La Suprême... et le Fantôme !",
+            {masc:true, onend:function(){
+              var reste=Math.max(0, _minFin-Date.now());
+              setTimeout(_fermerReveal, reste+400);     // on laisse respirer après la phrase
+            }});
+          if(!_voixLancee) setTimeout(_fermerReveal, 3100);   // voix indisponible → minutage normal
+        }, 450);
+      } else {
+        setTimeout(_fermerReveal, 3500);
+      }
+    }catch(_){ setTimeout(_fermerReveal, 3500); }
+    // Filet de sécurité : si la voix ne rend jamais la main, on ferme quand même.
+    setTimeout(_fermerReveal, 11000);
   }catch(e){}
 }
 const pick=arr=>arr[Math.floor(Math.random()*arr.length)];
@@ -4259,6 +4288,7 @@ const BONUS = {
   },
 
   close(pts){
+    try{ _stopVoixGuide(); }catch(_){}
     if(S.jeu) S.jeu.s1 = Math.max(0,(S.jeu.s1||0) + pts);
     const ov = document.getElementById("bonus-overlay");
     if(ov) ov.classList.remove("show");
@@ -4378,6 +4408,7 @@ const DUEL = {
         DUEL.peer.on("connection",function(conn){
           DUEL.conn=conn;
           conn.on("open",function(){
+          try{ DUEL._flushOutbox(); }catch(_){}
             conn.send(JSON.stringify({type:"hello",room:DUEL.room,nom:S.nom||"Hôte"}));
             render();
           });
@@ -4445,6 +4476,7 @@ const DUEL = {
         var conn=DUEL.peer.connect("eq-"+code,{reliable:true});
         DUEL.conn=conn;
         conn.on("open",function(){
+          try{ DUEL._flushOutbox(); }catch(_){}
           console.log("✅ Connecté à l'hôte");
           showToast("✅ Connecté — en attente de l'hôte…","win",2000);
           S.ecran="duel_lobby"; render();
@@ -4481,12 +4513,36 @@ const DUEL = {
   },
 
   // ── Envoyer au pair ──
+  // Messages éphémères : leur perte est sans conséquence (ils sont réémis en continu).
+  _EPHEMERES:{ping:1,pong:1,course_progress:1,state_update:1,chat_typing:1},
+  _outbox:[], _seq:0, _vus:{},
+
   _send(msg){
     if(DUEL.demo) return;
+    var durable = msg && msg.type && !DUEL._EPHEMERES[msg.type];
+    if(durable && msg._seq==null) msg._seq = ++DUEL._seq;
     if(DUEL._dbg) DUEL._dbgLog("→", msg);
-    if(DUEL.conn&&DUEL.conn.open){
-      try{ DUEL.conn.send(JSON.stringify(msg)); }catch(e){}
+    if(DUEL.conn && DUEL.conn.open){
+      try{ DUEL.conn.send(JSON.stringify(msg)); return; }catch(e){}
     }
+    // Connexion fermée : on garde les messages qui comptent, on jette le reste.
+    if(durable){
+      DUEL._outbox.push(msg);
+      if(DUEL._outbox.length>60) DUEL._outbox.shift();   // borne de sécurité
+      try{ if(DUEL._dbg) DUEL._dbgLog("⏳", {type:"file:"+msg.type}); }catch(_){}
+    }
+  },
+
+  // Vider la file dès que le canal est rouvert : rien de ce qui comptait n'est perdu.
+  _flushOutbox(){
+    if(!DUEL.conn || !DUEL.conn.open) return 0;
+    var n=0, file=DUEL._outbox; DUEL._outbox=[];
+    for(var i=0;i<file.length;i++){
+      try{ DUEL.conn.send(JSON.stringify(file[i])); n++; }
+      catch(e){ DUEL._outbox=file.slice(i); break; }   // échec → on garde le reste
+    }
+    if(n && DUEL._dbg){ try{ DUEL._dbgLog("↺", {type:"renvoi:"+n}); }catch(_){} }
+    return n;
   },
 
   // ── Diagnostic Duel (test à deux appareils) : ajouter ?duelDebug=1 à l'URL ──
@@ -4526,6 +4582,7 @@ const DUEL = {
       +" | rx "+age+"s\n"
       +"manche "+(gs.manche||"—")+" ph:"+(gs.phase||"—")+" "+(gs.s1||0)+"-"+(gs.s2||0)+"\n"
       +(DUEL._lastDisco?("disco: "+DUEL._lastDisco+"\n"):"")
+      +"file:"+(DUEL._outbox?DUEL._outbox.length:0)+" "
       +"bonus:"+(DUEL._bonusEnCours?1:0)
       +" course:"+(DUEL._courseActif?1:0)
       +" win:"+(DUEL._courseWinnerSent?1:0)
@@ -4545,6 +4602,7 @@ const DUEL = {
   // ── Initialiser l'état de jeu ──
   _initGS(){
     DUEL._specialesRevelees=false;   // la révélation des cartes légendaires se rejoue à chaque partie
+    DUEL._outbox=[]; DUEL._seq=0; DUEL._vus={};
 
     const r=genererDeck24();
     const _deal=dealEquilibre();
@@ -4562,7 +4620,7 @@ const DUEL = {
       espionActif:false, repAdvVues:[], phaseEchange:false,
       supUseJ1:false, supUseJ2:false, fanUseJ1:false, fanUseJ2:false,
       selJ1Done:false, selJ2Done:false,
-      premierValideur:null,
+      premierValideur:null, premierRep:null,
       s1:0, s2:0, manche:1, total:12,
       b1:null, b2:null, cb:null,
       repJ1:null, repJ2:null,
@@ -4580,6 +4638,13 @@ const DUEL = {
   _onMsg(msg){
     if(!msg||!msg.type) return;
     DUEL._lastRx=Date.now();
+    // Un message renvoyé après reconnexion ne doit jamais être appliqué deux fois.
+    if(msg._seq!=null){
+      if(DUEL._vus[msg._seq]) return;
+      DUEL._vus[msg._seq]=1;
+      var _cles=Object.keys(DUEL._vus);
+      if(_cles.length>400){ delete DUEL._vus[_cles[0]]; }
+    }
     if(DUEL._dbg) DUEL._dbgLog("←", msg);
     if(msg.type==="ping"){ DUEL._send({type:"pong", t:msg.t}); return; }
     if(msg.type==="pong"){ if(msg.t) DUEL._rtt=Date.now()-msg.t; return; }
@@ -4693,6 +4758,7 @@ const DUEL = {
         break;
 
       case "resync_state":
+        try{ DUEL._flushOutbox(); }catch(_){}   // le canal est vivant : on renvoie ce qui attendait
         // On reçoit l'état complet après reconnexion → on se réaligne,
         // MAIS on n'adopte jamais un état EN ARRIÈRE du nôtre (sinon retour à la sélection sur un resync périmé).
         if(msg.gs){
@@ -4816,7 +4882,7 @@ const DUEL = {
         DUEL.gs.b2=msg.b2;
         DUEL.gs.cb=[DUEL.gs.b1,msg.b2].sort().join("+");
         DUEL.gs.phase="afficheBases";
-        DUEL.gs.repJ1=null; DUEL.gs.repJ2=null;
+        DUEL.gs.repJ1=null; DUEL.gs.repJ2=null; DUEL.gs.premierRep=null;
         DUEL.gs.jokerJ1=null; DUEL.gs.jokerJ2=null;
         DUEL._jokerArme=null;
         DUEL.myTurn=true; // les deux jouent
@@ -4828,6 +4894,7 @@ const DUEL = {
         if(!DUEL.gs) break;
         if(DUEL.isHost){
           DUEL.gs.repJ2=msg.rep||0; // 0 = passe (pas null pour que _checkBothPlayed le détecte)
+          if(!DUEL.gs.premierRep) DUEL.gs.premierRep="guest";   // l'invité a posé avant l'hôte
           if(msg.rep&&DUEL.gs.mainRepJ2) DUEL.gs.mainRepJ2=DUEL.gs.mainRepJ2.filter(function(x){return x.id!==msg.rep.id;});
           if(msg.rep&&msg.rep.id){ if(msg.rep.id.indexOf("sup_")===0) DUEL.gs.supUseJ2=true; else if(msg.rep.id.indexOf("fan_")===0) DUEL.gs.fanUseJ2=true; }
         } else {
@@ -4889,7 +4956,7 @@ const DUEL = {
         DUEL.gs.manche=msg.manche;
         DUEL.gs.phase=msg.phase||"choixBase";
         DUEL.gs.b1=null; DUEL.gs.b2=null; DUEL.gs.cb=null;
-        DUEL.gs.repJ1=null; DUEL.gs.repJ2=null;
+        DUEL.gs.repJ1=null; DUEL.gs.repJ2=null; DUEL.gs.premierRep=null;
         DUEL.gs.jokerJ1=null; DUEL.gs.jokerJ2=null;
         DUEL._jokerArme=null;
         if(msg.attaquantCourant) DUEL.gs.attaquantCourant=msg.attaquantCourant;
@@ -5076,7 +5143,7 @@ const DUEL = {
       gs.b2=pilier;
       gs.cb=[gs.b1,pilier].sort().join("+");
       gs.phase="afficheBases";
-      gs.repJ1=null; gs.repJ2=null;
+      gs.repJ1=null; gs.repJ2=null; gs.premierRep=null;
       gs.jokerJ1=null; gs.jokerJ2=null;
       DUEL._jokerArme=null;
       DUEL.myTurn=true; // les deux peuvent jouer leurs cartes
@@ -5099,7 +5166,7 @@ const DUEL = {
       else gs.mainRepJ2=gs.mainRepJ2.filter(function(x){return x.id!==carte.id;});
     }
     var rep=carte?{pts:carte.pts,id:carte.id,name:carte.name,combo:carte.combo,cit:carte.cit}:null;
-    if(DUEL.isHost) gs.repJ1=rep||0;
+    if(DUEL.isHost){ gs.repJ1=rep||0; if(!gs.premierRep) gs.premierRep="host"; }
     else gs.repJ2=rep||0;
     DUEL._send({type:"rep",rep:rep});
     DUEL._checkBothPlayed();
@@ -5303,7 +5370,15 @@ const DUEL = {
       gs.s1+=p1+5; gs.s2=Math.max(0,gs.s2-5);
     } else if(p1>p2){ gs.s1+=tot; }
     else if(p2>p1){ gs.s2+=tot; }
-    // égalité → personne ne gagne
+    else {
+      // Égalité : le premier à avoir posé sa carte remporte le pot.
+      // Exclu si un Fantôme est en jeu — sa valeur est déjà tirée au hasard.
+      var _f1=!!(gs.repJ1&&gs.repJ1.id&&gs.repJ1.id.indexOf("fan_")===0);
+      var _f2=!!(gs.repJ2&&gs.repJ2.id&&gs.repJ2.id.indexOf("fan_")===0);
+      if(!_f1 && !_f2 && gs.premierRep){
+        if(gs.premierRep==="host") gs.s1+=tot; else gs.s2+=tot;
+      }
+    }
 
     // ── Gagnant de la manche + suivi des stats (l'hôte suit les 2 joueurs) ──
     var gagnant=0;
@@ -5316,6 +5391,12 @@ const DUEL = {
     else if(j2Passe){ gagnant=1; }
     else if(p1>p2){ gagnant=1; }
     else if(p2>p1){ gagnant=2; }
+    else {
+      // Égalité : vainqueur = celui qui a posé le premier (sauf Fantôme).
+      var _g1=!!(gs.repJ1&&gs.repJ1.id&&gs.repJ1.id.indexOf("fan_")===0);
+      var _g2=!!(gs.repJ2&&gs.repJ2.id&&gs.repJ2.id.indexOf("fan_")===0);
+      if(!_g1 && !_g2 && gs.premierRep) gagnant=(gs.premierRep==="host")?1:2;
+    }
     // ── Manche ÉVÉNEMENT Duel : Vol de Points (le gagnant vole 10 au perdant) ──
     if(_evD==="vol" && gagnant===1){ var _vv=Math.min(10,gs.s2); gs.s2-=_vv; gs.s1+=_vv; }
     else if(_evD==="vol" && gagnant===2){ var _vv2=Math.min(10,gs.s1); gs.s1-=_vv2; gs.s2+=_vv2; }
@@ -5378,7 +5459,7 @@ const DUEL = {
     }
     gs.phase="choixBase";
     gs.b1=null; gs.b2=null; gs.cb=null;
-    gs.repJ1=null; gs.repJ2=null;
+    gs.repJ1=null; gs.repJ2=null; gs.premierRep=null;
     gs.jokerJ1=null; gs.jokerJ2=null;
     DUEL._jokerArme=null;
     // Alternance STRICTE : on inverse explicitement qui a « la main » par rapport à la manche précédente.
@@ -5823,6 +5904,7 @@ Object.assign(DUEL, {
     if(t) t.textContent=txt||"Reconnexion automatique en cours…";
   },
   _cacherSuspension(){
+    try{ _stopVoixGuide(); }catch(_){}
     var ov=document.getElementById("duel-suspendu-overlay");
     if(ov) ov.style.display="none";
   },
@@ -5923,7 +6005,8 @@ Object.assign(DUEL, {
   _armerHotePeer(peer){
     peer.on("connection",function(conn){
       DUEL.conn=conn;
-      conn.on("open",function(){ render(); }); // l'invité enverra resync_req
+      conn.on("open",function(){
+          try{ DUEL._flushOutbox(); }catch(_){} render(); }); // l'invité enverra resync_req
       conn.on("data",function(data){ try{ DUEL._onMsg(JSON.parse(data)); }catch(e){} });
       conn.on("close",function(){ DUEL.conn=null; DUEL._onDisconnect("recon-conn-close"); });
     });
@@ -5963,6 +6046,7 @@ Object.assign(DUEL, {
       var conn=DUEL.peer.connect("eq-"+DUEL.room,{reliable:true});
       DUEL.conn=conn;
       conn.on("open",function(){
+          try{ DUEL._flushOutbox(); }catch(_){}
         try{ conn.send(JSON.stringify({type:"resync_req", nom:S.nom||"Joueur"})); }catch(e){}
       });
       conn.on("data",function(data){ try{ DUEL._onMsg(JSON.parse(data)); }catch(e){} });
@@ -5972,6 +6056,7 @@ Object.assign(DUEL, {
 
   _reconnexionReussie(){
     DUEL._stopRecon();
+    DUEL._flushOutbox();          // les messages retenus pendant la coupure repartent
     DUEL._cacherSuspension();
     showToast("✅ Reconnecté — la partie reprend","win",2500);
     render();
@@ -7001,7 +7086,7 @@ function renderDuelJeu(app){
               +' disponibles après les réponses</div>';
           }
           html+='<div style="font-size:11px;color:var(--muted);margin-bottom:2px;text-align:center">Jouez votre meilleure carte !</div>'
-            +'<div style="font-size:9px;color:var(--muted);text-align:center;margin-bottom:8px;font-style:italic">👆 Touche une carte pour la jouer immédiatement</div>'
+            +'<div style="font-size:9px;color:var(--muted);text-align:center;margin-bottom:8px;font-style:italic">👆 Touche une carte pour la jouer immédiatement · les jokers se jouent d’un simple toucher</div>'
             +'<div style="--card-w:86px;--card-h:114px;display:flex;flex-wrap:wrap;justify-content:center;gap:7px;padding:4px 0 10px">'
             +cartesValides.map(function(carte){
               return '<div onclick="DUEL.jouerCarteById(&quot;'+carte.id+'&quot;)" style="cursor:pointer;flex-shrink:0;touch-action:manipulation;-webkit-user-drag:none;-webkit-touch-callout:none;user-select:none">'
@@ -7425,7 +7510,16 @@ let _lastEcran=null,_lastTheme=null;
     _gHideTO=setTimeout(function(){ document.body.classList.remove("guide-touch-hide"); }, 10000);
   }, {passive:true});
 })();
+var _ecranVoix=null;
 function render(){
+  // Toute fenêtre qui quitte l'écran coupe la lecture immédiatement.
+  // Seule exception : la lecture du mode d'emploi, lancée volontairement par le joueur.
+  try{
+    if(S.ecran!==_ecranVoix){
+      if(!(typeof _lectureReglesActive!=="undefined" && _lectureReglesActive)) _stopVoixGuide();
+      _ecranVoix=S.ecran;
+    }
+  }catch(_){}
   appliquerModeLeger();
   // Verrou de défilement : solo "jeu" + phases de JEU du Duel qui ont une zone interne défilante
   // (pas sélection/attente/résultat, qui défilent en pleine page).
@@ -8719,7 +8813,18 @@ const G={
       xpG=gain*2;gagnant=1;showPotFlash(gain);
     }
     else if(p2>p1){j.s2+=p1+p2;msg=`💔 IA gagne +${p1+p2} pts`;}
-    else{msg="🤝 Égalité !";}
+    else{
+      // Égalité : le premier à avoir posé sa carte remporte le pot.
+      // En Solo, le joueur joue avant l'IA. Le Fantôme est exclu : sa valeur reste au hasard.
+      var _fant = !!(cJ1&&cJ1.fantome) || !!(cIA&&cIA.fantome);
+      if(_fant){ msg="🤝 Égalité !"; }
+      else {
+        const gainEg=p1+p2;
+        j.s1+=gainEg;
+        msg=`⚡ Égalité — joué en premier ! ${S.nom} gagne +${gainEg} pts`;
+        xpG=gainEg*2; gagnant=1; showPotFlash(gainEg);
+      }
+    }
     // ── Manche ÉVÉNEMENT : Vol de Points (le gagnant vole 10 pts au perdant) ──
     if(_evM==="vol" && gagnant===1){ var _v=Math.min(10,j.s2); j.s2-=_v; j.s1+=_v; if(_v>0) msg+=` · 💰 +${_v} volés !`; }
     else if(_evM==="vol" && gagnant===2){ var _v2=Math.min(10,j.s1); j.s1-=_v2; j.s2+=_v2; }
@@ -8872,7 +8977,7 @@ const G={
     j.b1=null;j.b2=null;j.cb=null;
     j.repChoisie=null;j.repIA=null;j.msg="";j.lastBonusQ=j.lastBonusQ||null;
     j.jActif=null;j.jIA=null;j.espionActif=false;j.repIAVues=[];j.phaseEchange=false;j.gainFinal=null;
-    j._espionMasque=false;j._echangeMasque=false;j._supremeMasque=false;j._fantomeMasque=false;
+    j._supremeMasque=false;j._fantomeMasque=false;
     if(prochain==="ia"){
       // Choisir un pilier où l'IA a encore des cartes disponibles
       const piliersDispo=PILIERS.filter(p=>
@@ -10653,8 +10758,8 @@ function renderRegles(app){
           {n:"2. Animation de distribution",i:"✨",t:"Après la sélection, une animation spectaculaire distribue vos 10 cartes qui volent depuis les 4 coins de l'écran et se retournent pour révéler leurs couleurs."},
           {n:"3. Carte de Base",i:"🎴",t:"Le joueur qui commence choisit un <strong style='color:var(--goldL)'>Pilier de Base</strong>. L'adversaire répond avec un <strong style='color:var(--goldL)'>Pilier différent</strong>. Les deux forment un <strong style='color:var(--goldL)'>Combo</strong>. À chaque manche, la <strong style='color:var(--goldL)'>main alterne</strong> : c'est l'autre joueur qui choisit le Pilier de Base en premier. Les piliers joués s'assombrissent avec leur logo pulsant."},
           {n:"4. Carte Réponse",i:"🃏",t:"Chaque joueur joue une <strong style='color:var(--goldL)'>Carte Réponse</strong> du Combo actif. Vous avez <strong style='color:var(--goldL)'>20 secondes</strong>. La carte jouée est <strong style='color:var(--red)'>défaussée définitivement</strong>. Si aucune carte valide → pénalité -5 pts, l'adversaire gagne +5 pts bonus. Les <strong style='color:var(--goldL)'>deux cartes-réponses</strong> jouées s'affichent ensuite côte à côte, avec le pot <strong style='color:var(--goldL)'>GAIN TOTAL</strong>, avant le résultat."},
-          {n:"5. Jokers (optionnel)",i:"⚡",t:"Après les Cartes Réponses, vous pouvez jouer un Joker offensif. Phase de tension maximale !"},
-          {n:"6. Résultat automatique",i:"🏆",t:"Le résultat s'affiche automatiquement. La manche suivante démarre après quelques secondes (le temps de bien voir les deux réponses). En Duel, l'hôte contrôle le rythme. Bonus du Sage ou Question surprise peuvent apparaître entre certaines manches."},
+          {n:"5. Jokers (optionnel)",i:"⚡",t:"Deux jokers vivent <strong style='color:var(--goldL)'>dans votre main</strong>, à côté de vos cartes : l'<strong style='color:var(--goldL)'>Espion</strong> 👁 (révèle les 3 meilleures cartes adverses) et l'<strong style='color:var(--goldL)'>Échange</strong> 🔄 (remplace une carte). Un simple toucher les déclenche — aucune validation, aucune interruption. Les jokers offensifs (Brakeur, Multiplicateur) se jouent après les Cartes Réponses."},
+          {n:"6. Résultat automatique",i:"🏆",t:"Le résultat s'affiche automatiquement. La manche suivante démarre après quelques secondes (le temps de bien voir les deux réponses). En Duel, l'hôte contrôle le rythme. Bonus du Sage ou Question surprise peuvent apparaître entre certaines manches. <strong style='color:var(--goldL)'>En cas d'égalité de points</strong>, celui qui a posé sa carte <strong style='color:var(--goldL)'>en premier</strong> remporte le pot — sauf si un <strong style='color:#c9b3f0'>Fantôme</strong> est en jeu : sa valeur étant tirée au hasard, l'égalité reste blanche."},
         ].map(s=>`
           <div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.06)">
             <div style="font-size:24px;flex-shrink:0;width:32px;text-align:center">${s.i}</div>
@@ -11140,6 +11245,8 @@ window.addEventListener("pagehide",function(){
 });
 window.addEventListener("visibilitychange",function(){
   if(document.visibilityState==="hidden"){
+    try{ _stopVoixGuide(); }catch(_){}          // l'appli quitte l'écran → la voix se tait
+    try{ if(typeof _stopLectureRegles==="function") _stopLectureRegles(); }catch(_){}
     sauvegarderPartieEnCours();
     sauvegarderDuelEnCours();
   }
@@ -11168,6 +11275,8 @@ function _duelHeartbeat(){
   if(Date.now()-DUEL._lastRx > 20000) DUEL._onDisconnect("hb-silence-20s");
 }
 setInterval(_duelHeartbeat, 5000);
+// Sauvegarde régulière : même un crash brutal ne peut plus perdre plus de 5 s de partie.
+setInterval(function(){ try{ if(_duelEnJeu()) sauvegarderDuelEnCours(); }catch(_){} }, 5000);
 // Au retour au premier plan / réseau (ex. fin d'appel) : vérifier activement que la connexion vit.
 // Sonde de reprise : deux tentatives espacées avant de conclure. Un réseau mobile
 // lent met parfois plusieurs secondes à répondre — un seul essai crée de faux positifs.
@@ -11526,21 +11635,12 @@ function renderJeu(app){
             ${vIA.length===0?`<div style="font-size:10px;color:#45c97a;text-align:center;margin-bottom:8px;font-weight:700">💡 L'IA n'a pas de carte valide — jouez et gagnez vos points !</div>`:""}
             <div style="--card-w:86px;--card-h:114px;display:flex;flex-wrap:wrap;justify-content:center;gap:min(7px,1.8vw)">
               ${validesJ1.map(x=>`<div onclick="G.selRep('${x.id}')" draggable="false" style="cursor:pointer;touch-action:manipulation;-webkit-user-drag:none;-webkit-touch-callout:none;user-select:none">${carteMainHTML(x,{selected:j.repChoisie?.id===x.id,masque:(S.jeu&&((S.jeu.twist==="aveugle"||S.jeu.twist==="ultime")||(S.jeu.modif==="brouillard"&&S.jeu.manche%2===0)))})}</div>`).join("")}
+              ${(!j.phaseEchange && j.mainJokJ1.find(x=>x.id==="j3")) ? `<div style="width:86px;height:114px;display:flex;flex:0 0 auto">${jokerCardHTML(j.mainJokJ1.find(x=>x.id==="j3"),{onClick:"G.useEspion()"})}</div>` : ""}
+              ${(!j.phaseEchange && j.mainJokJ1.find(x=>x.id==="j4")) ? `<div style="width:86px;height:114px;display:flex;flex:0 0 auto">${jokerCardHTML(j.mainJokJ1.find(x=>x.id==="j4"),{onClick:"G.useEchange()"})}</div>` : ""}
             </div>
           `}
         </div>
 
-        ${!j.phaseEchange&&j.mainJokJ1.find(x=>x.id==="j4")&&validesJ1.length>0&&!j._echangeMasque?`
-          <div style="margin-bottom:8px">
-            <button class="btn-ghost" style="width:100%;margin-bottom:6px;font-size:11px" onclick="S.jeu._echangeMasque=true;render()">✗ Ne pas utiliser l'Échange</button>
-            <div style="font-size:10px;color:#9B59B6;font-weight:700;margin-bottom:5px;text-align:center">
-              🔄 Joker Échange disponible — remplacez une carte
-            </div>
-            <div style="display:flex;gap:7px">
-              ${jokerCardHTML(j.mainJokJ1.find(x=>x.id==="j4"),{onClick:"G.useEchange()"})}
-            </div>
-          </div>
-        `:""}
       `:""}
 
       ${validesJ1.length===0&&!j.phaseEchange?`<div style="margin-bottom:10px">
@@ -11560,12 +11660,6 @@ function renderJeu(app){
           </div>`}
       </div>`:""}
 
-      ${j.mainJokJ1.find(x=>x.id==="j3")&&validesJ1.length>0&&!j.phaseEchange&&!j._espionMasque?`
-        <div style="margin-bottom:8px">
-          <button class="btn-ghost" style="width:100%;margin-bottom:6px;font-size:11px" onclick="S.jeu._espionMasque=true;render()">✗ Ne pas utiliser l'Espion</button>
-          <div style="font-size:10px;color:var(--gold);font-weight:700;margin-bottom:5px">👁 Joker Espion disponible</div>
-          <div style="display:flex;gap:7px">${jokerCardHTML(j.mainJokJ1.find(x=>x.id==="j3"),{onClick:"G.useEspion()"})}</div>
-        </div>`:""}
 
       ${autresJ1.length>0&&validesJ1.length>0?`
         <div style="margin-bottom:8px">
