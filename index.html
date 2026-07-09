@@ -1588,7 +1588,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v94.54";
+const BUILD_TAG="v94.55";
 // ── Diagnostic : révèle le détail réel des erreurs (un « Script error. » nu = erreur d'un script tiers cross-origin, ex. PeerJS) ──
 window.addEventListener("error", function(ev){
   // Erreur tierce sans détail (ex. Google Analytics gêné par la prévention du tracking) : bruit bénin → on n'encombre pas la console
@@ -4376,7 +4376,7 @@ const DUEL = {
           });
           conn.on("close",function(){
             DUEL.conn=null;
-            DUEL._onDisconnect();
+            DUEL._onDisconnect("hote-conn-close");
           });
         });
 
@@ -4392,7 +4392,7 @@ const DUEL = {
             // Partie déjà engagée : ne pas détruire la session sur une erreur réseau → reconnexion.
             if(DUEL.gs && !DUEL._quitVolontaire){ DUEL._onDisconnect(); return; }
             showToast("⚠️ Erreur : "+e.type,"lose",3000);
-            DUEL._reset(); S.ecran="duel_menu"; render();
+            DUEL._quitterVersMenu("hote-peer-error:"+(e&&e.type));
           }
         });
 
@@ -4402,10 +4402,11 @@ const DUEL = {
       });
 
       tmpPeer.on("error",function(e){
-        // Pas de réseau
-        tmpPeer.destroy();
+        // Peer temporaire : s'il a déjà servi, son erreur ne concerne plus la partie.
+        try{ if(tmpPeer.destroyed) return; }catch(_){}
+        try{ tmpPeer.destroy(); }catch(_){}
         showToast("⚠️ Pas de connexion internet","lose",3000);
-        DUEL._reset(); S.ecran="duel_menu"; render();
+        DUEL._quitterVersMenu("tmp-peer-error:"+(e&&e.type));
       });
     });
   },
@@ -4446,7 +4447,7 @@ const DUEL = {
           try{ DUEL._onMsg(JSON.parse(data)); }catch(e){console.error("data err",e);}
         });
         conn.on("close",function(){
-          DUEL._onDisconnect();
+          DUEL._onDisconnect("invite-conn-close");
         });
       });
       DUEL.peer.on("error",function(e){
@@ -4460,7 +4461,7 @@ const DUEL = {
         } else {
           showToast("❌ Erreur réseau : "+e.type,"lose",3000);
         }
-        DUEL._reset(); S.ecran="duel_menu"; render();
+        DUEL._quitterVersMenu("invite-peer-error:"+(e&&e.type));
       });
 
       DUEL.peer.on("disconnected",function(){
@@ -4514,6 +4515,7 @@ const DUEL = {
       +" | rtt "+(DUEL._rtt!=null?DUEL._rtt+"ms":"—")
       +" | rx "+age+"s\n"
       +"manche "+(gs.manche||"—")+" ph:"+(gs.phase||"—")+" "+(gs.s1||0)+"-"+(gs.s2||0)+"\n"
+      +(DUEL._lastDisco?("disco: "+DUEL._lastDisco+"\n"):"")
       +"bonus:"+(DUEL._bonusEnCours?1:0)
       +" course:"+(DUEL._courseActif?1:0)
       +" win:"+(DUEL._courseWinnerSent?1:0)
@@ -5830,7 +5832,23 @@ Object.assign(DUEL, {
   },
 
   // ── Point d'entrée : connexion perdue ──
-  _onDisconnect(){
+  // ══ Sortie UNIQUE vers l'écran de sélection ══
+  // Aucune erreur réseau ne doit détruire une partie engagée : on bascule en reconnexion.
+  _quitterVersMenu(raison){
+    DUEL._lastDisco = raison || "?";
+    try{ if(DUEL._dbg) DUEL._dbgLog("!", {type:"exit:"+DUEL._lastDisco}); }catch(e){}
+    if(DUEL.gs && !DUEL._quitVolontaire){
+      console.warn("[DUEL] partie en cours protégée, reconnexion au lieu du menu :", DUEL._lastDisco);
+      DUEL._onDisconnect();
+      return;
+    }
+    console.warn("[DUEL] retour au menu :", DUEL._lastDisco);
+    DUEL._reset(); S.ecran="duel_menu"; render();
+  },
+
+  _onDisconnect(raison){
+    if(raison) DUEL._lastDisco=raison;
+    try{ if(DUEL._dbg) DUEL._dbgLog("!", {type:"disco:"+(DUEL._lastDisco||"?")}); }catch(e){}
     if(DUEL.demo) return;
     if(DUEL._quitVolontaire) return;
     if(!DUEL._recon) DUEL._recon={active:false,tries:0,timer:null};
@@ -5897,7 +5915,7 @@ Object.assign(DUEL, {
       DUEL.conn=conn;
       conn.on("open",function(){ render(); }); // l'invité enverra resync_req
       conn.on("data",function(data){ try{ DUEL._onMsg(JSON.parse(data)); }catch(e){} });
-      conn.on("close",function(){ DUEL.conn=null; DUEL._onDisconnect(); });
+      conn.on("close",function(){ DUEL.conn=null; DUEL._onDisconnect("recon-conn-close"); });
     });
     peer.on("disconnected",function(){ try{ if(!peer.destroyed) peer.reconnect(); }catch(e){} });
     peer.on("error",function(e){
@@ -11108,23 +11126,32 @@ function _duelHeartbeat(){
   if(!_duelEnJeu() || !DUEL._lastRx) return;      // jamais connecté encore → rien à surveiller
   if(DUEL._recon && DUEL._recon.active) return;    // reconnexion déjà en cours
   var conn=DUEL.conn;
-  if(!conn || !conn.open){ DUEL._onDisconnect(); return; }
+  if(!conn || !conn.open){ DUEL._onDisconnect("hb-conn-fermee"); return; }
   DUEL._send({type:"ping", t:Date.now()});
-  if(Date.now()-DUEL._lastRx > 15000) DUEL._onDisconnect();
+  if(Date.now()-DUEL._lastRx > 20000) DUEL._onDisconnect("hb-silence-20s");
 }
 setInterval(_duelHeartbeat, 5000);
 // Au retour au premier plan / réseau (ex. fin d'appel) : vérifier activement que la connexion vit.
+// Sonde de reprise : deux tentatives espacées avant de conclure. Un réseau mobile
+// lent met parfois plusieurs secondes à répondre — un seul essai crée de faux positifs.
 function _duelVerifierConnexion(){
   if(!_duelEnJeu() || !DUEL._lastRx) return;
   if(DUEL._recon && DUEL._recon.active){ _relancerReconDuel(); return; }
   var conn=DUEL.conn;
-  if(!conn || !conn.open){ DUEL._onDisconnect(); return; }
+  if(!conn || !conn.open){ DUEL._onDisconnect("sonde-conn-fermee"); return; }
   var avant=DUEL._lastRx;
   DUEL._send({type:"ping", t:Date.now()});
   setTimeout(function(){
     if(!_duelEnJeu() || (DUEL._recon && DUEL._recon.active)) return;
-    if((DUEL._lastRx||0) <= avant) DUEL._onDisconnect();   // aucune réponse → connexion morte
-  }, 3500);
+    if((DUEL._lastRx||0) > avant) return;                 // l'adversaire a répondu
+    var c=DUEL.conn;
+    if(!c || !c.open){ DUEL._onDisconnect("sonde-conn-fermee-2"); return; }
+    DUEL._send({type:"ping", t:Date.now()});              // seconde chance
+    setTimeout(function(){
+      if(!_duelEnJeu() || (DUEL._recon && DUEL._recon.active)) return;
+      if((DUEL._lastRx||0) <= avant) DUEL._onDisconnect("sonde-2-essais-sans-reponse");
+    }, 5000);
+  }, 5000);
 }
 function _duelAuRetour(){
   try{ _relancerReconDuel(); }catch(e){}
