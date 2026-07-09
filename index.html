@@ -1625,7 +1625,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v94.78";
+const BUILD_TAG="v94.81";
 // ── Diagnostic : révèle le détail réel des erreurs (un « Script error. » nu = erreur d'un script tiers cross-origin, ex. PeerJS) ──
 window.addEventListener("error", function(ev){
   // Erreur tierce sans détail (ex. Google Analytics gêné par la prévention du tracking) : bruit bénin → on n'encombre pas la console
@@ -8023,84 +8023,68 @@ function carteRepHTML(c,opts={}){
   const st1=PILIER[p1]||{bg:"#111",accent:"#444"};
   const st2=PILIER[p2]||{bg:"#111",accent:"#555"};
   const ptColor=pc(c.pts);
-  const shadow=ptsShadow(c.pts);
   const cls=["carte-rep",clickable?"clickable":"",selected?"selected":"",disabled?"disabled":""].filter(Boolean).join(" ");
 
-  // ── BOGOLAN : bande tissée sur le flanc gauche, motifs alternés des 2 piliers ──
-  const bande=(()=>{
-    let m="";
-    for(let i=0;i<7;i++){
-      const y=6+i*17, col=(i%2===0)?st1.accent:st2.accent;
-      m+=`<rect x="0" y="${y}" width="15" height="17" fill="${col}" opacity="0.14"/>`
-       + `<path d="M2.5 ${y+8.5} L7.5 ${y+3.5} L12.5 ${y+8.5} L7.5 ${y+13.5} Z" fill="none" stroke="${col}" stroke-width="0.8"/>`
-       + `<circle cx="7.5" cy="${y+8.5}" r="1.1" fill="${col}"/>`;
-    }
-    return `<svg style="position:absolute;left:7px;top:22px;width:15px;height:119px;pointer-events:none;z-index:1" viewBox="0 0 15 119">${m}</svg>`;
-  })();
-
-  // ── Icônes des piliers aux 4 coins (diagonale, hors de la bande) ──
-  const icoCoin=(pil,st,pos)=>{
+  // ── LE FILET : ivoire, filet doré, sceau des deux piliers, nom, nombre. Rien d'autre. ──
+  // Emblème aux quatre coins : pilier 1 en haut-gauche et bas-droite, pilier 2 en miroir.
+  const coin=(pil,st,pos)=>{
     const src=(typeof EMBLEME_IMG!=="undefined"&&EMBLEME_IMG[pil])?EMBLEME_IMG[pil]:null;
-    const inner=src
-      ? `<img src="${src}" alt="" style="width:100%;height:100%;border-radius:50%;box-shadow:0 0 4px ${st.accent}88"/>`
-      : `<span style="font-size:10px;line-height:13px">${PILIER[pil]?PILIER[pil].icon:''}</span>`;
-    return `<div style="position:absolute;${pos};width:13px;height:13px;z-index:2;pointer-events:none;
-      opacity:0.95;display:flex;align-items:center;justify-content:center">${inner}</div>`;
+    const base=`position:absolute;${pos};width:12px;height:12px;border-radius:50%;z-index:2;pointer-events:none;box-sizing:border-box;border:1px solid rgba(201,162,39,0.85);box-shadow:0 0 0 0.5px rgba(34,32,28,0.18)`;
+    return src
+      ? `<img src="${src}" alt="" style="${base}"/>`
+      : `<span style="${base};display:inline-flex;align-items:center;justify-content:center;background:${st.bg};font-size:7px">${PILIER[pil]?PILIER[pil].icon:''}</span>`;
   };
-  const coins =
-      icoCoin(p1,st1,"top:6px;left:6px")
-    + icoCoin(p2,st2,"top:6px;right:6px")
-    + icoCoin(p2,st2,"bottom:6px;left:6px")
-    + icoCoin(p1,st1,"bottom:6px;right:6px");
 
-  // Emblème cerclé d'or : anneau doré + fin liseré sombre pour le détacher de l'ivoire
-  const embleme=(pil,st,px)=>{
-    const ring=`border:2px solid #C9A227;box-shadow:0 0 0 1px rgba(42,33,24,0.35),0 0 8px rgba(201,162,39,0.55),0 1px 3px rgba(0,0,0,0.35)`;
-    return (typeof EMBLEME_IMG!=="undefined"&&EMBLEME_IMG[pil])
-      ? `<img src="${EMBLEME_IMG[pil]}" alt="" style="width:${px}px;height:${px}px;border-radius:50%;box-sizing:border-box;${ring}"/>`
-      : `<span style="display:inline-flex;align-items:center;justify-content:center;width:${px}px;height:${px}px;
-          border-radius:50%;box-sizing:border-box;background:${st.bg};font-size:${px-18}px;${ring}">${PILIER[pil]?PILIER[pil].icon:''}</span>`;
+  const embleme=(pil,st,px,dec)=>{
+    const anneau="border:1.5px solid #C9A227;box-sizing:border-box;"
+      +"box-shadow:0 0 0 1px rgba(34,32,28,0.25),0 1px 4px rgba(0,0,0,0.28)";
+    const src=(typeof EMBLEME_IMG!=="undefined"&&EMBLEME_IMG[pil])?EMBLEME_IMG[pil]:null;
+    const style=`width:${px}px;height:${px}px;border-radius:50%;${anneau};margin-left:${dec}px;position:relative;z-index:${dec?1:2}`;
+    return src
+      ? `<img src="${src}" alt="" style="${style}"/>`
+      : `<span style="${style};display:inline-flex;align-items:center;justify-content:center;background:${st.bg};font-size:${px-14}px">${PILIER[pil]?PILIER[pil].icon:''}</span>`;
   };
 
   return`<div class="${cls}" style="
-    background:
-      linear-gradient(112deg, transparent 36%, rgba(255,255,255,0.55) 48%, transparent 60%),
-      radial-gradient(ellipse at 22% 12%, ${st1.accent}14 0%, transparent 55%),
-      linear-gradient(168deg, #F7F3E8 0%, #EDE7D8 100%);
-    border:2px solid ${selected?"#F0D060":disabled?"#c9c9d6":"#2A2118"};
+    background:linear-gradient(150deg,#FBF8F0 0%,#F1EBDD 100%);
+    border:1.5px solid ${selected?"#C9A227":disabled?"#c9c5bb":"#22201C"};
     box-shadow:${selected
-      ?`0 0 0 1px ${st1.accent}66, 0 0 24px ${st1.accent}66, 0 12px 32px rgba(0,0,0,0.30)`
-      :`inset 0 1px 0 rgba(255,255,255,0.85), 0 6px 18px rgba(0,0,0,0.26)`};
-    position:relative;overflow:hidden;border-radius:14px;"
+      ?`0 0 0 1px #C9A22766, 0 0 22px #C9A22777, 0 10px 28px rgba(0,0,0,0.30)`
+      :`inset 0 1px 0 rgba(255,255,255,0.9), 0 5px 16px rgba(0,0,0,0.24)`};
+    position:relative;overflow:hidden;border-radius:13px;"
     ${(clickable||onClick)&&!disabled?"onclick=\""+onClick+"\"":""}
   >
-    ${bande}
-    <div style="position:absolute;left:25px;top:14px;bottom:14px;width:1px;background:#2A211840;z-index:1"></div>
-    ${coins}
+    <div style="position:absolute;inset:4px;border:0.5px solid rgba(201,162,39,0.55);border-radius:9px;pointer-events:none"></div>
+    ${coin(p1,st1,"top:8px;left:8px")}${coin(p2,st2,"top:8px;right:8px")}
+    ${coin(p2,st2,"bottom:8px;left:8px")}${coin(p1,st1,"bottom:8px;right:8px")}
     <div class="carte-shine"></div>
     ${selected?`<div style="position:absolute;top:0;left:50%;transform:translateX(-50%);
-      background:linear-gradient(135deg,${st1.accent},${st1.accent}99);
-      color:#fff;font-size:6px;font-weight:900;padding:3px 12px;
-      border-radius:0 0 10px 10px;letter-spacing:2px;z-index:3;
-      box-shadow:0 2px 8px ${st1.accent}88">✦ CHOISIE ✦</div>`:""}
-    <div style="position:relative;z-index:2;width:100%;display:flex;flex-direction:column;
-      align-items:flex-start;justify-content:space-between;
-      padding:9px 9px 9px 31px;min-height:var(--card-h)">
-      <div style="font-size:6px;color:#8A7355;letter-spacing:1.6px;font-weight:700;text-transform:uppercase">${c.combo}</div>
-      <div style="display:flex;align-items:center;gap:4px;flex-shrink:0;align-self:center">
-        ${embleme(p1,st1,34)}${embleme(p2,st2,34)}
+      background:linear-gradient(135deg,#C9A227,#B8912E);color:#fff;font-size:6px;font-weight:900;
+      padding:3px 12px;border-radius:0 0 9px 9px;letter-spacing:2px;z-index:3">✦ CHOISIE ✦</div>`:""}
+
+    <div style="position:relative;z-index:2;width:100%;min-height:var(--card-h);
+      display:flex;flex-direction:column;align-items:center;justify-content:space-between;padding:16px 10px 9px">
+
+      <div style="display:flex;align-items:center;flex-shrink:0">
+        ${embleme(p1,st1,26,0)}${embleme(p2,st2,26,-7)}
       </div>
-      <div style="width:100%">
-        <div style="font-size:${(c.name||'').length>11?'11px':'13px'};font-weight:900;color:#2A2118;
-          font-family:'Cinzel',serif;letter-spacing:0.3px;line-height:1.1;
-          overflow-wrap:break-word;word-break:break-word;max-width:100%">${c.name}</div>
-        <div style="height:1.6px;width:70%;background:${st1.accent};margin:3px 0 4px;border-radius:2px"></div>
-        <div style="font-size:6px;color:#6B5B47;font-style:italic;line-height:1.3">${c.cit?c.cit.slice(0,38)+"…":""}</div>
+
+      <div style="width:100%;text-align:center">
+        <div style="font-size:${(c.name||'').length>11?'8.5px':'10px'};font-weight:900;color:#22201C;
+          font-family:'Cinzel',serif;letter-spacing:0.6px;line-height:1.15;
+          overflow-wrap:break-word;word-break:break-word">${c.name}</div>
+        <div style="height:0.8px;width:34px;background:#C9A227;margin:5px auto 0"></div>
       </div>
-      <div style="width:100%;text-align:right;line-height:0.85">
-        <div class="pts-num" style="font-size:40px;color:${ptColor};text-shadow:${shadow};
-          font-family:'Cinzel',serif;font-weight:900;letter-spacing:-2px">${opts.masque?'?':c.pts}</div>
-        <div style="font-size:6px;color:#8A7355;letter-spacing:3.5px;font-weight:700;margin-top:2px">POINTS</div>
+
+      <div style="width:100%;text-align:center">
+        <div class="pts-num" style="font-size:38px;font-family:'Cinzel',serif;font-weight:900;
+          letter-spacing:-2px;line-height:0.9;
+          ${disabled
+            ? "color:#b9b5ab;"
+            : "background:linear-gradient(168deg,#E6CE7A 0%,#C9A227 45%,#9C7B18 100%);-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;color:#C9A227;"}
+          ">${opts.masque?'?':c.pts}</div>
+        <div style="font-size:4.5px;color:#8A8378;letter-spacing:2.2px;margin-top:5px;font-weight:600;
+          max-width:64px;margin-left:auto;margin-right:auto;white-space:nowrap;overflow:hidden">${c.combo.replace("+"," · ").toUpperCase()}</div>
       </div>
     </div>
   </div>`;
@@ -11072,8 +11056,26 @@ function renderRegles(app){
           </div>
         </div>
 
-      <!-- Nouvelles fonctionnalités -->
-      <div style="font-size:13px;color:var(--gold);font-weight:700;font-family:'Cinzel',serif;margin-bottom:10px;letter-spacing:1px">🌟 NOUVELLES FONCTIONNALITÉS</div>
+      <!-- Cartes légendaires & La Voie -->
+      <div style="font-size:13px;color:var(--gold);font-weight:700;font-family:'Cinzel',serif;margin-bottom:10px;letter-spacing:1px">✦ CARTES LÉGENDAIRES & LA VOIE</div>
+      <div class="card" style="margin-bottom:14px">
+        ${[
+          {i:"✨",n:"Cartes légendaires",t:"Dès la <strong style='color:var(--goldL)'>manche 6</strong>, deux cartes d'exception entrent en jeu, une seule fois chacune : la <strong style='color:var(--goldL)'>Suprême</strong> (50 pts garantis) et le <strong style='color:#c9b3f0'>Fantôme</strong> (valeur inconnue, 0 à 100). Les toucher ouvre une confirmation <strong style='color:var(--goldL)'>« Jouer / Pas maintenant »</strong> : déclinée, la carte se retire pour la manche et revient ensuite."},
+          {i:"🎰",n:"Le Jackpot des Fantômes",t:"Si les <strong style='color:var(--goldL)'>deux joueurs</strong> jouent leur Fantôme dans la même manche, la table bascule : les deux valeurs tournent comme une machine à sous. Le plus haut rafle <strong style='color:var(--goldL)'>tout le score de l'adversaire</strong> plus la valeur de son Fantôme. Le perdant tombe à zéro. En cas d'égalité, on relance."},
+          {i:emblemeMini("Spiritualité",26),n:"La Voie des Quatre Maîtres",t:"Votre <strong style='color:var(--goldL)'>rang</strong> s'affiche sous votre nom et grandit en Campagne : <strong style='color:var(--goldL)'>Disciple → Initié → Gardien → Guide → Chef de Cercle</strong>. Chaque Gardien vaincu vous livre son enseignement ; vaincu, il prononce sa sentence. On ne devient pas chef en dominant un pilier, mais en n'en laissant tomber aucun."},
+          {i:"🃏",n:"Collection de 48 cartes",t:"Un pool de <strong style='color:var(--goldL)'>48 cartes</strong> ! Chaque partie tire une main différente. L'écran <strong style='color:var(--goldL)'>🃏 Collection</strong> révèle les cartes découvertes et garde les autres en silhouette — collectionne-les toutes."}
+].map(f=>`
+          <div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
+            <div style="font-size:22px;flex-shrink:0;width:30px;text-align:center">${f.i}</div>
+            <div>
+              <div style="font-size:12px;color:var(--goldL);font-weight:700;margin-bottom:2px">${f.n}</div>
+              <div style="font-size:11px;color:var(--muted);line-height:1.6">${f.t}</div>
+            </div>
+          </div>`).join("")}
+      </div>
+
+      <!-- Confort & options -->
+      <div style="font-size:13px;color:var(--gold);font-weight:700;font-family:'Cinzel',serif;margin-bottom:10px;letter-spacing:1px">🌟 CONFORT & OPTIONS</div>
       <div class="card" style="margin-bottom:14px">
         ${[
           {i:"👑",n:"Profil & Avatar",t:"Choisissez un emoji avatar qui vous représente. Il s'affiche partout dans le jeu."},
@@ -11082,28 +11084,20 @@ function renderRegles(app){
           {i:"🏆",n:"Historique",t:"Vos 10 dernières parties sont sauvegardées automatiquement avec date, score et résultat."},
           {i:"🎊",n:"Célébrations à 3 paliers",t:"Selon ton score total, la victoire déclenche une célébration <strong style='color:var(--goldL)'>Argent 🥈, Or 🥇 ou Diamant 💎</strong> — confettis, badge et fanfare de plus en plus spectaculaires."},
           {i:"📱",n:"Installable (PWA)",t:"Ajoutez ÉQUILIBRE à votre écran d'accueil comme une vraie application iPhone/Android."},
-          {i:"💬",n:"Chat en Duel",t:"Discutez avec votre adversaire pendant la partie. Selon le bonus tiré, soit l'un joue et l'autre le suit en <strong style='color:var(--goldL)'>spectateur</strong>, soit <strong style='color:var(--goldL)'>les deux jouent en même temps</strong> (La Course à l'Équilibre)."},
-          {i:"🔄",n:"Reconnexion & reprise",t:"En Duel, la connexion se rétablit automatiquement après une coupure. Et si l'app se ferme ou en cas d'appel téléphonique, votre partie est sauvegardée : au retour, vous reprenez au <strong style='color:var(--goldL)'>même score</strong>, <strong style='color:var(--goldL)'>sans ressaisir de code</strong>. Revanche en un clic."},
+          {i:"🔄",n:"Reconnexion & reprise",t:"En Duel, la connexion se rétablit automatiquement après une coupure. Et si l'app se ferme ou en cas d'appel téléphonique, votre partie est sauvegardée : au retour, vous reprenez au <strong style='color:var(--goldL)'>même score</strong>, <strong style='color:var(--goldL)'>sans ressaisir de code</strong>. La partie reprend exactement où elle s'était arrêtée."},
           {i:"📈",n:"Statistiques perso",t:"L'écran <strong style='color:var(--goldL)'>Stats</strong> suit vos parties : victoires, défaites, taux de victoire, meilleur score, plus longue série de victoires, et votre pilier préféré."},
           {i:"📳",n:"Sons & vibrations",t:"Effets sonores et retours haptiques (vibrations) aux moments clés — victoire de manche, joker, bonus. Tout respecte le mode muet."},
           {i:"💬",n:"Contact WhatsApp",t:"Le bouton <strong style='color:var(--goldL)'>WhatsApp</strong> ouvre une discussion pré-remplie, pour envoyer vos idées et retours directement au couple KHALAM."},
           {i:"🎓",n:"Apprentissage guidé",t:"Au premier lancement, un <strong style='color:var(--goldL)'>tutoriel</strong> en quelques étapes présente les règles (revoyable via « 🎓 Revoir le tutoriel »). Et pendant ta toute première partie, de petites astuces <strong style='color:var(--goldL)'>« 👋 Guide »</strong> t'accompagnent au bon moment — chacune une seule fois."},
-          {i:"✨",n:"Cartes légendaires",t:"Dès la <strong style='color:var(--goldL)'>manche 6</strong>, deux cartes d'exception entrent en jeu, une seule fois chacune : la <strong style='color:var(--goldL)'>Suprême</strong> (50 pts garantis) et le <strong style='color:#c9b3f0'>Fantôme</strong> (valeur inconnue, 0 à 100). Les toucher ouvre une confirmation <strong style='color:var(--goldL)'>« Jouer / Pas maintenant »</strong> : déclinée, la carte se retire pour la manche et revient ensuite."},
-          {i:"🎰",n:"Le Jackpot des Fantômes",t:"Si les <strong style='color:var(--goldL)'>deux joueurs</strong> jouent leur Fantôme dans la même manche, la table bascule : les deux valeurs tournent comme une machine à sous. Le plus haut rafle <strong style='color:var(--goldL)'>tout le score de l'adversaire</strong> plus la valeur de son Fantôme. Le perdant tombe à zéro. En cas d'égalité, on relance."},
-          {i:emblemeMini("Spiritualité",26),n:"La Voie des Quatre Maîtres",t:"Votre <strong style='color:var(--goldL)'>rang</strong> s'affiche sous votre nom et grandit en Campagne : <strong style='color:var(--goldL)'>Disciple → Initié → Gardien → Guide → Chef de Cercle</strong>. Chaque Gardien vaincu vous livre son enseignement ; vaincu, il prononce sa sentence. On ne devient pas chef en dominant un pilier, mais en n'en laissant tomber aucun."},
-          {i:"🃏",n:"Collection de 48 cartes",t:"Un pool de <strong style='color:var(--goldL)'>48 cartes</strong> ! Chaque partie tire une main différente. L'écran <strong style='color:var(--goldL)'>🃏 Collection</strong> révèle les cartes découvertes et garde les autres en silhouette — collectionne-les toutes."},
-          {i:"📅",n:"Défi du jour",t:"Un défi <strong style='color:var(--goldL)'>différent chaque jour</strong>, avec bonus d'XP. Réussis-le plusieurs jours d'affilée pour faire monter ta <strong style='color:#ff6b35'>série 🔥</strong>."},
+          {i:"📅",n:"Objectif du jour",t:"Un défi <strong style='color:var(--goldL)'>différent chaque jour</strong>, avec bonus d'XP. Réussis-le plusieurs jours d'affilée pour faire monter ta <strong style='color:#ff6b35'>série 🔥</strong>."},
           {i:"🏆",n:"Trophées",t:"8 badges à débloquer selon tes exploits (séries, jokers gagnants, remontées, IA Expert battue…), consultables dans <strong style='color:var(--goldL)'>🏆 Trophées</strong>."},
           {i:"⚖️",n:"Écran d'accueil animé",t:"Une intro où les 4 piliers convergent vers la balance — l'esprit du jeu dès la première seconde."},
           {i:"🎨",n:"Thèmes débloquables",t:"Personnalisez l'ambiance du jeu avec des thèmes de fond (Nuit Mystique, Aurore Boréale, Cosmos, Coucher de Soleil), à débloquer en montant de niveau, via le menu 🎨 Thèmes."},
-          {i:"⚡",n:"Mode léger",t:"Dans <strong style='color:var(--goldL)'>🎨 Thèmes</strong>, un réglage réduit les animations pour une fluidité maximale sur les téléphones plus modestes. Il s'active aussi tout seul si votre téléphone est réglé sur « réduire les animations »."},
-          {i:"🎴",n:"Cartes illustrées",t:"Les 4 piliers et leurs emblèmes (méditation, cœur, arbre, pièces) sont de véritables illustrations dorées, présentes sur toutes les cartes — de base comme réponses — pour une identité visuelle riche et cohérente."},
           {i:"🎵",n:"Musique d'ambiance",t:"Une musique douce accompagne vos manches. Elle démarre au début de la partie et s'arrête à la fin (aucune musique dans le menu). Activez ou coupez le son à tout moment avec le bouton 🔊."},
-          {i:"🔊",n:"Lecture à voix haute",t:"Le jeu <strong style='color:var(--goldL)'>parle</strong> : le Sage lit ses conseils ; en Campagne, les <strong style='color:var(--goldL)'>gardiens et leurs disciples</strong> déclament leur nom et leur menace avant chaque combat (voix grave de guerrier, voix féminine pour les gardiennes) ; les <strong style='color:var(--goldL)'>épreuves</strong> et <strong style='color:var(--goldL)'>modificateurs</strong> sont annoncés ; les <strong style='color:var(--goldL)'>jokers</strong>, le <strong style='color:var(--goldL)'>bonus de l'IA</strong> et l'arrivée des <strong style='color:var(--goldL)'>cartes légendaires</strong> sont proclamés d'une voix masculine. Le mode d'emploi se lit aussi via « 🔊 Écouter » (en haut). Coupez ou réactivez la voix d'un bouton 🔊 — aucun fichier à télécharger, elle vient de votre téléphone."},
-        ].map(f=>`
+          {i:"🔊",n:"Lecture à voix haute",t:"Le jeu <strong style='color:var(--goldL)'>parle</strong> : le Sage lit ses conseils ; en Campagne, les <strong style='color:var(--goldL)'>gardiens et leurs disciples</strong> déclament leur nom et leur menace avant chaque combat (voix grave de guerrier, voix féminine pour les gardiennes) ; les <strong style='color:var(--goldL)'>épreuves</strong> et <strong style='color:var(--goldL)'>modificateurs</strong> sont annoncés ; les <strong style='color:var(--goldL)'>jokers</strong>, le <strong style='color:var(--goldL)'>bonus de l'IA</strong> et l'arrivée des <strong style='color:var(--goldL)'>cartes légendaires</strong> sont proclamés d'une voix masculine. Le mode d'emploi se lit aussi via « 🔊 Écouter » (en haut). Coupez ou réactivez la voix d'un bouton 🔊 — aucun fichier à télécharger, elle vient de votre téléphone."}
+].map(f=>`
           <div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
             <div style="font-size:22px;flex-shrink:0;width:30px;text-align:center">${f.i}</div>
-      <div style="height:76px"></div>
             <div>
               <div style="font-size:12px;color:var(--goldL);font-weight:700;margin-bottom:2px">${f.n}</div>
               <div style="font-size:11px;color:var(--muted);line-height:1.6">${f.t}</div>
@@ -11175,6 +11169,7 @@ function renderRegles(app){
         </div>
       </div>
 
+      <div style="height:70px"></div>
       </div><!-- /regles-contenu -->
 
       <button onclick="_stopLectureRegles();showTutoriel(true)" style="width:100%;min-height:48px;border-radius:12px;margin-bottom:10px;cursor:pointer;border:1.5px solid rgba(212,175,55,0.45);background:rgba(212,175,55,0.08);color:var(--goldL);font-family:'Cinzel',serif;font-size:14px;font-weight:900">🎓 Revoir le tutoriel</button>
