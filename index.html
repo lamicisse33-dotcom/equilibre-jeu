@@ -1,25 +1,46 @@
 <!DOCTYPE html>
 <!--
-  ⚖️ ÉQUILIBRE — Les 4 Piliers de Vie
-  Version : 3.0 FINALE
-  Date    : 29 juin 2026
-  Créé par: le couple Khalam (Khadi & Lamine)
-  ─────────────────────────────────────
-  MODES : Solo vs IA · Duel 1v1 · Survie · Tournoi
-  IA    : Rara (Débutant) · Maguy (Intermédiaire) · Bolito (Expert)
-  ─────────────────────────────────────
-  CORRECTIONS v3.0 :
-  • Popup avatar (_setAvatar / _validerNom) sans crash
-  • Duel : sélection indépendante J1/J2
-  • Duel : race condition selAttente→choixBase corrigée
-  • Duel : piliers actifs après sélection
-  • Duel : join handler selJ1Done/selJ2Done corrects
-  • Duel : DUEL.adversaire initialisé dans _initGS
-  • Duel : pilierCard(null) guard
-  • Tournoi : guards TOURNOI.actif sur tous setTimeout
-  • Survie : IA Expert forcée
-  • Partage : _partageData + fallbacks iOS
-  • Timer duel : 20s correct
+  ═══════════════════════════════════════════════════════════════════════
+   ⚖️  ÉQUILIBRE — Les 4 Piliers de Vie
+  ═══════════════════════════════════════════════════════════════════════
+
+   © 2026 KHALAM (Khadi & Lamine). Tous droits réservés.
+
+   Le jeu ÉQUILIBRE — son concept, ses règles, ses contenus, ses cartes,
+   ses illustrations, ses textes, son identité visuelle et son code source —
+   a été inventé, conçu et développé de A à Z par le couple KHALAM.
+   Il s'agit d'une création originale, protégée par le droit d'auteur.
+
+   ───────────────────────────────────────────────────────────────────────
+   AVIS DE LICENCE — TOUS DROITS RÉSERVÉS
+   ───────────────────────────────────────────────────────────────────────
+
+   Aucune licence n'est accordée, ni expressément ni implicitement.
+
+   Sont strictement interdites, en tout ou en partie, sans l'autorisation
+   écrite préalable des auteurs :
+     • la reproduction, la copie et le téléchargement à d'autres fins que
+       le simple usage personnel du jeu ;
+     • la modification, l'adaptation, la traduction et la création d'œuvres
+       dérivées ;
+     • la diffusion, la publication, la redistribution et la mise à
+       disposition du public ;
+     • l'exploitation commerciale, sous quelque forme que ce soit ;
+     • la rétro-ingénierie visant à réutiliser tout ou partie du code.
+
+   Le fait que ce code soit lisible par un navigateur ne vaut ni cession de
+   droits, ni renonciation à ceux-ci, ni autorisation de réutilisation.
+
+   Toute violation pourra faire l'objet de poursuites conformément aux lois
+   en vigueur sur la propriété intellectuelle.
+
+   ⚠️  Si vous lisez ce code, vous êtes réputé avoir pris connaissance du
+       présent avis. Pour toute demande d'autorisation : contactez KHALAM.
+
+  ═══════════════════════════════════════════════════════════════════════
+   Marques : « ÉQUILIBRE », « KHALAM », « Les 4 Piliers de Vie ».
+   Contact : via le bouton WhatsApp du jeu.
+  ═══════════════════════════════════════════════════════════════════════
 -->
 <html lang="fr">
 <head>
@@ -231,10 +252,24 @@ html.lite #guide-fab{ animation:none!important; }
 /* Masquer le bouton Guide pendant un bonus (Bonus du Sage / bonus question) — réapparaît à la fin */
 body:has(#sage-bonus-overlay.active) #guide-fab,
 body:has(#destin-bonus-overlay.active) #guide-fab,
-body:has(#bonus-overlay.active) #guide-fab{ display:none!important; }
+/* Le Guide reste accessible pendant les fenêtres : il explique justement ce qu'elles demandent.
+   On le déplace simplement pour ne pas gêner l'interface du bonus Question. */
+body:has(#bonus-overlay.active) #guide-fab{ bottom:auto!important; top:calc(env(safe-area-inset-top,0px) + 10px)!important; }
 /* Le bouton Guide s'efface pendant que le joueur joue (masqué 10 s après chaque toucher) */
-#guide-fab{ transition:opacity .3s ease; }
+#guide-fab{ transition:opacity .45s ease, transform .45s ease; }
+body.guide-touch-hide #guide-fab{ transform:translateY(6px) scale(0.92); }
+/* Bouton flottant « Écouter le mode d'emploi » */
+#btn-lire-regles.btn-lire-actif{ animation:lirePulse 1.5s ease-in-out infinite; }
+@keyframes lirePulse{ 0%,100%{ transform:scale(1); } 50%{ transform:scale(1.06); } }
+html.lite #btn-lire-regles.btn-lire-actif{ animation:none; }
+body:has(#bonus-overlay.active) #btn-lire-regles,
+body:has(#destin-bonus-overlay.active) #btn-lire-regles,
+body:has(#sage-bonus-overlay.active) #btn-lire-regles,
+body:has(#jf-overlay.active) #btn-lire-regles,
+body:has(#special-confirm-overlay.active) #btn-lire-regles{ display:none!important; }
 body.guide-touch-hide #guide-fab{ opacity:0!important; pointer-events:none!important; }
+/* Le tutoriel guide déjà pas à pas : le Sage se retire. */
+body:has(#tuto-overlay) #guide-fab{ display:none!important; }
 
 @media(min-width:900px){
   .btn-gold{padding:16px 0;font-size:16px;border-radius:14px;}
@@ -1588,7 +1623,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v94.62";
+const BUILD_TAG="v94.72";
 // ── Diagnostic : révèle le détail réel des erreurs (un « Script error. » nu = erreur d'un script tiers cross-origin, ex. PeerJS) ──
 window.addEventListener("error", function(ev){
   // Erreur tierce sans détail (ex. Google Analytics gêné par la prévention du tracking) : bruit bénin → on n'encombre pas la console
@@ -4355,6 +4390,8 @@ const DUEL = {
   _reset(){
     if(DUEL.conn){try{DUEL.conn.close();}catch(e){}}
     if(DUEL.peer){try{DUEL.peer.destroy();}catch(e){}}
+    // Nouvelle session réseau : la numérotation et la mémoire des messages repartent de zéro.
+    DUEL._outbox=[]; DUEL._seq=0; DUEL._vus={};
     DUEL.peer=null; DUEL.conn=null;
     DUEL.room=null; DUEL.myId=null; DUEL.isHost=false;
     DUEL.gs=null; DUEL.myTurn=false; DUEL.demo=false;
@@ -4602,7 +4639,9 @@ const DUEL = {
   // ── Initialiser l'état de jeu ──
   _initGS(){
     DUEL._specialesRevelees=false;   // la révélation des cartes légendaires se rejoue à chaque partie
-    DUEL._outbox=[]; DUEL._seq=0; DUEL._vus={};
+    // La numérotation des messages NE repart PAS à zéro : la revanche reste la même session
+    // réseau, et l'adversaire mémorise les numéros déjà reçus. On vide seulement la file.
+    DUEL._outbox=[];
 
     const r=genererDeck24();
     const _deal=dealEquilibre();
@@ -7382,9 +7421,45 @@ function _couperPourVoix(txt, maxLen){
   if(buf.trim()) out.push(buf.trim());
   return out;
 }
+// Le bouton vit sur le <body> : les écrans utilisent .fade (animation avec transform),
+// ce qui crée un bloc conteneur et empêcherait position:fixed de fonctionner.
+function _monterBtnLireRegles(){
+  var b=document.getElementById("btn-lire-regles");
+  if(!b){
+    b=document.createElement("button");
+    b.id="btn-lire-regles";
+    b.onclick=function(){ lireModeEmploi(); };
+    document.body.appendChild(b);
+  }
+  b.style.cssText="position:fixed;right:14px;bottom:calc(env(safe-area-inset-bottom,0px) + 14px);"
+    +"z-index:4500;display:inline-flex;align-items:center;gap:6px;padding:11px 17px;border-radius:26px;"
+    +"cursor:pointer;border:1px solid rgba(240,208,96,0.55);font-family:'Cinzel',serif;font-size:12px;"
+    +"font-weight:800;letter-spacing:0.5px;";
+  _majBtnLireRegles(!!_lectureReglesActive);
+}
+function _demonterBtnLireRegles(){
+  var b=document.getElementById("btn-lire-regles");
+  if(b && b.parentNode) b.parentNode.removeChild(b);
+}
+
 function _majBtnLireRegles(on){
   var b=document.getElementById('btn-lire-regles');
-  if(b) b.innerHTML = on ? "⏹️ Arrêter" : "🔊 Écouter";
+  if(!b) return;
+  b.innerHTML = on ? "⏹️ Arrêter" : "🔊 Écouter";
+  // Lecture en cours : le bouton devient rouge et pulse discrètement.
+  if(on){
+    b.style.background="linear-gradient(135deg,#ff8a7a,#e05555 45%,#a82a2a)";
+    b.style.color="#fff";
+    b.style.borderColor="rgba(255,140,140,0.6)";
+    b.style.boxShadow="0 6px 20px rgba(0,0,0,0.5),0 0 22px rgba(224,85,85,0.7)";
+    b.classList.add("btn-lire-actif");
+  } else {
+    b.style.background="linear-gradient(135deg,#F6E4A0,#F0D060 40%,#D4AF37)";
+    b.style.color="#241703";
+    b.style.borderColor="rgba(240,208,96,0.55)";
+    b.style.boxShadow="0 6px 20px rgba(0,0,0,0.5),0 0 18px rgba(212,175,55,0.45)";
+    b.classList.remove("btn-lire-actif");
+  }
 }
 function _stopLectureRegles(){
   _lectureReglesActive=false; _fileVoixRegles=[];
@@ -7432,8 +7507,53 @@ function lireDefiJour(){
 var _penseeLue=false;
 var PENSEE_JOUR_TXT="L'équilibre n'est pas quelque chose que vous trouvez, c'est quelque chose que vous créez.";
 function lirePenseeJour(){ try{ _parlerGuide("Pensée du jour. "+PENSEE_JOUR_TXT); }catch(_){}}
+// Quelle fenêtre occupe l'écran ? (la plus prioritaire d'abord)
+function _fenetreActive(){
+  try{
+    if(document.getElementById("speciales-reveal")) return "speciales-reveal";
+    var ids=["special-confirm-overlay","jf-overlay","destin-bonus-overlay",
+             "sage-bonus-overlay","bonus-overlay","joker-overlay","duel-suspendu-overlay"];
+    for(var i=0;i<ids.length;i++){
+      var el=document.getElementById(ids[i]);
+      if(el && el.classList && el.classList.contains("active")) return ids[i];
+    }
+  }catch(_){}
+  return null;
+}
+
 function guideTexte(){
   var e=S.ecran;
+
+  // ── 1) La fenêtre affichée prime sur tout le reste ──
+  var f=_fenetreActive();
+  if(f==="speciales-reveal") return {t:"Les cartes légendaires",m:"Dès la <b>manche 6</b>, deux cartes rares rejoignent ta main. La <b>Suprême</b> vaut 50 points sûrs. Le <b>Fantôme</b> vaut de 0 à 100 — un pari. Une seule fois chacune."};
+  if(f==="special-confirm-overlay") return {t:"Jouer, ou attendre ?",m:"Tu ne peux la jouer <b>qu'une fois dans la partie</b>. Joue-la si la manche est décisive, ou remets-la à plus tard : elle revient à la manche suivante. Le compte à rebours est en pause."};
+  if(f==="jf-overlay") return {t:"Le Jackpot des Fantômes",m:"Vous avez tous les deux joué un Fantôme. Les valeurs tournent : <b>la plus haute rafle tout</b> — le score de l'adversaire et son Fantôme. Le perdant tombe à zéro. Rien à faire : regarde le Destin trancher."};
+  if(f==="destin-bonus-overlay"){
+    var enDuel = (typeof BONUS_DESTIN!=="undefined" && BONUS_DESTIN._duel);
+    if(enDuel) return {t:"La Course à l'Équilibre",m:"Vous jouez <b>le même défi en même temps</b>. Pose tes boules pour amener le fléau à l'horizontale. Le poids adverse est caché : <b>lis la balance</b>. Le premier à niveler rafle 100 points — pas de bouton, l'équilibre suffit."};
+    return {t:"Le Verdict de la Balance",m:"Le poids adverse est <b>caché</b> : ne cherche pas de chiffre, regarde pencher le fléau. Ajoute ou retire des boules jusqu'à l'équilibre <b>pile</b>, puis scelle. 100 points. Les boules 👻 révèlent leur poids en se posant. 30 secondes."};
+  }
+  if(f==="sage-bonus-overlay") return {t:"Le Bonus du Sage",m:"Choisis une <b>boule d'élément</b>. Elle décide de ton multiplicateur. Rien à calculer : suis ton instinct."};
+  if(f==="bonus-overlay") return {t:"Les 4 Piliers t'interrogent",m:"Réponds aux questions pour empocher des points. Une bonne réponse rapporte, une erreur ne coûte rien. Prends ton temps."};
+  if(f==="joker-overlay") return {t:"Un joker se joue",m:"Le <b>Brakeur</b> rafle tout le pot. Le <b>Multiplicateur</b> double tes points. Joue-les quand le pot est gros — pas avant."};
+  if(f==="duel-suspendu-overlay") return {t:"Connexion interrompue",m:"La partie <b>n'est pas perdue</b> : elle se rétablit toute seule. Ta carte jouée est conservée et repartira dès le retour. Reste sur cet écran."};
+
+  // ── 2) Phases particulières ──
+  if(S.jeu && S.jeu.phaseEchange) return {t:"Le joker Échange",m:"Touche la carte que tu veux <b>sacrifier</b>. Tu en piocheras une nouvelle à la place."};
+  if(e==="duel_jeu" && typeof DUEL!=="undefined" && DUEL.gs && DUEL.gs.phaseEchange) return {t:"Le joker Échange",m:"Touche la carte que tu veux <b>remplacer</b>. Une nouvelle la remplacera aussitôt."};
+
+  // ── 3) Écrans hors partie ──
+  if(e==="menu") return {t:"Par où commencer ?",m:"<b>Solo</b> pour apprendre contre Rara. <b>Campagne</b> pour affronter les Gardiens et gagner ton rang. <b>Duel</b> pour jouer contre un ami, à distance."};
+  if(e==="regles") return {t:"Le mode d'emploi",m:"Tout le jeu est expliqué ici. Le bouton <b>🔊 Écouter</b>, en bas à droite, te le lit à voix haute pendant que tu fais autre chose."};
+  if(e==="campagne") return {t:"La Voie des Maîtres",m:"Affronte les Gardiens dans l'ordre. Chaque victoire t'apporte leur enseignement et fait <b>monter ton rang</b> : Disciple, Initié, Gardien, Guide, Chef de Cercle."};
+  if(e==="gardien_intro") return {t:"Face au Gardien",m:"Écoute-le. Chaque Gardien a une faiblesse liée à son pilier. Prépare tes cartes fortes : il joue mieux que l'IA ordinaire."};
+  if(e==="duel_menu") return {t:"Jouer à deux",m:"<b>Créer</b> une partie te donne un code à 4 lettres. Ton ami le saisit dans <b>Rejoindre</b>. Vous pouvez être n'importe où."};
+  if(e==="duel_lobby") return {t:"En attente",m:"Transmets ton code à ton adversaire. La partie démarre dès qu'il rejoint. Ne quitte pas cet écran."};
+  if(e==="duel_resultat") return {t:"Fin du duel",m:"<b>Rejouer</b> relance une revanche avec le même adversaire, sans ressaisir de code."};
+  if(e==="tournoi") return {t:"Le Tournoi",m:"Trois adversaires, l'un après l'autre, de plus en plus forts. Ton score se cumule — ménage tes forces."};
+  if(e==="survie") return {t:"Le mode Survie",m:"Une seule vie. L'IA joue en Expert. Chaque manche perdue te rapproche de la fin — joue serré."};
+
   if(e==="selection") return {t:"La sélection",m:"Choisis tes <b>10 meilleures cartes</b> parmi les 12. Garde les plus fortes, et un peu de chaque combo pour pouvoir t'adapter."};
   if(e==="jeu" && S.jeu){
     var p=S.jeu.phase;
@@ -7451,6 +7571,7 @@ function guideTexte(){
     if(dp==="afficheBases") return {t:"Joue ta carte",m:"Pose une carte de ton combo — la <b>plus forte gagne</b> le pot. Garde tes atouts pour les moments décisifs."};
     if(dp==="apresReponses") return {t:"Le verdict",m:"Les cartes sont révélées. La manche suivante s'enchaîne automatiquement."};
   }
+  if(e==="fin") return {t:"La partie est finie",m:"Ton XP et tes badges sont enregistrés. Rejoue pour faire grandir ta série de victoires."};
   return {t:"Le Sage veille",m:"Forme un <b>combo</b> de 2 piliers, joue ta carte, et l'emporte avec la plus forte. Garde tes atouts pour les moments qui comptent."};
 }
 function appelerGuide(){
@@ -7499,16 +7620,29 @@ function selConfirmModalHTML(validerJs, retourJs){
     +'</div></div>';
 }
 let _lastEcran=null,_lastTheme=null;
-// Le bouton Guide s'efface pendant le jeu : masqué à chaque toucher, réapparaît 10 s après le dernier toucher
-(function(){
-  var _gHideTO=null;
-  document.addEventListener("pointerdown", function(e){
-    // Ne pas masquer si on touche le bouton Guide ou sa fenêtre (sinon il ne s'ouvrirait pas)
-    if(e.target && e.target.closest && (e.target.closest("#guide-fab") || e.target.closest("#guide-ov"))) return;
-    document.body.classList.add("guide-touch-hide");
+// Le bouton Guide se fait discret : il n'apparaît qu'après 3 secondes sans toucher.
+// Le moindre contact avec l'écran le fait disparaître aussitôt.
+var _gHideTO=null;
+function _guideVeille(){
+  try{
+    document.body.classList.add("guide-touch-hide");     // caché immédiatement
     if(_gHideTO) clearTimeout(_gHideTO);
-    _gHideTO=setTimeout(function(){ document.body.classList.remove("guide-touch-hide"); }, 10000);
-  }, {passive:true});
+    _gHideTO=setTimeout(function(){
+      document.body.classList.remove("guide-touch-hide"); // 3 s d'immobilité → il paraît
+    }, 3000);
+  }catch(_){}
+}
+(function(){
+  // Caché au démarrage, puis il se montre si le joueur ne touche à rien.
+  try{ document.body.classList.add("guide-touch-hide"); }catch(_){}
+  _guideVeille();
+  ["pointerdown","touchstart","wheel","keydown"].forEach(function(ev){
+    document.addEventListener(ev, function(e){
+      // Toucher le Guide lui-même (ou sa fenêtre) ne le fait pas fuir.
+      if(e.target && e.target.closest && (e.target.closest("#guide-fab") || e.target.closest("#guide-ov"))) return;
+      _guideVeille();
+    }, {passive:true});
+  });
 })();
 var _ecranVoix=null;
 function render(){
@@ -7520,6 +7654,12 @@ function render(){
       _ecranVoix=S.ecran;
     }
   }catch(_){}
+  // Bouton flottant « Écouter » : présent uniquement sur le mode d'emploi.
+  try{
+    if(S.ecran==="regles") _monterBtnLireRegles(); else _demonterBtnLireRegles();
+  }catch(_){}
+  // Changement de page : le Guide repart caché, puis se montre après 3 s d'immobilité.
+  try{ if(typeof _guideVeille==="function") _guideVeille(); }catch(_){}
   appliquerModeLeger();
   // Verrou de défilement : solo "jeu" + phases de JEU du Duel qui ont une zone interne défilante
   // (pas sélection/attente/résultat, qui défilent en pleine page).
@@ -7530,7 +7670,13 @@ function render(){
   document.body.classList.toggle("app-lock",_lock);
   // Bouton GUIDE flottant (le Sage) : présent de la sélection jusqu'à la fin de partie
   try{
-    var _guideOn = ["selection","jeu","duel_jeu","duel_resultat"].indexOf(S.ecran)!==-1;
+    // Le Guide n'apparaît que sur les moments qui comptent : là où le joueur doit décider
+    // (sélection, partie, duel) ou comprendre une fenêtre (bonus, jackpot, carte légendaire,
+    // coupure réseau). Pas dans la navigation — menu, badges, classement, mode d'emploi.
+    var _ecransCles = ["selection","jeu","duel_jeu","duel_resultat","gardien_intro"];
+    var _fenetreCle = (typeof _fenetreActive==="function") ? !!_fenetreActive() : false;
+    var _guideOn = !document.getElementById("tuto-overlay")
+                   && (_fenetreCle || _ecransCles.indexOf(S.ecran)!==-1);
     var _fab = document.getElementById("guide-fab");
     if(_guideOn && !_fab){
       _fab=document.createElement("div");
@@ -9593,6 +9739,20 @@ function renderCampagne(app){
           <div style="font-size:10px;color:var(--muted);margin-top:4px">${prog}/${CAMPAGNE.length} gardiens vaincus</div>
         </div>
         ${fini?'<div style="text-align:center;background:linear-gradient(135deg,rgba(212,175,55,0.15),rgba(69,201,122,0.1));border:1px solid var(--gold);border-radius:16px;padding:16px;margin-bottom:14px"><div style="font-size:34px">🏆</div><div style="font-size:14px;color:var(--goldL);font-weight:900;font-family:Cinzel,serif;margin-top:4px">Voie accomplie !</div><div style="font-size:11px;color:#d8d0e8;margin-top:4px">Tu as trouvé l\'Équilibre. Rejoue les gardiens quand tu veux.</div></div>':''}
+        ${fini?`<div style="background:linear-gradient(160deg,#132a4d,#0a1526);border:1.5px solid rgba(120,180,255,0.5);border-radius:18px;padding:18px 16px;margin-bottom:16px;text-align:center;box-shadow:0 6px 26px rgba(40,90,180,0.35)">
+          <div style="font-size:38px;filter:drop-shadow(0 0 14px rgba(120,180,255,0.6))">⛰️</div>
+          <div style="font-family:Cinzel,serif;font-size:17px;font-weight:900;color:#bcd8ff;letter-spacing:1px;margin-top:4px">LA MONTÉE</div>
+          <div style="font-size:11px;color:#8fa8cc;line-height:1.6;margin:8px 0 14px;font-style:italic">
+            Les quatre Maîtres t'ont tout enseigné. La Voie, elle, ne s'arrête pas.<br>
+            Grimpe de palier en palier — sept manches chacun, l'adversaire toujours plus fort.
+          </div>
+          <div style="font-size:10px;color:var(--muted);letter-spacing:1.5px;margin-bottom:12px">MEILLEUR PALIER ATTEINT : <b style="color:#bcd8ff">${(S.stats&&S.stats.ascensionRecord)||0}</b></div>
+          <button onclick="lancerAscension(1)" style="width:100%;min-height:52px;border-radius:14px;cursor:pointer;border:1px solid rgba(120,180,255,0.6);
+            background:linear-gradient(180deg,rgba(255,255,255,0.22),rgba(255,255,255,0.02) 45%),linear-gradient(180deg,#2a5490,#12294d);
+            color:#eaf3ff;font-family:Cinzel,serif;font-size:15px;font-weight:900;letter-spacing:1px;box-shadow:0 5px 20px rgba(60,110,200,0.45)">
+            ⛰️ Commencer la Montée
+          </button>
+        </div>`:""}
         ${cards}
       </div>
     </div>
@@ -9756,6 +9916,21 @@ function renderApropos(app){
   </div>`;
 }
 
+// ── L'Épreuve du jour : Survie et Tournoi ne sont plus des modes, mais des défis
+//    qui se présentent d'eux-mêmes. Ils alternent d'un jour à l'autre. ──
+function epreuveDuJour(){
+  var j = (typeof _jourNum==="function") ? _jourNum() : Math.floor(Date.now()/86400000);
+  var epreuves=[
+    {cle:"survie", icon:"❤️", nom:"L'Épreuve du Souffle",
+     desc:"Trois vies. L'IA en Expert. Chaque manche perdue te rapproche de la fin.",
+     couleur:"#45c97a", bord:"rgba(39,174,96,0.45)", action:"G.startJeu(true)"},
+    {cle:"tournoi", icon:"🏆", nom:"Le Cercle des Trois",
+     desc:"Trois adversaires à la suite, de plus en plus forts. Ton score se cumule.",
+     couleur:"#F0D060", bord:"rgba(240,208,96,0.45)", action:"TOURNOI.start()"}
+  ];
+  return epreuves[j % epreuves.length];
+}
+
 function renderMenu(app){
   const niv=getNiveau(S.xp),idxN=getIdxNiv(S.xp);
   const xpNext=niv.xpNext||999,xpPct=Math.min(100,Math.round((S.xp-(niv.xpMin||0))/(xpNext-(niv.xpMin||0))*100));
@@ -9823,59 +9998,53 @@ function renderMenu(app){
       <div style="display:flex;flex-direction:column;gap:10px">
         <!-- 3 boutons même taille -->
         <button onclick="G.startJeu(false)" style="
-          width:100%;min-height:60px;border-radius:16px;cursor:pointer;
+          width:100%;min-height:64px;border-radius:16px;cursor:pointer;
           border:1.5px solid #F0D8BE;
           background:linear-gradient(180deg,rgba(255,255,255,0.38),rgba(255,255,255,0.05) 46%,rgba(0,0,0,0.06)),linear-gradient(160deg,#E7C39A,#C08457);
-          color:#3d2800;font-family:Cinzel,serif;font-size:16px;font-weight:900;
+          color:#3d2800;font-family:Cinzel,serif;font-size:17px;font-weight:900;
           letter-spacing:1px;box-shadow:0 5px 22px rgba(192,132,87,0.5),inset 0 1px 0 rgba(255,255,255,0.7);
-          display:flex;align-items:center;justify-content:center;gap:10px;text-shadow:0 1px 0 rgba(255,255,255,0.35)">
-          ⚔️ Solo vs IA
+          display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;text-shadow:0 1px 0 rgba(255,255,255,0.35)">
+          <span>⚔️ JOUER</span>
+          <span style="font-size:9px;font-family:sans-serif;font-weight:600;opacity:0.75;letter-spacing:0.5px">Une partie contre l'IA</span>
         </button>
         <button onclick="S.ecran='campagne';render()" style="
-          width:100%;min-height:60px;border-radius:16px;cursor:pointer;
+          width:100%;min-height:64px;border-radius:16px;cursor:pointer;
           border:1px solid rgba(155,89,182,0.55);
           background:linear-gradient(180deg,rgba(255,255,255,0.28),rgba(255,255,255,0.04) 44%,rgba(0,0,0,0.12)),linear-gradient(180deg,#3a2358,#1c0f30);
-          color:#fff;font-family:Cinzel,serif;font-size:16px;font-weight:900;
+          color:#fff;font-family:Cinzel,serif;font-size:17px;font-weight:900;
           letter-spacing:1px;box-shadow:0 5px 20px rgba(110,60,170,0.4),inset 0 1px 0 rgba(255,255,255,0.28);
-          display:flex;align-items:center;justify-content:center;gap:10px;text-shadow:0 1px 3px rgba(0,0,0,0.4)">
-          🗺️ Campagne <span style="font-size:9px;font-family:sans-serif;opacity:0.9">${(S.campagne?S.campagne.progres:0)}/${CAMPAGNE.length} gardiens</span>
+          display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;text-shadow:0 1px 3px rgba(0,0,0,0.4)">
+          <span>🕯️ LA VOIE</span>
+          <span style="font-size:9px;font-family:sans-serif;font-weight:600;opacity:0.85;letter-spacing:0.5px">
+            ${getRang().icon} ${getRang().nom} · ${(S.campagne?S.campagne.progres:0)}/${CAMPAGNE.length} gardiens${((S.campagne?S.campagne.progres:0)>=CAMPAGNE.length)?" · La Montée ouverte":""}
+          </span>
         </button>
         <button onclick="S.ecran='duel_menu';render()" style="
-          width:100%;min-height:60px;border-radius:16px;cursor:pointer;
+          width:100%;min-height:64px;border-radius:16px;cursor:pointer;
           border:1px solid rgba(231,76,60,0.55);
           background:linear-gradient(180deg,rgba(255,255,255,0.28),rgba(255,255,255,0.04) 44%,rgba(0,0,0,0.12)),linear-gradient(180deg,#5a1626,#2e0b15);
-          color:#fff;font-family:Cinzel,serif;font-size:16px;font-weight:900;
+          color:#fff;font-family:Cinzel,serif;font-size:17px;font-weight:900;
           letter-spacing:1px;box-shadow:0 5px 20px rgba(200,50,45,0.4),inset 0 1px 0 rgba(255,255,255,0.28);
-          display:flex;align-items:center;justify-content:center;gap:10px;text-shadow:0 1px 3px rgba(0,0,0,0.4)">
-          ⚔️ DUEL 1v1
+          display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;text-shadow:0 1px 3px rgba(0,0,0,0.4)">
+          <span>⚡ DUEL</span>
+          <span style="font-size:9px;font-family:sans-serif;font-weight:600;opacity:0.75;letter-spacing:0.5px">Contre un ami, à distance</span>
         </button>
-        <button onclick="G.startJeu(true)" style="
-          width:100%;min-height:60px;border-radius:16px;cursor:pointer;
-          border:1px solid rgba(39,174,96,0.55);
-          background:linear-gradient(180deg,rgba(255,255,255,0.28),rgba(255,255,255,0.04) 44%,rgba(0,0,0,0.12)),linear-gradient(180deg,#0e4030,#082017);
-          color:#fff;font-family:Cinzel,serif;font-size:16px;font-weight:900;
-          letter-spacing:1px;box-shadow:0 5px 20px rgba(20,120,70,0.4),inset 0 1px 0 rgba(255,255,255,0.28);
-          display:flex;align-items:center;justify-content:center;gap:10px;text-shadow:0 1px 3px rgba(0,0,0,0.4)">
-          ❤️ Mode Survie
-        </button>
-        <button onclick="TOURNOI.start()" style="
-          width:100%;min-height:54px;border-radius:14px;cursor:pointer;
-          border:1px solid rgba(240,208,96,0.6);
-          background:linear-gradient(180deg,rgba(255,255,255,0.35),rgba(255,255,255,0.05) 45%),linear-gradient(135deg,#F0D060,#D4AF37 70%,#B8912E);
-          color:#241703;font-family:Cinzel,serif;font-size:14px;font-weight:700;
-          letter-spacing:1px;box-shadow:0 5px 20px rgba(212,175,55,0.4),inset 0 1px 0 rgba(255,255,255,0.6);
-          display:flex;align-items:center;justify-content:center;gap:8px;text-shadow:0 1px 0 rgba(255,255,255,0.3)">
-          🏆 Mode Tournoi <span style="font-size:9px;font-family:sans-serif;opacity:0.9">3 manches · Classement</span>
-        </button>
-        <button onclick="lancerAscension(1)" style="
-          width:100%;min-height:54px;border-radius:14px;cursor:pointer;
-          border:1px solid rgba(120,180,255,0.55);
-          background:linear-gradient(180deg,rgba(255,255,255,0.28),rgba(255,255,255,0.04) 44%,rgba(0,0,0,0.12)),linear-gradient(180deg,#1a3a6b,#0c1d3a);
-          color:#fff;font-family:Cinzel,serif;font-size:14px;font-weight:800;
-          letter-spacing:1px;box-shadow:0 5px 20px rgba(60,110,200,0.4),inset 0 1px 0 rgba(255,255,255,0.28);
-          display:flex;align-items:center;justify-content:center;gap:8px;text-shadow:0 1px 3px rgba(0,0,0,0.4)">
-          ⛰️ Mode Ascension <span style="font-size:9px;font-family:sans-serif;opacity:0.9">Record : ${(S.stats&&S.stats.ascensionRecord)||0}</span>
-        </button>
+
+        ${(function(){
+          var e=epreuveDuJour();
+          return '<div style="width:100%;margin-top:6px;border-radius:16px;padding:13px 14px;cursor:pointer;'
+            +'border:1px solid '+e.bord+';background:linear-gradient(160deg,rgba(20,12,36,0.9),rgba(8,5,16,0.95));'
+            +'box-shadow:0 4px 18px rgba(0,0,0,0.45);display:flex;align-items:center;gap:12px;text-align:left" '
+            +'onclick="'+e.action+'">'
+            +'<div style="font-size:28px;flex-shrink:0">'+e.icon+'</div>'
+            +'<div style="flex:1;min-width:0">'
+            +'<div style="font-size:9px;letter-spacing:2px;color:var(--muted);text-transform:uppercase">Épreuve du jour</div>'
+            +'<div style="font-family:Cinzel,serif;font-size:14px;font-weight:900;color:'+e.couleur+';margin-top:1px">'+e.nom+'</div>'
+            +'<div style="font-size:10px;color:#b9aecd;margin-top:2px;line-height:1.4">'+e.desc+'</div>'
+            +'</div>'
+            +'<div style="font-size:20px;color:'+e.couleur+';opacity:0.7">›</div>'
+            +'</div>';
+        })()}
       </div>
     </div>
 
@@ -10682,8 +10851,6 @@ function renderRegles(app){
   <div class="screen fade">
     <div class="w100" style="padding-bottom:24px;position:relative">
 
-      <!-- Bouton lecture à voix haute : HAUT-GAUCHE (lit tout, depuis l'en-tête) -->
-      <button id="btn-lire-regles" onclick="lireModeEmploi()" style="position:absolute;left:10px;top:14px;z-index:5;display:inline-flex;align-items:center;gap:6px;padding:9px 15px;border-radius:22px;cursor:pointer;border:1px solid rgba(240,208,96,0.55);background:linear-gradient(135deg,#F6E4A0,#F0D060 40%,#D4AF37);color:#241703;font-family:'Cinzel',serif;font-size:12px;font-weight:800;letter-spacing:0.5px;box-shadow:0 3px 12px rgba(212,175,55,0.4)">🔊 Écouter</button>
       <!-- Retour : HAUT-DROITE -->
       <button class="btn-ghost" style="position:absolute;right:6px;top:14px;z-index:5;width:auto;padding:8px 14px" onclick="_stopLectureRegles();S.ecran='menu';render()">←</button>
 
@@ -10717,10 +10884,11 @@ function renderRegles(app){
       <div style="font-size:13px;color:var(--gold);font-weight:700;font-family:'Cinzel',serif;margin-bottom:10px;letter-spacing:1px">🎮 LES 6 MODES DE JEU</div>
       <div class="card" style="margin-bottom:14px">
         ${[
-          {i:"⚔️",n:"Solo vs IA",c:"var(--goldL)",t:"Affrontez l'IA sur 12 manches (3 niveaux : Rara, Maguy, Bolito). Enchaînez les victoires pour faire grandir votre <strong style='color:var(--goldL)'>série 🔥</strong> — record sauvegardé, paliers récompensés en XP. Environ une partie sur quatre tire un <strong style='color:var(--goldL)'>modificateur</strong> surprise, annoncé à voix haute : Manche du Destin (×2), Pilier Maudit (½), Pot Gonflé ou Brouillard."},
-          {i:"🗺️",n:"Mode Campagne",c:"#b06bff",t:"« La Voie des 4 Piliers » : <strong style='color:var(--goldL)'>15 gardiens</strong> en 3 actes — L'Éveil, L'Épreuve, L'Ascension. Chaque gardien est un <strong style='color:var(--goldL)'>temple</strong> gardé par 4 disciples (combats de 10 manches) qui vous <strong style='color:var(--goldL)'>défient à voix haute</strong> avant chaque affrontement. Battez les 4 pour affronter le chef (12 manches), qui impose souvent son <strong style='color:var(--goldL)'>épreuve</strong> (Jackpot, Passion, Endurance, Aveugle…). Au sommet : le Maître Suprême et son Épreuve Ultime."},
+          {i:"⚔️",n:"JOUER",c:"var(--goldL)",t:"Une partie contre l'IA sur 12 manches (3 niveaux : Rara, Maguy, Bolito). La porte d'entrée, pour dix minutes de jeu."},
+          {i:"🕯️",n:"LA VOIE",c:"#b06bff",t:"Le cœur du jeu : <strong style='color:var(--goldL)'>15 gardiens</strong> en 3 actes. Chaque victoire livre l'enseignement d'un Maître et fait grandir ton <strong style='color:var(--goldL)'>rang</strong> — Disciple, Initié, Gardien, Guide, Chef de Cercle. Une fois la Voie accomplie, <strong style='color:#bcd8ff'>La Montée</strong> s'ouvre : des paliers sans fin, l'adversaire toujours plus fort."},
           {i:"❤️",n:"Mode Survie",c:"#e05555",t:"Parties enchainées sans limite. Vous avez 3 vies — chaque défaite de manche en coûte une. L'IA joue toujours en mode Expert. Après chaque partie, vous <strong style='color:var(--goldL)'>continuez avec vos vies restantes</strong> ; le run ne repart à 3 vies qu'après un Game Over (0 vie). Battez votre propre record !"},
           {i:"⚔️",n:"Duel 1v1 en ligne",c:"#45c97a",t:"Affrontez un vrai adversaire en temps réel (2 téléphones). L'hôte crée un duel → un code de 4 lettres est généré → l'invité le saisit → la partie démarre. Un deck de 24 cartes Réponses est tiré (parmi les 48 du jeu) puis réparti équitablement — 12 chacun. Chat intégré 💬, reconnexion automatique en cas de coupure, et revanche en un clic. Les manches s'enchaînent automatiquement."},
+          {i:"🎯",n:"L'ÉPREUVE DU JOUR",c:"#45c97a",t:"Chaque jour, un défi se présente de lui-même sur l'accueil : l'<strong style='color:#45c97a'>Épreuve du Souffle</strong> (trois vies, IA en Expert) ou le <strong style='color:var(--goldL)'>Cercle des Trois</strong> (trois adversaires à la suite). On ne les cherche pas dans un menu : ils viennent à toi."},
           {i:"🏆",n:"Mode Tournoi",c:"#f1c40f",t:"Enchaînez 3 parties contre les 3 IA de difficulté croissante — Rara, puis Maguy, puis Bolito. Vos scores s'additionnent dans un classement final. Le vrai test de régularité !"},
           {i:"⛰️",n:"Mode Ascension",c:"#6ab0ff",t:"Grimpez palier par palier, sans fin ! Chaque palier est une partie courte de 7 manches. La difficulté monte : Débutant → Intermédiaire → Expert, puis un <strong style='color:var(--goldL)'>modificateur par palier</strong> dès le 4ᵉ et une <strong style='color:var(--goldL)'>avance de l'IA</strong> qui grandit au-delà du 8ᵉ. Votre score = le palier atteint, avec un record à battre. Le mode « encore une partie »."},
         ].map(m=>`
@@ -10900,6 +11068,7 @@ function renderRegles(app){
         ].map(f=>`
           <div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
             <div style="font-size:22px;flex-shrink:0;width:30px;text-align:center">${f.i}</div>
+      <div style="height:76px"></div>
             <div>
               <div style="font-size:12px;color:var(--goldL);font-weight:700;margin-bottom:2px">${f.n}</div>
               <div style="font-size:11px;color:var(--muted);line-height:1.6">${f.t}</div>
@@ -10950,6 +11119,24 @@ function renderRegles(app){
           • <strong style="color:var(--goldL)">Lam</strong>, inspiré de Lamine.<br><br>
           Au-delà de cette fusion symbolique, Khalam évoque également le <em>xalam</em>, un instrument traditionnel d'Afrique de l'Ouest, symbole de sagesse, d'harmonie, de transmission et de richesse culturelle.<br><br>
           À travers ce nom, le couple a souhaité incarner les valeurs qui fondent le jeu Équilibre : l'amour, l'unité, le dialogue, la réflexion et la recherche d'un équilibre durable entre les dimensions essentielles de la vie.
+        </div>
+      </div>
+
+
+      <!-- Propriété intellectuelle -->
+      <div style="font-size:13px;color:var(--gold);font-weight:700;font-family:'Cinzel',serif;margin:22px 0 10px;letter-spacing:1px">© PROPRIÉTÉ INTELLECTUELLE</div>
+      <div style="background:linear-gradient(160deg,rgba(26,13,61,0.85),rgba(10,6,20,0.9));border:1.5px solid rgba(212,175,55,0.4);border-radius:16px;padding:16px 15px;position:relative;overflow:hidden">
+        <div style="position:absolute;right:-12px;top:-12px;font-size:64px;opacity:0.06">⚖️</div>
+        <div style="font-size:12px;color:#e8e0f5;line-height:1.75;position:relative;z-index:1">
+          Le jeu <strong style="color:var(--goldL);font-family:'Cinzel',serif;letter-spacing:0.5px">ÉQUILIBRE</strong> a été inventé, conçu et développé de A à Z par le <strong style="color:var(--goldL)">couple KHALAM</strong>.
+          <br><br>
+          L'ensemble du concept, des règles, des contenus, des illustrations et de tous les éléments qui composent ce jeu est une <strong style="color:var(--goldL)">création originale</strong>.
+          <br><br>
+          Ce jeu est protégé par le <strong style="color:var(--goldL)">droit d'auteur</strong>. Toute reproduction, copie, modification, adaptation, diffusion ou exploitation, totale ou partielle, sans l'autorisation écrite préalable des auteurs, est strictement interdite et pourra faire l'objet de poursuites conformément aux lois en vigueur sur la propriété intellectuelle.
+        </div>
+        <div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(212,175,55,0.25);text-align:center;
+          font-family:'Cinzel',serif;font-size:12px;font-weight:800;color:var(--goldL);letter-spacing:1.5px">
+          © TOUS DROITS RÉSERVÉS
         </div>
       </div>
 

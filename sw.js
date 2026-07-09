@@ -1,9 +1,18 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   ⚖️  ÉQUILIBRE — Les 4 Piliers de Vie · Service Worker
+   © 2026 KHALAM (Khadi & Lamine). Tous droits réservés.
+
+   Création originale protégée par le droit d'auteur. Aucune licence n'est
+   accordée. Reproduction, modification, diffusion ou exploitation, totale
+   ou partielle, interdites sans autorisation écrite préalable des auteurs.
+   ═══════════════════════════════════════════════════════════════════════ */
+
 /* Service Worker — Équilibre (PWA)
    - Rend l'app installable (iPhone/Android) et jouable hors-ligne.
    - HTML : réseau d'abord (tes mises à jour s'appliquent en ligne), repli cache hors-ligne.
    - Icônes/manifeste : cache d'abord.
    Pense à changer VERSION quand tu déploies une nouvelle version du jeu. */
-const VERSION = "equilibre-v94-62";
+const VERSION = "equilibre-v94-72";
 const SHELL = [
   "./",
   "./index.html",
