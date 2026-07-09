@@ -252,9 +252,11 @@ html.lite #guide-fab{ animation:none!important; }
 /* Masquer le bouton Guide pendant un bonus (Bonus du Sage / bonus question) — réapparaît à la fin */
 body:has(#sage-bonus-overlay.active) #guide-fab,
 body:has(#destin-bonus-overlay.active) #guide-fab,
-/* Le Guide reste accessible pendant les fenêtres : il explique justement ce qu'elles demandent.
-   On le déplace simplement pour ne pas gêner l'interface du bonus Question. */
-body:has(#bonus-overlay.active) #guide-fab{ bottom:auto!important; top:calc(env(safe-area-inset-top,0px) + 10px)!important; }
+body:has(#bonus-overlay.active) #guide-fab,
+body:has(#jf-overlay.active) #guide-fab,
+body:has(#joker-overlay.active) #guide-fab,
+body:has(#special-confirm-overlay.active) #guide-fab,
+body:has(#deal-overlay.active) #guide-fab{ display:none!important; }
 /* Le bouton Guide s'efface pendant que le joueur joue (masqué 10 s après chaque toucher) */
 #guide-fab{ transition:opacity .45s ease, transform .45s ease; }
 body.guide-touch-hide #guide-fab{ transform:translateY(6px) scale(0.92); }
@@ -1272,7 +1274,7 @@ html.lite .bd-ball{transition:opacity 0.2s ease;}
         <div class="sb-boule-glow"></div>
         <div class="sb-boule-inner"><div class="sb-texture-rotative"></div><div class="sb-boule-shine"></div></div>
         <div class="sb-boule-points-overlay"></div>
-        <span class="sb-icone-fixe">🌿</span>
+        <span class="sb-icone-fixe" id="sb-icone-fixe"></span>
         <span class="sb-boule-multi-badge"></span>
       </div>
       <div class="sb-boule sb-b-feu" data-pts="" data-elem="Feu">
@@ -1385,10 +1387,10 @@ html.lite .bd-ball{transition:opacity 0.2s ease;}
     <div id="bd-fond"></div>
 
     <!-- Lueurs des 4 piliers -->
-    <div class="bd-pillar-glow" id="bd-glow-spi" style="color:#9B59B6">🕯️</div>
-    <div class="bd-pillar-glow" id="bd-glow-amo" style="color:#E74C3C">❤️</div>
-    <div class="bd-pillar-glow" id="bd-glow-san" style="color:#27AE60">🌿</div>
-    <div class="bd-pillar-glow" id="bd-glow-arg" style="color:#F39C12">🪙</div>
+    <div class="bd-pillar-glow" id="bd-glow-spi" style="color:#9B59B6"></div>
+    <div class="bd-pillar-glow" id="bd-glow-amo" style="color:#E74C3C"></div>
+    <div class="bd-pillar-glow" id="bd-glow-san" style="color:#27AE60"></div>
+    <div class="bd-pillar-glow" id="bd-glow-arg" style="color:#F39C12"></div>
 
     <div id="bd-shock"></div>
     <div id="bd-flash"></div>
@@ -1623,7 +1625,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v94.72";
+const BUILD_TAG="v94.78";
 // ── Diagnostic : révèle le détail réel des erreurs (un « Script error. » nu = erreur d'un script tiers cross-origin, ex. PeerJS) ──
 window.addEventListener("error", function(ev){
   // Erreur tierce sans détail (ex. Google Analytics gêné par la prévention du tracking) : bruit bénin → on n'encombre pas la console
@@ -1794,12 +1796,22 @@ const NIVEAUX=[
 
 // ── La Voie des Quatre Maîtres : rangs narratifs (liés aux Maîtres vaincus) ──
 const RANGS=[
-  {min:0, nom:"Disciple",       icon:"🕯️", desc:"Tu apprends les combinaisons."},
-  {min:1, nom:"Initié",         icon:"📖", desc:"Un Maître t'a reconnu."},
-  {min:3, nom:"Gardien",        icon:"🛡️", desc:"Deux piliers sont sous ta garde."},
-  {min:5, nom:"Guide",          icon:"🧭", desc:"Les quatre Maîtres t'ont enseigné."},
-  {min:15,nom:"Chef de Cercle", icon:"⚖️", desc:"Tu as tenu l'équilibre sous la pression."},
+  {min:0, nom:"Disciple",       emb:"Spiritualité", desc:"Tu apprends les combinaisons."},
+  {min:1, nom:"Initié",         emb:"Santé",        desc:"Un Maître t'a reconnu."},
+  {min:3, nom:"Gardien",        emb:"Amour",        desc:"Deux piliers sont sous ta garde."},
+  {min:5, nom:"Guide",          emb:"Argent",       desc:"Les quatre Maîtres t'ont enseigné."},
+  {min:15,nom:"Chef de Cercle", emb:"tous",         desc:"Tu as tenu l'équilibre sous la pression."},
 ];
+
+// L'emblème du rang : celui de son pilier — et les quatre réunis pour le Chef de Cercle.
+function rangEmblemeHTML(r, size){
+  r=r||getRang(); size=size||14;
+  if(r.emb==="tous"){
+    return ["Spiritualité","Amour","Santé","Argent"]
+      .map(function(x){ return emblemeMini(x, Math.round(size*0.72)); }).join("");
+  }
+  return emblemeMini(r.emb, size);
+}
 function getRang(){
   var p=(S.campagne&&S.campagne.progres)||0;
   var r=RANGS[0];
@@ -3096,6 +3108,8 @@ const BONUS_SAGE = {
 
   launch(){
     AUDIO.init();
+    try{ var _sbi=document.getElementById("sb-icone-fixe");
+      if(_sbi && typeof emblemeMini==="function") _sbi.innerHTML=emblemeMini("Santé",30); }catch(_){}
     var ov=document.getElementById("sage-bonus-overlay");
     if(!ov) return;
     ov.classList.add("active");
@@ -3504,6 +3518,8 @@ const JACKPOT_FANTOME = {
       if(t) t.classList.add("show");
       if(sub) sub.textContent="Deux doutes se sont regard\u00e9s. Un seul restera debout.";
       try{ if(AUDIO.vibrer) AUDIO.vibrer([0,40,60,40]); }catch(e){}
+    
+      self._dire("Les deux Fant\u00f4mes se sont rencontr\u00e9s. Le Jackpot des Fant\u00f4mes !");
     });
     // ── Beat 2 : les slots tournent (1.8 s) ──
     this._after(1800, function(){ self._spin(); if(sub) sub.textContent="Les Fant\u00f4mes r\u00e9v\u00e8lent leur pouvoir\u2026"; });
@@ -3523,6 +3539,14 @@ const JACKPOT_FANTOME = {
     });
 
     this._ensureBind();
+  },
+
+  // Parle si le joueur a activé la voix (même garde-fou que partout ailleurs).
+  _dire(txt){
+    try{
+      if(typeof S!=="undefined" && !S.voixGuide) return;
+      if(typeof _parlerGuide==="function") _parlerGuide(txt, {masc:true, rate:0.98});
+    }catch(_){}
   },
 
   _spin(){
@@ -3560,6 +3584,10 @@ const JACKPOT_FANTOME = {
   },
 
   _payout(data){
+    // Le verdict est prononc\u00e9 \u00e0 voix haute.
+    this._dire(data.iWin
+      ? ("Jackpot ! Tu rafles tout : " + data.butin + " points.")
+      : ("L'adversaire rafle tout. Ton score tombe \u00e0 z\u00e9ro."));
     var ban=document.getElementById("jf-banner");
     if(ban){ ban.textContent = data.iWin ? "\uD83C\uDFB0 TU RAFLES TOUT ! \uD83C\uDFB0" : "L'adversaire rafle tout\u2026"; ban.classList.add("show"); }
     var pay=document.getElementById("jf-payout");
@@ -3755,6 +3783,14 @@ const BONUS_DESTIN = {
   _swirlPiliers(){
     var stage=document.getElementById("destin-stage");
     if(!stage) return;
+    // Les lueurs portent les emblèmes du jeu, plus les anciennes icônes.
+    try{
+      [["bd-glow-spi","Spiritualité"],["bd-glow-amo","Amour"],
+       ["bd-glow-san","Santé"],["bd-glow-arg","Argent"]].forEach(function(pair){
+        var el=document.getElementById(pair[0]);
+        if(el && typeof emblemeMini==="function") el.innerHTML=emblemeMini(pair[1],46);
+      });
+    }catch(_){}
     var w=stage.clientWidth||360, h=stage.clientHeight||640;
     var cx=w*0.5-37, cy=h*0.42-37;
     var corners=[
@@ -6688,7 +6724,7 @@ function showCardDealAnimation(cartes, callback){
           card.style.setProperty("--glow-col",info1.col+"66");
           card.innerHTML=""
             +"<div style='text-align:center;padding:4px'>"
-            +"<div style='font-size:clamp(14px,4vw,20px)'>"+info1.icon+"</div>"
+            +"<div style='font-size:clamp(14px,4vw,20px);line-height:1'>"+((typeof emblemeMini==="function")?emblemeMini(p1,18):info1.icon)+"</div>"
             +"<div style='font-size:clamp(10px,3vw,14px);font-weight:900;color:"+ptColor+";font-family:Cinzel,serif;text-shadow:0 0 8px "+ptColor+"'>"+carte.pts+"</div>"
             +"<div style='font-size:clamp(7px,2vw,9px);color:rgba(255,255,255,0.5);margin-top:1px'>pts</div>"
             +"</div>";
@@ -6844,7 +6880,7 @@ function renderDuelJeu(app){
     return;
   }
 
-  var html='<div style="min-height:100dvh;padding:min(12px,2vw);display:flex;flex-direction:column;gap:min(10px,1.5vw);max-width:var(--max-w);margin:0 auto;width:100%">'
+  var html='<div style="min-height:100dvh;padding:calc(env(safe-area-inset-top,0px) + min(12px,2vw)) min(12px,2vw) calc(env(safe-area-inset-bottom,0px) + min(12px,2vw));display:flex;flex-direction:column;gap:min(10px,1.5vw);max-width:var(--max-w);margin:0 auto;width:100%">'
     // En-tête (même style que le solo)
     +'<div style="display:flex;justify-content:space-between;align-items:center">'
     +'<div style="font-size:10px;color:'+advCoul+';font-weight:700">'+DUEL.adversaire.icon+' '+advNom.slice(0,9)+' · Duel</div>'
@@ -6934,7 +6970,7 @@ function renderDuelJeu(app){
     }
 
     // Label action
-    var label2=phase==="choixBase"?"⚔️ Choisissez votre pilier":"↩️ Répondez au pilier "+stB1.icon+" "+gs.b1;
+    var label2=phase==="choixBase"?"⚔️ Choisissez votre pilier":"↩️ Répondez au pilier "+emblemeMini(gs.b1,15)+" "+gs.b1;
     html+='<div style="text-align:center;margin-bottom:10px;font-family:Cinzel,serif;font-size:13px;font-weight:900;color:'
       +(DUEL.myTurn?'var(--goldL)':'var(--muted)')+'">'+label2+'</div>';
 
@@ -6943,7 +6979,7 @@ function renderDuelJeu(app){
       html+='<div style="text-align:center;margin:-2px 0 12px;padding:10px 12px;border-radius:12px;'
         +'background:linear-gradient(135deg,'+stB1.accent+'26,'+stB1.accent+'11);border:1px solid '+stB1.accent+'66">'
         +'<div style="font-size:13px;font-weight:900;color:'+stB1.accent+';font-family:Cinzel,serif;letter-spacing:0.5px">'
-        +'🎯 COULEUR IMPOSÉE : '+stB1.icon+' '+(gs.b1||"").toUpperCase()+'</div>'
+        +'🎯 COULEUR IMPOSÉE : '+emblemeMini(gs.b1,14)+' '+(gs.b1||"").toUpperCase()+'</div>'
         +'<div style="font-size:10px;color:var(--muted);margin-top:3px">Tu dois inclure ce pilier — sinon tu passes.</div>'
         +'</div>';
     }
@@ -7670,13 +7706,15 @@ function render(){
   document.body.classList.toggle("app-lock",_lock);
   // Bouton GUIDE flottant (le Sage) : présent de la sélection jusqu'à la fin de partie
   try{
-    // Le Guide n'apparaît que sur les moments qui comptent : là où le joueur doit décider
-    // (sélection, partie, duel) ou comprendre une fenêtre (bonus, jackpot, carte légendaire,
-    // coupure réseau). Pas dans la navigation — menu, badges, classement, mode d'emploi.
-    var _ecransCles = ["selection","jeu","duel_jeu","duel_resultat","gardien_intro"];
-    var _fenetreCle = (typeof _fenetreActive==="function") ? !!_fenetreActive() : false;
+    // Le Guide n'apparaît que là où le joueur doit DÉCIDER : sélection, partie, duel,
+    // face à un Gardien. Jamais pendant un bonus (le jeu se déroule tout seul),
+    // ni sur un écran de score (il n'y a plus rien à décider), ni dans la navigation.
+    var _ecransCles = ["selection","jeu","duel_jeu","gardien_intro"];
+    var _surScore = (S.jeu && S.jeu.phase==="fin");
+    var _fenetreOuverte = (typeof _fenetreActive==="function") ? !!_fenetreActive() : false;
     var _guideOn = !document.getElementById("tuto-overlay")
-                   && (_fenetreCle || _ecransCles.indexOf(S.ecran)!==-1);
+                   && !_fenetreOuverte && !_surScore
+                   && _ecransCles.indexOf(S.ecran)!==-1;
     var _fab = document.getElementById("guide-fab");
     if(_guideOn && !_fab){
       _fab=document.createElement("div");
@@ -9229,7 +9267,7 @@ const G={
                 "Guide":"Les quatre t'ont enseigné. On te suit, désormais. Prends garde à où tu marches.",
                 "Chef de Cercle":"Tu as tenu l'équilibre. Nul ne t'a donné ce titre : tu l'as porté jusqu'ici."
               }[_rangApres.nom];
-              setTimeout(function(){ showToast(_rangApres.icon+" "+_rangApres.nom.toUpperCase()+" — "+(_msgRang||""), "win", 5200); }, 1400);
+              setTimeout(function(){ showToast(_rangApres.nom.toUpperCase()+" — "+(_msgRang||""), "win", 5200); }, 1400);
             }
           }catch(_){}
           var _fini=S.campagne.progres>=CAMPAGNE.length;
@@ -9958,7 +9996,7 @@ function renderMenu(app){
               ${S.nom||"Joueur"}
             </div>
             <div style="font-size:10px;color:var(--muted)">${niv.icon||"⭐"} ${niv.label||"Novice"} · ${S.xp} XP</div>
-            <div style="font-size:10px;color:var(--goldL);letter-spacing:0.5px;margin-top:2px;font-family:'Cinzel',serif;font-weight:700">${getRang().icon} ${getRang().nom}</div>
+            <div style="font-size:10px;color:var(--goldL);letter-spacing:0.5px;margin-top:2px;font-family:'Cinzel',serif;font-weight:700;display:flex;align-items:center;gap:4px">${rangEmblemeHTML(getRang(),13)}<span>${getRang().nom}</span></div>
           </div>
         </div>
         <div style="text-align:right">
@@ -10014,9 +10052,9 @@ function renderMenu(app){
           color:#fff;font-family:Cinzel,serif;font-size:17px;font-weight:900;
           letter-spacing:1px;box-shadow:0 5px 20px rgba(110,60,170,0.4),inset 0 1px 0 rgba(255,255,255,0.28);
           display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;text-shadow:0 1px 3px rgba(0,0,0,0.4)">
-          <span>🕯️ LA VOIE</span>
-          <span style="font-size:9px;font-family:sans-serif;font-weight:600;opacity:0.85;letter-spacing:0.5px">
-            ${getRang().icon} ${getRang().nom} · ${(S.campagne?S.campagne.progres:0)}/${CAMPAGNE.length} gardiens${((S.campagne?S.campagne.progres:0)>=CAMPAGNE.length)?" · La Montée ouverte":""}
+          <span>LA VOIE</span>
+          <span style="font-size:9px;font-family:sans-serif;font-weight:600;opacity:0.85;letter-spacing:0.5px;display:inline-flex;align-items:center;gap:4px;justify-content:center">
+            ${rangEmblemeHTML(getRang(),13)}<span>${getRang().nom} · ${(S.campagne?S.campagne.progres:0)}/${CAMPAGNE.length} gardiens${((S.campagne?S.campagne.progres:0)>=CAMPAGNE.length)?" · La Montée ouverte":""}</span>
           </span>
         </button>
         <button onclick="S.ecran='duel_menu';render()" style="
@@ -10881,16 +10919,13 @@ function renderRegles(app){
       </div>
 
       <!-- Modes de jeu -->
-      <div style="font-size:13px;color:var(--gold);font-weight:700;font-family:'Cinzel',serif;margin-bottom:10px;letter-spacing:1px">🎮 LES 6 MODES DE JEU</div>
+      <div style="font-size:13px;color:var(--gold);font-weight:700;font-family:'Cinzel',serif;margin-bottom:10px;letter-spacing:1px">🎮 LES MODES DE JEU</div>
       <div class="card" style="margin-bottom:14px">
         ${[
           {i:"⚔️",n:"JOUER",c:"var(--goldL)",t:"Une partie contre l'IA sur 12 manches (3 niveaux : Rara, Maguy, Bolito). La porte d'entrée, pour dix minutes de jeu."},
-          {i:"🕯️",n:"LA VOIE",c:"#b06bff",t:"Le cœur du jeu : <strong style='color:var(--goldL)'>15 gardiens</strong> en 3 actes. Chaque victoire livre l'enseignement d'un Maître et fait grandir ton <strong style='color:var(--goldL)'>rang</strong> — Disciple, Initié, Gardien, Guide, Chef de Cercle. Une fois la Voie accomplie, <strong style='color:#bcd8ff'>La Montée</strong> s'ouvre : des paliers sans fin, l'adversaire toujours plus fort."},
-          {i:"❤️",n:"Mode Survie",c:"#e05555",t:"Parties enchainées sans limite. Vous avez 3 vies — chaque défaite de manche en coûte une. L'IA joue toujours en mode Expert. Après chaque partie, vous <strong style='color:var(--goldL)'>continuez avec vos vies restantes</strong> ; le run ne repart à 3 vies qu'après un Game Over (0 vie). Battez votre propre record !"},
+          {i:emblemeMini("Spiritualité",28),n:"LA VOIE",c:"#b06bff",t:"Le cœur du jeu : <strong style='color:var(--goldL)'>15 gardiens</strong> en 3 actes. Chaque victoire livre l'enseignement d'un Maître et fait grandir ton <strong style='color:var(--goldL)'>rang</strong> — Disciple, Initié, Gardien, Guide, Chef de Cercle. Une fois la Voie accomplie, <strong style='color:#bcd8ff'>La Montée</strong> s'ouvre : des paliers sans fin, l'adversaire toujours plus fort."},
           {i:"⚔️",n:"Duel 1v1 en ligne",c:"#45c97a",t:"Affrontez un vrai adversaire en temps réel (2 téléphones). L'hôte crée un duel → un code de 4 lettres est généré → l'invité le saisit → la partie démarre. Un deck de 24 cartes Réponses est tiré (parmi les 48 du jeu) puis réparti équitablement — 12 chacun. Chat intégré 💬, reconnexion automatique en cas de coupure, et revanche en un clic. Les manches s'enchaînent automatiquement."},
           {i:"🎯",n:"L'ÉPREUVE DU JOUR",c:"#45c97a",t:"Chaque jour, un défi se présente de lui-même sur l'accueil : l'<strong style='color:#45c97a'>Épreuve du Souffle</strong> (trois vies, IA en Expert) ou le <strong style='color:var(--goldL)'>Cercle des Trois</strong> (trois adversaires à la suite). On ne les cherche pas dans un menu : ils viennent à toi."},
-          {i:"🏆",n:"Mode Tournoi",c:"#f1c40f",t:"Enchaînez 3 parties contre les 3 IA de difficulté croissante — Rara, puis Maguy, puis Bolito. Vos scores s'additionnent dans un classement final. Le vrai test de régularité !"},
-          {i:"⛰️",n:"Mode Ascension",c:"#6ab0ff",t:"Grimpez palier par palier, sans fin ! Chaque palier est une partie courte de 7 manches. La difficulté monte : Débutant → Intermédiaire → Expert, puis un <strong style='color:var(--goldL)'>modificateur par palier</strong> dès le 4ᵉ et une <strong style='color:var(--goldL)'>avance de l'IA</strong> qui grandit au-delà du 8ᵉ. Votre score = le palier atteint, avec un record à battre. Le mode « encore une partie »."},
         ].map(m=>`
           <div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.06)">
             <div style="font-size:28px;flex-shrink:0;width:36px;text-align:center">${m.i}</div>
@@ -11055,7 +11090,7 @@ function renderRegles(app){
           {i:"🎓",n:"Apprentissage guidé",t:"Au premier lancement, un <strong style='color:var(--goldL)'>tutoriel</strong> en quelques étapes présente les règles (revoyable via « 🎓 Revoir le tutoriel »). Et pendant ta toute première partie, de petites astuces <strong style='color:var(--goldL)'>« 👋 Guide »</strong> t'accompagnent au bon moment — chacune une seule fois."},
           {i:"✨",n:"Cartes légendaires",t:"Dès la <strong style='color:var(--goldL)'>manche 6</strong>, deux cartes d'exception entrent en jeu, une seule fois chacune : la <strong style='color:var(--goldL)'>Suprême</strong> (50 pts garantis) et le <strong style='color:#c9b3f0'>Fantôme</strong> (valeur inconnue, 0 à 100). Les toucher ouvre une confirmation <strong style='color:var(--goldL)'>« Jouer / Pas maintenant »</strong> : déclinée, la carte se retire pour la manche et revient ensuite."},
           {i:"🎰",n:"Le Jackpot des Fantômes",t:"Si les <strong style='color:var(--goldL)'>deux joueurs</strong> jouent leur Fantôme dans la même manche, la table bascule : les deux valeurs tournent comme une machine à sous. Le plus haut rafle <strong style='color:var(--goldL)'>tout le score de l'adversaire</strong> plus la valeur de son Fantôme. Le perdant tombe à zéro. En cas d'égalité, on relance."},
-          {i:"🕯️",n:"La Voie des Quatre Maîtres",t:"Votre <strong style='color:var(--goldL)'>rang</strong> s'affiche sous votre nom et grandit en Campagne : <strong style='color:var(--goldL)'>Disciple → Initié → Gardien → Guide → Chef de Cercle</strong>. Chaque Gardien vaincu vous livre son enseignement ; vaincu, il prononce sa sentence. On ne devient pas chef en dominant un pilier, mais en n'en laissant tomber aucun."},
+          {i:emblemeMini("Spiritualité",26),n:"La Voie des Quatre Maîtres",t:"Votre <strong style='color:var(--goldL)'>rang</strong> s'affiche sous votre nom et grandit en Campagne : <strong style='color:var(--goldL)'>Disciple → Initié → Gardien → Guide → Chef de Cercle</strong>. Chaque Gardien vaincu vous livre son enseignement ; vaincu, il prononce sa sentence. On ne devient pas chef en dominant un pilier, mais en n'en laissant tomber aucun."},
           {i:"🃏",n:"Collection de 48 cartes",t:"Un pool de <strong style='color:var(--goldL)'>48 cartes</strong> ! Chaque partie tire une main différente. L'écran <strong style='color:var(--goldL)'>🃏 Collection</strong> révèle les cartes découvertes et garde les autres en silhouette — collectionne-les toutes."},
           {i:"📅",n:"Défi du jour",t:"Un défi <strong style='color:var(--goldL)'>différent chaque jour</strong>, avec bonus d'XP. Réussis-le plusieurs jours d'affilée pour faire monter ta <strong style='color:#ff6b35'>série 🔥</strong>."},
           {i:"🏆",n:"Trophées",t:"8 badges à débloquer selon tes exploits (séries, jokers gagnants, remontées, IA Expert battue…), consultables dans <strong style='color:var(--goldL)'>🏆 Trophées</strong>."},
@@ -11542,9 +11577,10 @@ function renderSelection(app){
       display:flex;align-items:center;justify-content:space-between;gap:10px">
       <div style="display:flex;align-items:center;gap:10px;min-width:0">
         <button onclick="retourMenuDepuisSelection()" aria-label="Retour au menu"
-          style="flex-shrink:0;width:34px;height:34px;border-radius:10px;cursor:pointer;
-          border:1px solid rgba(212,175,55,0.35);background:rgba(255,255,255,0.05);
-          color:var(--goldL);font-size:16px;display:flex;align-items:center;justify-content:center">←</button>
+          style="flex-shrink:0;min-height:36px;padding:0 12px;border-radius:12px;cursor:pointer;
+          border:1px solid rgba(212,175,55,0.45);background:rgba(240,208,96,0.1);
+          color:var(--goldL);font-family:'Cinzel',serif;font-size:12px;font-weight:800;letter-spacing:0.5px;
+          display:flex;align-items:center;gap:6px"><span style="font-size:15px">←</span>Retour</button>
         <div style="font-family:Cinzel,serif;font-size:13px;font-weight:700;color:var(--goldL);
           white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
         ⚔️ Sélectionnez vos 10 cartes
@@ -12011,7 +12047,7 @@ function renderJeu(app){
   var _cHand=(_hasHand?content.slice(_mi+11):content).replace(/<!--HAND-->/g,"");
 
   app.innerHTML=`
-  <div style="height:100vh;height:100dvh;overflow:hidden;background:transparent;font-family:'Crimson Text',Georgia,serif;color:var(--text);padding:min(12px,2vw);display:flex;flex-direction:column;gap:min(10px,1.5vw);max-width:var(--max-w);margin:0 auto;width:100%">
+  <div style="height:100vh;height:100dvh;overflow:hidden;background:transparent;font-family:'Crimson Text',Georgia,serif;color:var(--text);padding:calc(env(safe-area-inset-top,0px) + min(12px,2vw)) min(12px,2vw) calc(env(safe-area-inset-bottom,0px) + min(12px,2vw));display:flex;flex-direction:column;gap:min(10px,1.5vw);max-width:var(--max-w);margin:0 auto;width:100%">
 
     <!-- Header (figé) -->
     <div style="flex-shrink:0;display:flex;justify-content:space-between;align-items:center">
