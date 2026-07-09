@@ -1588,7 +1588,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v94.55";
+const BUILD_TAG="v94.57";
 // ── Diagnostic : révèle le détail réel des erreurs (un « Script error. » nu = erreur d'un script tiers cross-origin, ex. PeerJS) ──
 window.addEventListener("error", function(ev){
   // Erreur tierce sans détail (ex. Google Analytics gêné par la prévention du tracking) : bruit bénin → on n'encombre pas la console
@@ -2844,9 +2844,15 @@ function validesAvecSpeciales(j){
   return base;
 }
 // Révélation cinématique des cartes spéciales (Suprême + Fantôme) — jouée une fois, à l'entrée de la manche 6
-function animerCartesSpeciales(){
+function animerCartesSpeciales(_essai){
   try{
     if(document.getElementById("speciales-reveal")) return;
+    // Ne jamais se superposer à un bonus ou à une autre annonce : on attend son tour.
+    if(_sceneOccupee()){
+      var n=(_essai||0)+1;
+      if(n<=15) setTimeout(function(){ animerCartesSpeciales(n); }, 900);
+      return;
+    }
     if(!document.getElementById("speciales-kf")){
       var st=document.createElement("style"); st.id="speciales-kf";
       st.textContent=
@@ -2888,7 +2894,7 @@ function animerCartesSpeciales(){
     document.body.appendChild(ov);
     try{ if(S.voixGuide && typeof _parlerGuide==="function") setTimeout(function(){ _parlerGuide("Les cartes légendaires se révèlent. La Suprême... et le Fantôme !",{masc:true}); }, 450); }catch(_){}
     try{ if(typeof AUDIO!=="undefined"){ if(AUDIO.sfxFanfare) AUDIO.sfxFanfare(); else if(AUDIO.playCelebration) AUDIO.playCelebration(); } }catch(_){}
-    setTimeout(function(){ try{ ov.style.animation="specOut 0.45s ease both"; setTimeout(function(){ if(ov.parentNode) ov.parentNode.removeChild(ov); },470); }catch(_){} }, 3500);
+    setTimeout(function(){ try{ _stopVoixGuide(); }catch(_){} try{ ov.style.animation="specOut 0.45s ease both"; setTimeout(function(){ if(ov.parentNode) ov.parentNode.removeChild(ov); },470); }catch(_){} }, 3500);
   }catch(e){}
 }
 const pick=arr=>arr[Math.floor(Math.random()*arr.length)];
@@ -3368,6 +3374,7 @@ const BONUS_SAGE = {
     }
 
     if(S.jeu&&gain!==0) S.jeu.s1=Math.max(0,(S.jeu.s1||0)+gain);
+    try{ _stopVoixGuide(); }catch(_){}
     var ov=document.getElementById("sage-bonus-overlay");
     if(ov) ov.classList.remove("active");
     // ── Mode DUEL : le gain va au score du Duel, pas au Solo ──
@@ -3525,6 +3532,7 @@ const JACKPOT_FANTOME = {
     if(this._rollInt){ clearInterval(this._rollInt); this._rollInt=null; }
     if(this._closeT){ clearTimeout(this._closeT); this._closeT=null; }
     this._clearTimers();
+    try{ _stopVoixGuide(); }catch(_){}
     var ov=document.getElementById("jf-overlay"); if(ov) ov.classList.remove("active");
     var cb=this._onDone; this._onDone=null; this._closable=false;
     if(cb){ try{ cb(); }catch(e){} }
@@ -4024,6 +4032,7 @@ const BONUS_DESTIN = {
     this._stopTimer();
     if(this._closeT){ clearTimeout(this._closeT); this._closeT=null; }
     var self=this;
+    try{ _stopVoixGuide(); }catch(_){}
     var res=document.getElementById("bd-result"); if(res) res.classList.remove("show");
     var ap=document.getElementById("bd-adv"); if(ap) ap.classList.remove("show");
     var top=document.getElementById("bd-top"); if(top) top.style.transition="opacity .6s ease", top.style.opacity="0";
@@ -4055,6 +4064,7 @@ const BONUS_DESTIN = {
     this._stopTimer();
     var ov=document.getElementById("destin-bonus-overlay");
     if(!ov || !ov.classList.contains("active")) return;  // déjà fermé
+    try{ _stopVoixGuide(); }catch(_){}
     ov.classList.remove("active");
     document.getElementById("bd-result").classList.remove("show");
 
@@ -5141,12 +5151,12 @@ const DUEL = {
   },
   _jouerSpeciale(){
     var id=DUEL._pendingSpecial; DUEL._pendingSpecial=null;
-    var ov=document.getElementById("special-confirm-overlay"); if(ov) ov.classList.remove("active");
+    try{ _stopVoixGuide(); }catch(_){} var ov=document.getElementById("special-confirm-overlay"); if(ov) ov.classList.remove("active");
     if(id) DUEL._jouerSpecialeDirect(id);
   },
   _annulerSpeciale(){
     DUEL._pendingSpecial=null;
-    var ov=document.getElementById("special-confirm-overlay"); if(ov) ov.classList.remove("active");
+    try{ _stopVoixGuide(); }catch(_){} var ov=document.getElementById("special-confirm-overlay"); if(ov) ov.classList.remove("active");
     if(DUEL.gs && DUEL.gs.phase==="afficheBases" && !DUEL._myRepPlayed()) DUEL._startTimer(20);
   },
   _jouerSpecialeDirect(id){
@@ -7219,6 +7229,20 @@ function _meilleureVoixMasc(){
 // Pré-chargement des voix (iOS/Android les chargent de façon asynchrone) + réinit. des caches au chargement
 try{ if(_voixDispo()){ window.speechSynthesis.getVoices(); window.speechSynthesis.onvoiceschanged=function(){ _voixFrCache=null; _voixMascCache=null; window.speechSynthesis.getVoices(); }; } }catch(_){}
 function _stopVoixGuide(){ try{ if(_voixDispo()) window.speechSynthesis.cancel(); }catch(_){} }
+// Une scène est occupée si un overlay bloquant est à l'écran. Sert à empêcher
+// les annonces de se télescoper avec un bonus en cours.
+function _sceneOccupee(){
+  try{
+    var ids=["destin-bonus-overlay","sage-bonus-overlay","bonus-overlay","jf-overlay",
+             "special-confirm-overlay","joker-overlay","deal-overlay","duel-suspendu-overlay"];
+    for(var i=0;i<ids.length;i++){
+      var el=document.getElementById(ids[i]);
+      if(el && el.classList && el.classList.contains("active")) return true;
+    }
+    if(document.getElementById("speciales-reveal")) return true;   // révélation déjà à l'écran
+    return false;
+  }catch(e){ return false; }
+}
 function _parlerGuide(txt, opts){
   if(!_voixDispo() || !txt) return false;
   opts=opts||{};
@@ -8312,13 +8336,13 @@ const G={
   _jouerSpeciale(){
     if(typeof DUEL!=="undefined" && DUEL._pendingSpecial){ DUEL._jouerSpeciale(); return; }
     var id=G._pendingSpecial; G._pendingSpecial=null;
-    var ov=document.getElementById("special-confirm-overlay"); if(ov) ov.classList.remove("active");
+    try{ _stopVoixGuide(); }catch(_){} var ov=document.getElementById("special-confirm-overlay"); if(ov) ov.classList.remove("active");
     if(id) G.selRep(id, true);
   },
   _annulerSpeciale(){
     if(typeof DUEL!=="undefined" && DUEL._pendingSpecial){ DUEL._annulerSpeciale(); return; }
     var id=G._pendingSpecial; G._pendingSpecial=null;
-    var ov=document.getElementById("special-confirm-overlay"); if(ov) ov.classList.remove("active");
+    try{ _stopVoixGuide(); }catch(_){} var ov=document.getElementById("special-confirm-overlay"); if(ov) ov.classList.remove("active");
     // La carte spéciale déclinée se retire de la main pour cette manche — elle revient à la manche suivante.
     if(S.jeu && id){
       if(id.indexOf("sup_")===0) S.jeu._supremeMasque=true;
@@ -8752,21 +8776,20 @@ const G={
     }, _delaiFin);
 
     if(j.bonusManches&&j.bonusManches.has(j.manche)){
-      setTimeout(()=>{
-        // ── VERROU anti-télescopage : ne jamais lancer un bonus si la partie se termine
-        //    ou si une autre séquence occupe déjà l'écran (joker, célébration, cartes légendaires). ──
+      // Le bonus attend son tour au lieu d'être perdu : si une autre séquence occupe l'écran
+      // (joker, célébration, cartes légendaires, autre bonus), on suspend la manche et on retente.
+      // Après 15 essais, on renonce au bonus mais la partie continue normalement.
+      var _tenterBonus=function(essai){
         if(!S.jeu || S.jeu!==j) return;                          // partie changée / terminée
-        if(j.manche>=j.total || j.mainRepJ1.length===0) return;  // dernière manche → on va finir la partie, pas de bonus
-        const sbOv=document.getElementById("sage-bonus-overlay");
-        const bOv=document.getElementById("bonus-overlay");
-        const jkOv=document.getElementById("joker-overlay");
-        const bdOv=document.getElementById("destin-bonus-overlay");
-        if((sbOv&&sbOv.classList.contains("active")) ||
-           (bOv&&bOv.classList.contains("active")) ||
-           (bdOv&&bdOv.classList.contains("active")) ||
-           (jkOv&&jkOv.classList.contains("active")) ||
-           document.getElementById("celebration-badge") ||
-           document.getElementById("speciales-reveal")) return;
+        if(j.manche>=j.total || j.mainRepJ1.length===0) return;  // dernière manche → pas de bonus
+        var _occupe = (typeof _sceneOccupee==="function" && _sceneOccupee())
+                   || !!document.getElementById("celebration-badge");
+        if(_occupe){
+          if(G._apresInt){ clearTimeout(G._apresInt); G._apresInt=null; }   // la manche attend
+          if((essai||0) < 15){ setTimeout(function(){ _tenterBonus((essai||0)+1); }, 900); return; }
+          G._apresInt=setTimeout(function(){ G._apresInt=null; if(S.jeu && !TOURNOI.actif) G.mancheSuivante(); }, 250);
+          return;
+        }
         // Annuler le setTimeout et laisser le bonus gérer la manche suivante
         if(G._apresInt){ clearTimeout(G._apresInt); G._apresInt=null; }
         // Équilibrage Solo : alterner le bénéficiaire du bonus (joueur ↔ IA).
@@ -8790,7 +8813,8 @@ const G={
           if(G._apresInt) clearTimeout(G._apresInt);
           G._apresInt=setTimeout(function(){ G._apresInt=null; if(S.jeu && !TOURNOI.actif) G.mancheSuivante(); }, 300);
         }
-      }, 1800);
+      };
+      setTimeout(function(){ _tenterBonus(0); }, 1800);
     }
   },
 
@@ -10728,6 +10752,17 @@ function renderRegles(app){
           </div>
         </div>
       </div>
+        <div style="display:flex;gap:12px;padding:12px;border-radius:14px;background:linear-gradient(135deg,rgba(212,175,55,0.12),rgba(26,13,61,0.8));border:1.5px solid rgba(212,175,55,0.35);margin-top:10px">
+          <div style="font-size:30px;flex-shrink:0">⚖️</div>
+          <div>
+            <div style="font-size:13px;font-weight:700;color:var(--goldL);margin-bottom:4px">Bonus du Destin — Le Verdict de la Balance</div>
+            <div style="font-size:11px;color:var(--muted);line-height:1.6">
+              Une balance se décroche. Le poids de l'adversaire est <strong style="color:var(--goldL)">caché</strong> : posez vos boules et lisez le fléau jusqu'à l'équilibre parfait.
+              <br><strong style="color:var(--goldL)">En Solo :</strong> 30 secondes, et l'équilibre pile rapporte <strong style="color:var(--goldL)">100 points</strong>.
+              <br><strong style="color:var(--goldL)">En Duel :</strong> pas de chrono, pas de bouton — c'est <strong style="color:var(--goldL)">La Course à l'Équilibre</strong>. Vous jouez le même défi en même temps, chacun voyant la progression de l'autre. Le premier à niveler rafle les 100 points, l'autre rien.
+            </div>
+          </div>
+        </div>
 
       <!-- Nouvelles fonctionnalités -->
       <div style="font-size:13px;color:var(--gold);font-weight:700;font-family:'Cinzel',serif;margin-bottom:10px;letter-spacing:1px">🌟 NOUVELLES FONCTIONNALITÉS</div>
@@ -10739,13 +10774,15 @@ function renderRegles(app){
           {i:"🏆",n:"Historique",t:"Vos 10 dernières parties sont sauvegardées automatiquement avec date, score et résultat."},
           {i:"🎊",n:"Célébrations à 3 paliers",t:"Selon ton score total, la victoire déclenche une célébration <strong style='color:var(--goldL)'>Argent 🥈, Or 🥇 ou Diamant 💎</strong> — confettis, badge et fanfare de plus en plus spectaculaires."},
           {i:"📱",n:"Installable (PWA)",t:"Ajoutez ÉQUILIBRE à votre écran d'accueil comme une vraie application iPhone/Android."},
-          {i:"💬",n:"Chat & spectateur en Duel",t:"Discutez avec votre adversaire pendant le Duel. Quand l'un joue un bonus, l'autre le suit en mode spectateur, sans que la partie ne s'interrompe."},
+          {i:"💬",n:"Chat en Duel",t:"Discutez avec votre adversaire pendant la partie. Selon le bonus tiré, soit l'un joue et l'autre le suit en <strong style='color:var(--goldL)'>spectateur</strong>, soit <strong style='color:var(--goldL)'>les deux jouent en même temps</strong> (La Course à l'Équilibre)."},
           {i:"🔄",n:"Reconnexion & reprise",t:"En Duel, la connexion se rétablit automatiquement après une coupure. Et si l'app se ferme ou en cas d'appel téléphonique, votre partie est sauvegardée : au retour, vous reprenez au <strong style='color:var(--goldL)'>même score</strong>, <strong style='color:var(--goldL)'>sans ressaisir de code</strong>. Revanche en un clic."},
           {i:"📈",n:"Statistiques perso",t:"L'écran <strong style='color:var(--goldL)'>Stats</strong> suit vos parties : victoires, défaites, taux de victoire, meilleur score, plus longue série de victoires, et votre pilier préféré."},
           {i:"📳",n:"Sons & vibrations",t:"Effets sonores et retours haptiques (vibrations) aux moments clés — victoire de manche, joker, bonus. Tout respecte le mode muet."},
           {i:"💬",n:"Contact WhatsApp",t:"Le bouton <strong style='color:var(--goldL)'>WhatsApp</strong> ouvre une discussion pré-remplie, pour envoyer vos idées et retours directement au couple KHALAM."},
           {i:"🎓",n:"Apprentissage guidé",t:"Au premier lancement, un <strong style='color:var(--goldL)'>tutoriel</strong> en quelques étapes présente les règles (revoyable via « 🎓 Revoir le tutoriel »). Et pendant ta toute première partie, de petites astuces <strong style='color:var(--goldL)'>« 👋 Guide »</strong> t'accompagnent au bon moment — chacune une seule fois."},
-          {i:"✨",n:"Cartes légendaires",t:"Dès la <strong style='color:var(--goldL)'>manche 6</strong>, deux cartes d'exception entrent en jeu — leur arrivée est <strong style='color:var(--goldL)'>mise en scène</strong> : elles survolent l'écran avant de se poser. La <strong style='color:var(--goldL)'>Suprême</strong> vaut 50 points (la plus forte du jeu) ; le <strong style='color:var(--goldL)'>Fantôme 👻</strong> reste masqué et, une fois joué, révèle un score aléatoire entre 0 et 100 — le pari du money-time ! Une de chaque par partie, pour toi comme pour l'IA."},
+          {i:"✨",n:"Cartes légendaires",t:"Dès la <strong style='color:var(--goldL)'>manche 6</strong>, deux cartes d'exception entrent en jeu, une seule fois chacune : la <strong style='color:var(--goldL)'>Suprême</strong> (50 pts garantis) et le <strong style='color:#c9b3f0'>Fantôme</strong> (valeur inconnue, 0 à 100). Les toucher ouvre une confirmation <strong style='color:var(--goldL)'>« Jouer / Pas maintenant »</strong> : déclinée, la carte se retire pour la manche et revient ensuite."},
+          {i:"🎰",n:"Le Jackpot des Fantômes",t:"Si les <strong style='color:var(--goldL)'>deux joueurs</strong> jouent leur Fantôme dans la même manche, la table bascule : les deux valeurs tournent comme une machine à sous. Le plus haut rafle <strong style='color:var(--goldL)'>tout le score de l'adversaire</strong> plus la valeur de son Fantôme. Le perdant tombe à zéro. En cas d'égalité, on relance."},
+          {i:"🕯️",n:"La Voie des Quatre Maîtres",t:"Votre <strong style='color:var(--goldL)'>rang</strong> s'affiche sous votre nom et grandit en Campagne : <strong style='color:var(--goldL)'>Disciple → Initié → Gardien → Guide → Chef de Cercle</strong>. Chaque Gardien vaincu vous livre son enseignement ; vaincu, il prononce sa sentence. On ne devient pas chef en dominant un pilier, mais en n'en laissant tomber aucun."},
           {i:"🃏",n:"Collection de 48 cartes",t:"Un pool de <strong style='color:var(--goldL)'>48 cartes</strong> ! Chaque partie tire une main différente. L'écran <strong style='color:var(--goldL)'>🃏 Collection</strong> révèle les cartes découvertes et garde les autres en silhouette — collectionne-les toutes."},
           {i:"📅",n:"Défi du jour",t:"Un défi <strong style='color:var(--goldL)'>différent chaque jour</strong>, avec bonus d'XP. Réussis-le plusieurs jours d'affilée pour faire monter ta <strong style='color:#ff6b35'>série 🔥</strong>."},
           {i:"🏆",n:"Trophées",t:"8 badges à débloquer selon tes exploits (séries, jokers gagnants, remontées, IA Expert battue…), consultables dans <strong style='color:var(--goldL)'>🏆 Trophées</strong>."},
