@@ -908,6 +908,10 @@ body.guide-touch-hide #guide-fab{ opacity:0!important; pointer-events:none!impor
 #bd-balance-wrap.bd-anchored{
   transform:translateY(0) scale(1);opacity:1;
   transition:transform 1.5s cubic-bezier(.18,.86,.3,1.06),opacity 0.6s ease;}
+/* Retrait : la balance remonte lentement et se retire de la scène */
+#bd-balance-wrap.bd-retire{
+  transform:translateY(-46vh) scale(0.3);opacity:0;
+  transition:transform 1.7s cubic-bezier(.5,0,.4,1),opacity 1.5s ease-in 0.2s;}
 #bd-balance{width:100%;height:auto;display:block;overflow:visible;}
 
 /* Plateaux enflammés : bougie (joueur) + flamme bleue (adversaire) */
@@ -1584,7 +1588,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v94.52";
+const BUILD_TAG="v94.54";
 // ── Diagnostic : révèle le détail réel des erreurs (un « Script error. » nu = erreur d'un script tiers cross-origin, ex. PeerJS) ──
 window.addEventListener("error", function(ev){
   // Erreur tierce sans détail (ex. Google Analytics gêné par la prévention du tracking) : bruit bénin → on n'encombre pas la console
@@ -3635,6 +3639,7 @@ const BONUS_DESTIN = {
     this._stopTimer();
     var _tEl=document.getElementById("bd-timer"); if(_tEl){ _tEl.classList.remove("show","bd-timer-low"); _tEl.textContent="\u23F1 30 s"; }
     var _adv=document.getElementById("bd-adv"); if(_adv) _adv.classList.remove("show");
+    var _sz0=document.getElementById("bd-seal-zone"); if(_sz0) _sz0.style.display="";
 
     try{ if(AUDIO.vibrer) AUDIO.vibrer([0,30,40,30,40,70]); }catch(e){}
 
@@ -3803,7 +3808,7 @@ const BONUS_DESTIN = {
       if(d===0){
         ecEl.textContent="⚖ ÉQUILIBRE";
         ecEl.style.color="#45c97a";
-        if(hintEl) hintEl.textContent="Scelle vite le verdict !";
+        if(hintEl) hintEl.textContent=this._duel?"La balance a parlé\u2026":"Scelle vite le verdict !";
         if(seal){ seal.classList.add("bd-ready"); }
       } else if(d<0){
         ecEl.textContent="◗ Le plateau adverse l'emporte";
@@ -3816,6 +3821,12 @@ const BONUS_DESTIN = {
         if(hintEl) hintEl.textContent="Retire un peu de poids";
         if(seal){ seal.classList.remove("bd-ready"); }
       }
+    }
+
+    // Duel : l'équilibre scelle tout seul — le premier à niveler l'emporte.
+    if(this._duel && !this.sealed && d===0){
+      var selfAuto=this;
+      setTimeout(function(){ if(selfAuto._duel && !selfAuto.sealed) selfAuto.sceller(); }, 220);
     }
 
     // Duel : envoyer ma « proximité d'équilibre » à l'adversaire (throttle ~4/s)
@@ -3948,6 +3959,12 @@ const BONUS_DESTIN = {
   // Lance le mini-jeu en mode Duel (défi imposé par l'hôte, hooks réseau)
   launchDuel(W, balls, hooks){
     this.launch({duel:true, W:W, balls:balls, hooks:hooks});
+    this._stopTimer();
+    var _t=document.getElementById("bd-timer");
+    if(_t){ _t.classList.remove("show","bd-timer-low"); _t.textContent=""; }
+    // Duel : aucun bouton. L'équilibre déclenche le verdict de lui-même.
+    var _sz=document.getElementById("bd-seal-zone");
+    if(_sz){ _sz.classList.remove("show"); _sz.style.display="none"; }
     var titreEl=document.getElementById("bd-titre");
     var t2=titreEl?titreEl.querySelector(".bd-t2"):null; if(t2) t2.textContent="La Course à l'Équilibre";
     var ap=document.getElementById("bd-adv"); if(ap) ap.classList.add("show");
@@ -3966,7 +3983,7 @@ const BONUS_DESTIN = {
     var ec=document.getElementById("bd-ecart");
     var hint=document.getElementById("bd-readhint");
     var tEl=document.getElementById("bd-timer"); if(tEl) tEl.classList.remove("bd-timer-low");
-    if(ec){ ec.textContent = leveled ? "\u2696 NIVELÉ !" : "Temps écoulé"; ec.style.color = leveled ? "#45c97a" : "#8b7fb5"; }
+    if(ec){ ec.textContent = leveled ? "\u2696 NIVELÉ !" : "\u2696 Course termin\u00e9e"; ec.style.color = leveled ? "#45c97a" : "#8b7fb5"; }
     if(hint) hint.textContent = "En attente du verdict\u2026";
   },
   // Verdict final reçu de l'hôte : "win" | "lose" | "none" (aucun crédit local, l'hôte a déjà appliqué le score)
@@ -4002,13 +4019,26 @@ const BONUS_DESTIN = {
     this._closeT=setTimeout(function(){ self._closeDuel(); }, 3000);
   },
   _closeDuel(){
+    if(this._retraitEnCours) return;      // une seule sortie
+    this._retraitEnCours=true;
     this._stopTimer();
     if(this._closeT){ clearTimeout(this._closeT); this._closeT=null; }
-    var ov=document.getElementById("destin-bonus-overlay"); if(ov) ov.classList.remove("active");
+    var self=this;
     var res=document.getElementById("bd-result"); if(res) res.classList.remove("show");
     var ap=document.getElementById("bd-adv"); if(ap) ap.classList.remove("show");
-    this._duel=false; this._duelHooks=null;
-    if(typeof render==="function") render();
+    var top=document.getElementById("bd-top"); if(top) top.style.transition="opacity .6s ease", top.style.opacity="0";
+    var tray=document.getElementById("bd-tray-zone"); if(tray) tray.classList.remove("show");
+    // La balance remonte lentement et quitte la scène.
+    var wrap=document.getElementById("bd-balance-wrap");
+    if(wrap){ wrap.classList.remove("bd-anchored"); wrap.classList.add("bd-retire"); }
+    try{ if(AUDIO.vibrer) AUDIO.vibrer([0,20,60,20]); }catch(e){}
+    setTimeout(function(){
+      var ov=document.getElementById("destin-bonus-overlay"); if(ov) ov.classList.remove("active");
+      if(wrap) wrap.classList.remove("bd-retire");
+      if(top){ top.style.opacity=""; top.style.transition=""; }
+      self._duel=false; self._duelHooks=null; self._retraitEnCours=false;
+      if(typeof render==="function") render();
+    }, 1750);
   },
   _ensureResultClick(){
     if(this._resultBound) return;
@@ -4502,6 +4532,8 @@ const DUEL = {
 
   // ── Initialiser l'état de jeu ──
   _initGS(){
+    DUEL._specialesRevelees=false;   // la révélation des cartes légendaires se rejoue à chaque partie
+
     const r=genererDeck24();
     const _deal=dealEquilibre();
     const joks=shuffle([...JOKERS]);
@@ -6885,6 +6917,11 @@ function renderDuelJeu(app){
       // Phase afficheBases — jouer sa carte
       var cartesValides=maMain.filter(function(c){return c.combo===gs.cb;});
       if(gs.manche>=6 && gs.cb){
+        // Révélation cinématique des cartes légendaires, comme en Solo (une seule fois).
+        if(gs.manche===6 && !DUEL._specialesRevelees){
+          DUEL._specialesRevelees=true;
+          setTimeout(function(){ try{ animerCartesSpeciales(); }catch(_){} }, 350);
+        }
         var _mySup = isJ1 ? gs.supUseJ1 : gs.supUseJ2;
         var _myFan = isJ1 ? gs.fanUseJ1 : gs.fanUseJ2;
         if(!_mySup) cartesValides=cartesValides.concat([carteSupreme(gs.cb)]);
