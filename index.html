@@ -331,6 +331,27 @@ body:has(#tuto-overlay) #guide-fab{ display:none!important; }
 .pilier-card.disabled{opacity:0.75;cursor:default;transform:none !important;}
 .pilier-card.played{cursor:default;pointer-events:none;}
 .pilier-card.glow{animation:glow 2s infinite;}
+/* ── Sélection de pilier « vivante » (halo pulsé + soulèvement + ombre colorée) ── */
+.pilier-card.pilier-vivant{
+  animation:pilierRespire 2.6s ease-in-out infinite;
+  transition:transform .18s cubic-bezier(.34,1.5,.5,1),box-shadow .18s,filter .18s;
+}
+@keyframes pilierRespire{
+  0%,100%{box-shadow:0 3px 12px rgba(0,0,0,.55),0 0 7px -1px var(--acc,#F0D060);}
+  50%    {box-shadow:0 4px 15px rgba(0,0,0,.55),0 0 22px 1px var(--acc,#F0D060);}
+}
+@media (hover:hover){
+  .pilier-card.pilier-vivant:hover{
+    transform:translateY(-6px) scale(1.06);
+    filter:saturate(1.15) brightness(1.06);
+    box-shadow:0 14px 30px rgba(0,0,0,.6),0 0 26px 2px var(--acc,#F0D060) !important;
+    animation:none;
+  }
+}
+.pilier-card.pilier-vivant:active{
+  box-shadow:0 0 0 3px var(--acc,#F0D060),0 0 34px 5px var(--acc,#F0D060) !important;
+  filter:brightness(1.08) saturate(1.2);
+}
 
 /* ── Carte Réponse ──────────────────────────── */
 .carte-rep{
@@ -1625,7 +1646,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v94.87";
+const BUILD_TAG="v94.90";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -1869,7 +1890,7 @@ const CAMPAGNE=[
    vaincu:"Tu tiens encore debout. Mille avant toi n'ont pas su. La pierre dure mille ans et ne vit pas un jour. Prends mon savoir, disciple : c'est ce qui plie qui dure.",
    gagnant:"Repose-toi. Tu as tout donné, et ce n'était pas assez. Mille avant toi ont dit la même chose."},
   {id:"c12",acte:3,nom:"Le Cœur de Cendres",          pilier:"Amour",       icon:"❤️",diff:"Expert",      xp:900, twist:"passion",  phrase:"J'ai aimé, puis j'ai tout consumé. Ton tour approche.",
-   vaincu:"T",
+   vaincu:"Tu as aimé sans te réduire en cendres. Moi, j'ai brûlé si fort qu'il n'est rien resté à chérir. La passion n'est pas le feu qui dévore — c'est la braise qu'on garde vivante sans se consumer. Prends mon savoir, disciple.",
    gagnant:"J'ai tout brûlé pour une seule personne. Toi, tu viens de tout brûler pour une manche."},
   {id:"c13",acte:3,nom:"Le Roi sans Trône",           pilier:"Argent",      icon:"🪙",diff:"Expert",      xp:1000,twist:"jackpot",  phrase:"L'or du monde entier ne rachètera pas ta défaite.",
    vaincu:"Tu me bats sans couronne, sans trésor, sans rien. C'est ainsi que j'aurais dû régner. On ne possède que ce qu'on peut perdre sans mourir. Prends mon savoir, disciple.",
@@ -7892,8 +7913,9 @@ function pilierCard(p,opts={}){
   // ── Rendu par IMAGE (nouvelles cartes de base), même dimensions/comportement ──
   if(typeof CARTE_IMG!=="undefined" && CARTE_IMG[p]){
     const cnt=(showCount!=null)?('<div style="position:absolute;top:3px;right:3px;z-index:3;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:'+st.accent+';color:#fff;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,0.5)">'+showCount+'</div>'):'';
-    return '<div class="'+cls+'" '+((disabled||played)?'':'onclick="'+onClick+'"')+'\n'
-      +'    style="width:'+sz.w+'px;height:'+sz.h+'px;border-radius:14px;overflow:hidden;position:relative;flex-shrink:0;'
+    const interactif=(!!onClick && !disabled && !played && !selected);
+    return '<div class="'+cls+(interactif?' pilier-vivant':'')+'" '+((disabled||played)?'':'onclick="'+onClick+'"')+'\n'
+      +'    style="--acc:'+st.accent+';width:'+sz.w+'px;height:'+sz.h+'px;border-radius:14px;overflow:hidden;position:relative;flex-shrink:0;'
       +'box-sizing:border-box;'
       +'cursor:'+((disabled||played)?'default':'pointer')+';'
       +'border:1.5px solid '+st.accent+'cc;'
@@ -8290,7 +8312,7 @@ function scoreBarHTML(s1,s2,nom,nomAdv){
 
 function contexteHTML(manche){
   const ctx=CONTEXTES[(manche-1)%CONTEXTES.length];
-  return`<div style="background:linear-gradient(135deg,rgba(45,27,105,0.5),rgba(26,13,61,0.5));border:1px solid rgba(192,132,87,0.4);border-radius:10px;padding:5px 12px;margin-bottom:8px;text-align:center">
+  return`<div style="background:linear-gradient(135deg,rgba(45,27,105,0.5),rgba(26,13,61,0.5));border:1px solid rgba(192,132,87,0.4);border-radius:10px;padding:4px 11px;margin-bottom:6px;text-align:center">
     <div style="font-size:11px;font-weight:700;color:var(--goldL);line-height:1.25">🎭 ${ctx.t}</div>
     <div style="font-size:9px;color:var(--muted);font-style:italic;line-height:1.25">${ctx.d}</div>
   </div>`;
@@ -10553,6 +10575,20 @@ function renderResultat(app){
   const _gagne=(_j&&_j.s1>_j.s2);
   const _egal=(_j&&_j.s1===_j.s2);
   if(_gagne) setTimeout(showConfetti, 300);
+  // Lecture à voix haute du monologue d'après-combat du chef (vaincu/gagnant), une seule fois.
+  (function(){
+    try{
+      var lc=S._lastCampagne; if(!lc || lc._ditMono) return;
+      if(!S.voixGuide || typeof _voixDispo!=="function" || !_voixDispo()) return;
+      var g=(typeof CAMPAGNE!=="undefined")&&CAMPAGNE[lc.gi]; if(!g) return;
+      var mono = lc.gagne ? g.vaincu : g.gagnant; if(!mono) return;
+      lc._ditMono=true;                       // ne relit pas à chaque re-render
+      setTimeout(function(){
+        if(!S.jeu || S.jeu.phase!=="fin" || !S.voixGuide) return;
+        try{ _parlerGuide(_sansEmoji(mono),{masc:!g.fem,rate:0.9,pitch:g.fem?1.0:0.86}); }catch(_){}
+      }, 1800);                                // laisse passer l'annonce « … vaincu ! »
+    }catch(_){}
+  })();
   const j=S.jeu;
   const gagne=j.s1>j.s2,egal=j.s1===j.s2;
   const niv=getNiveau(S.xp);
@@ -11770,7 +11806,7 @@ function coachOnboarding(phase){
       }
     }catch(_){}
   }
-  return '<div style="background:linear-gradient(135deg,rgba(212,175,55,0.16),rgba(155,89,182,0.12));border:1px solid rgba(212,175,55,0.5);border-radius:12px;padding:10px 12px;margin-bottom:12px;font-size:12px;color:#f3e9c8;line-height:1.55;text-align:center;animation:celebPop 0.4s ease">'
+  return '<div style="background:linear-gradient(135deg,rgba(212,175,55,0.16),rgba(155,89,182,0.12));border:1px solid rgba(212,175,55,0.5);border-radius:12px;padding:7px 11px;margin-bottom:8px;font-size:11.5px;color:#f3e9c8;line-height:1.4;text-align:center;animation:celebPop 0.4s ease">'
     +'<strong style="color:var(--goldL);font-family:\'Cinzel\',serif">👋 Guide</strong> · '+t+'</div>';
 }
 
@@ -11803,10 +11839,9 @@ function renderJeu(app){
       ${contexteHTML(j.manche)}
       ${banniereEvenement(j)}
       ${coachOnboarding("choixBase")}
-      <div style="text-align:center;margin-bottom:16px" class="fade">
-        <div style="font-size:11px;color:var(--muted);letter-spacing:2px;margin-bottom:6px">CHOISISSEZ VOTRE PILIER</div>
-        <div style="font-family:Cinzel,serif;font-size:15px;font-weight:900;color:var(--goldL);
-          text-shadow:0 0 20px rgba(212,175,55,0.5)">⚔️ Quelle est votre force ?</div>
+      <div style="text-align:center;margin-bottom:9px" class="fade">
+        <div style="font-family:Cinzel,serif;font-size:14px;font-weight:900;color:var(--goldL);letter-spacing:0.5px;
+          text-shadow:0 0 18px rgba(212,175,55,0.5)">⚔️ Quelle est votre force ?</div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:min(8px,2vw);justify-items:center;margin-bottom:12px;width:100%">
         ${PILIERS.map(p=>{
