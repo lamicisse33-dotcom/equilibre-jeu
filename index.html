@@ -1625,7 +1625,13 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v94.83";
+const BUILD_TAG="v94.87";
+
+/* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
+   Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
+   (ni en Solo, ni pour l'IA, ni en Duel via La Course à l'Équilibre),
+   et son bloc de règles est masqué. Repasser à true pour réactiver. */
+const BALANCE_ENABLED = false;
 // ── Diagnostic : révèle le détail réel des erreurs (un « Script error. » nu = erreur d'un script tiers cross-origin, ex. PeerJS) ──
 window.addEventListener("error", function(ev){
   // Erreur tierce sans détail (ex. Google Analytics gêné par la prévention du tracking) : bruit bénin → on n'encombre pas la console
@@ -3721,6 +3727,10 @@ const BONUS_DESTIN = {
 
   launch(opts){
     opts=opts||{};
+    // Balance désactivée : on ne fige jamais la manche → on bascule sur le Bonus du Sage.
+    if(typeof BALANCE_ENABLED!=="undefined" && !BALANCE_ENABLED && !opts.duel){
+      BONUS_SAGE.launch(); return;
+    }
     AUDIO.init();
     var ov=document.getElementById("destin-bonus-overlay");
     if(!ov) return;
@@ -5063,7 +5073,17 @@ const DUEL = {
         if(DUEL._nextRoundInt){ clearTimeout(DUEL._nextRoundInt); DUEL._nextRoundInt=null; }
         DUEL.gs.s1=msg.s1; DUEL.gs.s2=msg.s2;
         DUEL._recompenses(DUEL.isHost?msg.s1:msg.s2, DUEL.isHost?msg.s2:msg.s1, msg.statsAdv||null);
-        S.ecran="duel_resultat"; render();
+        // Le Jackpot des Fantômes termine la partie : « fin » peut arriver avant la
+        // fin de la cinématique. On attend qu'elle se referme plutôt que de peindre
+        // l'écran de résultat derrière l'overlay.
+        (function _afficherResultat(essai){
+          var _jf=document.getElementById("jf-overlay");
+          if(_jf && _jf.classList.contains("active") && (essai||0) < 60){
+            setTimeout(function(){ _afficherResultat((essai||0)+1); }, 250);
+            return;
+          }
+          S.ecran="duel_resultat"; render();
+        })(0);
         break;
 
       case "potflash":
@@ -5425,7 +5445,11 @@ const DUEL = {
       myName:(S.nom||"Toi"), advName:advNom,
       myVal:a, advVal:b, iWin:host1Gagne, butin:butin,
       myBefore:s1b, advBefore:s2b, myAfter:gs.s1, advAfter:gs.s2
-    }, function(){ DUEL._bonusEnCours=false; DUEL._avancerManche(); });
+    }, function(){
+      DUEL._bonusEnCours=false;
+      gs.manche=gs.total;      // le Jackpot tranche la partie : on saute à la fin
+      DUEL._avancerManche();   // envoie « fin » à l'invité, qui l'attend
+    });
   },
 
   _mancheSuivante(){
@@ -5514,7 +5538,7 @@ const DUEL = {
     if(DUEL.isHost && !DUEL._bonusEnCours && gs.manche < gs.total && _ecartBonus>=3 && Math.random() < 0.35){
       gs.derniereMancheBonus=gs.manche;
       // 1 fois sur 3 : La Course à l'Équilibre (les DEUX jouent) ; sinon Sage/Question (un joue, l'autre spectate).
-      if(Math.random() < 0.34){
+      if((typeof BALANCE_ENABLED!=="undefined" && BALANCE_ENABLED) && Math.random() < 0.34){
         DUEL._lancerCourseDuel();
         return;
       }
@@ -7582,9 +7606,9 @@ function guideTexte(){
 
   // ── 1) La fenêtre affichée prime sur tout le reste ──
   var f=_fenetreActive();
-  if(f==="speciales-reveal") return {t:"Les cartes légendaires",m:"Dès la <b>manche 6</b>, deux cartes rares rejoignent ta main. La <b>Suprême</b> vaut 50 points sûrs. Le <b>Fantôme</b> vaut de 0 à 100 — un pari. Une seule fois chacune."};
+  if(f==="speciales-reveal") return {t:"Les cartes légendaires",m:"Dès la <b>manche 6</b>, deux cartes rares rejoignent ta main. La <b>Suprême</b> vaut 50 points sûrs. Le <b>Fantôme</b> vaut de 0 à 100 — un pari. Une seule fois chacune.<br>Si les <b>deux Fantômes</b> se rencontrent, le plus fort rafle tout et <b>gagne la partie sur-le-champ</b>."};
   if(f==="special-confirm-overlay") return {t:"Jouer, ou attendre ?",m:"Tu ne peux la jouer <b>qu'une fois dans la partie</b>. Joue-la si la manche est décisive, ou remets-la à plus tard : elle revient à la manche suivante. Le compte à rebours est en pause."};
-  if(f==="jf-overlay") return {t:"Le Jackpot des Fantômes",m:"Vous avez tous les deux joué un Fantôme. Les valeurs tournent : <b>la plus haute rafle tout</b> — le score de l'adversaire et son Fantôme. Le perdant tombe à zéro. Rien à faire : regarde le Destin trancher."};
+  if(f==="jf-overlay") return {t:"Le Jackpot des Fantômes",m:"Vous avez tous les deux joué un Fantôme. Les valeurs tournent : <b>la plus haute rafle tout</b> — le score de l'adversaire et son Fantôme. Le perdant tombe à zéro et <b>la partie s'arrête aussitôt</b>. Rien à faire : regarde le Destin trancher."};
   if(f==="destin-bonus-overlay"){
     var enDuel = (typeof BONUS_DESTIN!=="undefined" && BONUS_DESTIN._duel);
     if(enDuel) return {t:"La Course à l'Équilibre",m:"Vous jouez <b>le même défi en même temps</b>. Pose tes boules pour amener le fléau à l'horizontale. Le poids adverse est caché : <b>lis la balance</b>. Le premier à niveler rafle 100 points — pas de bouton, l'équilibre suffit."};
@@ -7701,6 +7725,7 @@ function _guideVeille(){
   });
 })();
 var _ecranVoix=null;
+var _ecranScroll=null;
 function render(){
   // Toute fenêtre qui quitte l'écran coupe la lecture immédiatement.
   // Seule exception : la lecture du mode d'emploi, lancée volontairement par le joueur.
@@ -7716,6 +7741,23 @@ function render(){
   }catch(_){}
   // Changement de page : le Guide repart caché, puis se montre après 3 s d'immobilité.
   try{ if(typeof _guideVeille==="function") _guideVeille(); }catch(_){}
+
+  // Changement d'écran : on repart de l'en-tête. Le corps de page défile (body),
+  // donc sans remise à zéro le mode d'emploi s'ouvre à la hauteur où le menu
+  // avait été laissé. On attend la frame suivante : le contenu n'est pas encore posé.
+  try{
+    if(S.ecran!==_ecranScroll){
+      _ecranScroll=S.ecran;
+      requestAnimationFrame(function(){
+        try{
+          window.scrollTo(0,0);
+          if(document.scrollingElement) document.scrollingElement.scrollTop=0;
+          if(document.body) document.body.scrollTop=0;
+          var _a=document.getElementById("app"); if(_a) _a.scrollTop=0;
+        }catch(_){}
+      });
+    }
+  }catch(_){}
   appliquerModeLeger();
   // Verrou de défilement : solo "jeu" + phases de JEU du Duel qui ont une zone interne défilante
   // (pas sélection/attente/résultat, qui défilent en pleine page).
@@ -8676,8 +8718,34 @@ const G={
       var _bestIA=cIA?cIA.pts:-1;
       if(!j.supremeUseIA && _pJ>=0 && _bestIA<=_pJ && 50>_pJ){
         cIA=carteSupreme(j.cb); j.supremeUseIA=true;                 // Suprême pour renverser une manche perdue
-      } else if(!j.fantomeUseIA && j.manche>=j.total-2 && j.s2<j.s1 && Math.random()<0.5){
-        cIA=carteFantome(j.cb); cIA.pts=Math.floor(Math.random()*101); j.fantomeUseIA=true;  // Fantôme, coup de désespoir
+      } else if(!j.fantomeUseIA && j.manche >= j.total-2){
+        // ── Le Fantôme de l'IA — décision AVEUGLE, et TARDIVE ──────────
+        // La garde « 3 dernières manches » est essentielle : sans elle la
+        // branche est évaluée dès la manche 6 et l'IA brûle son Fantôme dans
+        // 80 % des parties (mesuré), dont 36 % dès la manche 6. Il cesse
+        // d'être une carte légendaire.
+        // Elle ne regarde PAS cJ1. Sinon le duel n'en serait pas un : le joueur
+        // pose en premier, elle accepterait tout ce qui l'arrange et refuserait
+        // le reste. Sa décision ne dépend que de sa propre position.
+        //
+        // Probabilité de gagner la partie en l'état. Ajustement logistique sur
+        // 60 000 parties simulées, fidèle à 1 % près :
+        //     p = 1 / (1 + exp(-écart / (27,5 · √manches_restantes)))
+        var _reste  = Math.max(1, j.total - j.manche + 1);
+        var _pIA    = 1/(1+Math.exp(-((j.s2-j.s1)/(27.5*Math.sqrt(_reste)))));
+        var _expert = (S.diff==="Expert");
+        var _p;
+        if(_pIA < 0.5){
+          // Derrière : le pile ou face vaut mieux que la pente. Elle dégaine.
+          _p = Math.min(0.75, 0.5 + (0.5-_pIA)*(_expert?1:0.7));
+        } else {
+          // Devant : elle ose quand même, parfois. C'est ce qui rend le Fantôme
+          // dangereux pour le meneur — sans ça, il le jouerait sans risque.
+          _p = _expert ? 0.08 : 0.18;   // Bolito calcule, Maguy s'emporte
+        }
+        if(Math.random() < _p){
+          cIA=carteFantome(j.cb); cIA.pts=Math.floor(Math.random()*101); j.fantomeUseIA=true;
+        }
       }
     }
     if(cJ1)j.mainRepJ1=j.mainRepJ1.filter(x=>x.id!==cJ1.id);
@@ -8868,15 +8936,24 @@ const G={
     var s1b=j.s1||0, s2b=j.s2||0, butin;
     if(jeGagne){ butin=s2b+b; j.s1=s1b+butin; j.s2=0; }   // je rafle : score IA + Fantôme perdant ; IA → 0
     else       { butin=s1b+a; j.s2=s2b+butin; j.s1=0; }   // l'IA rafle ; moi → 0
+    // Garde-fou : deux scores nuls rendraient le vainqueur indécidable dans finPartie.
+    if(jeGagne && j.s1<=j.s2) j.s1=j.s2+1;
+    else if(!jeGagne && j.s2<=j.s1) j.s2=j.s1+1;
     j.gainFinal={p1:(jeGagne?butin:0), p2:(jeGagne?0:butin), joker:null, jackpot:true};
     j.msg = jeGagne ? "\uD83C\uDFB0 Jackpot des Fant\u00f4mes \u2014 tu rafles tout !" : "\uD83C\uDFB0 Jackpot des Fant\u00f4mes \u2014 l'IA rafle tout";
     j.phase="fin";
+    // Le Jackpot est une manche remportée : XP = pot × 2, le pot étant les deux
+    // Fantômes. Un forfait ferait perdre de l'XP au vainqueur, puisque la partie
+    // s'arrête et qu'il renonce aux manches restantes (~28 XP chacune).
+    j.historique.push({manche:j.manche,b1:j.b1,b2:j.b2,cb:j.cb,cJ1:cJ1,cIA:cIA,
+                       jokerFinal:null,jIAUsed:null,gagnant:jeGagne?1:2});
+    if(jeGagne){ j.manchesGagnees++; S.xp += (a+b)*2; }
     var advNom=(typeof IA_PROFILS!=="undefined" && IA_PROFILS[S.diff] && IA_PROFILS[S.diff].nom) ? IA_PROFILS[S.diff].nom : "l'IA";
     JACKPOT_FANTOME.show({
       myName:"Toi", advName:advNom,
       myVal:a, advVal:b, iWin:jeGagne, butin:butin,
       myBefore:s1b, advBefore:s2b, myAfter:j.s1, advAfter:j.s2
-    }, function(){ if(S.jeu) G.mancheSuivante(); });
+    }, function(){ if(S.jeu) G.finPartie(); });   // le Jackpot tranche la partie
   },
 
   resoudre(cJ1,cIA,jokerFinal){
@@ -9089,9 +9166,11 @@ const G={
         // Premier bonus tiré au sort, puis alternance stricte.
         if(!j._bonusPour){ j._bonusPour = Math.random()<0.5 ? "joueur" : "ia"; }
         else { j._bonusPour = (j._bonusPour==="joueur") ? "ia" : "joueur"; }
-        if(typeof j._bonusSeq!=="number") j._bonusSeq=Math.floor(Math.random()*3);
-        var _seq=["sage","question","destin"];
-        var _btype=_seq[j._bonusSeq%3]; j._bonusSeq++;
+        var _seq = (typeof BALANCE_ENABLED!=="undefined" && BALANCE_ENABLED)
+                 ? ["sage","question","destin"]
+                 : ["sage","question"];
+        if(typeof j._bonusSeq!=="number") j._bonusSeq=Math.floor(Math.random()*_seq.length);
+        var _btype=_seq[j._bonusSeq%_seq.length]; j._bonusSeq++;
         // Filet de sécurité : un bonus ne doit jamais pouvoir figer la partie.
         try{
           if(j._bonusPour==="ia"){ G._bonusIA(_btype); }
@@ -11085,7 +11164,7 @@ function renderRegles(app){
           </div>
         </div>
       </div>
-        <div style="display:flex;gap:12px;padding:12px;border-radius:14px;background:linear-gradient(135deg,rgba(212,175,55,0.12),rgba(26,13,61,0.8));border:1.5px solid rgba(212,175,55,0.35);margin-top:10px">
+        <div id="regle-bloc-destin" style="display:flex;gap:12px;padding:12px;border-radius:14px;background:linear-gradient(135deg,rgba(212,175,55,0.12),rgba(26,13,61,0.8));border:1.5px solid rgba(212,175,55,0.35);margin-top:10px">
           <div style="font-size:30px;flex-shrink:0">⚖️</div>
           <div>
             <div style="font-size:13px;font-weight:700;color:var(--goldL);margin-bottom:4px">Bonus du Destin — Le Verdict de la Balance</div>
@@ -12166,6 +12245,14 @@ function renderJeu(app){
    Chemin relatif → compatible avec un déploiement en sous-dossier (github.io/equilibre-jeu/).
    Certains contextes refusent l'enregistrement (aperçu in-app / WKWebView "app-bound domains",
    file://) : ce n'est PAS bloquant, le jeu fonctionne quand même. On échoue en silence. */
+/* Balance désactivée → on retire son bloc dans « Lire les règles ». */
+try{
+  if(typeof BALANCE_ENABLED!=="undefined" && !BALANCE_ENABLED){
+    var _rbd=document.getElementById("regle-bloc-destin");
+    if(_rbd) _rbd.style.display="none";
+  }
+}catch(_){}
+
 if("serviceWorker" in navigator &&
    (location.protocol==="https:" || location.hostname==="localhost" || location.hostname==="127.0.0.1")){
   window.addEventListener("load",function(){
