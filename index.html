@@ -1625,7 +1625,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v94.81";
+const BUILD_TAG="v94.83";
 // ── Diagnostic : révèle le détail réel des erreurs (un « Script error. » nu = erreur d'un script tiers cross-origin, ex. PeerJS) ──
 window.addEventListener("error", function(ev){
   // Erreur tierce sans détail (ex. Google Analytics gêné par la prévention du tracking) : bruit bénin → on n'encombre pas la console
@@ -1843,17 +1843,37 @@ const CAMPAGNE=[
    vaincu:"Les quatre t'ont enseigné. Tu ne domines aucun pilier — et c'est pour cela que tu passes. On te suit, désormais. Prends garde à où tu marches.",
    gagnant:"Un seul pilier a cédé. C'est toujours un de trop."},
   // ── ACTE II — L'ÉPREUVE ──
-  {id:"c6", acte:2,nom:"Le Moine de Fer",              pilier:"Santé",       icon:"🌿",diff:"Expert",      xp:420, twist:"endurance",phrase:"Ta chair cédera bien avant ma volonté."},
-  {id:"c7", acte:2,fem:true,nom:"La Dame des Regrets",          pilier:"Amour",       icon:"❤️",diff:"Expert",      xp:480, twist:"passion",  phrase:"Chaque cœur que tu chéris deviendra ta faiblesse."},
-  {id:"c8", acte:2,nom:"Le Marchand d'Ombres",        pilier:"Argent",      icon:"🪙",diff:"Expert",      xp:540, twist:"jackpot",  phrase:"Ta fortune n'est qu'un prêt. Je viens réclamer mon dû."},
-  {id:"c9", acte:2,nom:"L'Ermite Aveugle",            pilier:"Spiritualité",icon:"🕯️",diff:"Expert",      xp:600, twist:"aveugle",  phrase:"Ferme les yeux : ici, la vue ne sert plus à rien."},
-  {id:"c10",acte:2,nom:"Le Juge de l'Équilibre",      pilier:"Équilibre",   icon:"⚖️",diff:"Expert",      xp:750, phrase:"Tu as vu l'Épreuve. Reste à savoir si tu la mérites."},
+  {id:"c6", acte:2,nom:"Le Moine de Fer",              pilier:"Santé",       icon:"🌿",diff:"Expert",      xp:420, twist:"endurance",phrase:"Ta chair cédera bien avant ma volonté.",
+   vaincu:"Tu as tenu. Voilà tout. Ce n'est pas la force qui m'a vaincu, c'est ton refus de t'asseoir. Le fer ne plie pas : il rouille. Toi, tu respires. Prends mon savoir, disciple.",
+   gagnant:"Ta chair a cédé. Elle cède toujours. Reviens quand tu auras appris à respirer dans la douleur."},
+  {id:"c7", acte:2,fem:true,nom:"La Dame des Regrets",          pilier:"Amour",       icon:"❤️",diff:"Expert",      xp:480, twist:"passion",  phrase:"Chaque cœur que tu chéris deviendra ta faiblesse.",
+   vaincu:"Tu as aimé sans t'y perdre. Moi je n'ai jamais su. J'ai serré si fort que tout m'a filé entre les doigts. Aime, disciple, mais ne referme pas la main. Prends mon savoir.",
+   gagnant:"Regarde ce que tu chéris. Voilà par où je suis entrée. On ne se protège pas du regret : on apprend à le porter."},
+  {id:"c8", acte:2,nom:"Le Marchand d'Ombres",        pilier:"Argent",      icon:"🪙",diff:"Expert",      xp:540, twist:"jackpot",  phrase:"Ta fortune n'est qu'un prêt. Je viens réclamer mon dû.",
+   vaincu:"Tu as refusé mon dernier marché. Personne ne le refuse. L'ombre n'est pas dans l'or, disciple — elle est dans celui qui compte sans jamais lever les yeux. Prends mon savoir, il ne coûte rien.",
+   gagnant:"Tout se négocie. Ta défaite était à vendre, et tu l'as achetée toi-même. Reviens avec de meilleurs comptes."},
+  {id:"c9", acte:2,nom:"L'Ermite Aveugle",            pilier:"Spiritualité",icon:"🕯️",diff:"Expert",      xp:600, twist:"aveugle",  phrase:"Ferme les yeux : ici, la vue ne sert plus à rien.",
+   vaincu:"Tu as joué les yeux fermés et tu as vu. Moi j'ai perdu la vue pour comprendre ça. Ce que l'on cherche n'est jamais devant : c'est dessous. Prends mon savoir, disciple.",
+   gagnant:"Tu regardais tes cartes. Il fallait écouter la mienne. Reviens quand tes yeux ne te serviront plus à rien."},
+  {id:"c10",acte:2,nom:"Le Juge de l'Équilibre",      pilier:"Équilibre",   icon:"⚖️",diff:"Expert",      xp:750, phrase:"Tu as vu l'Épreuve. Reste à savoir si tu la mérites.",
+   vaincu:"Tu passes. Non parce que tu as vaincu, mais parce qu'aucun de tes piliers n'est tombé pendant que tu vainquais. L'Épreuve est derrière toi. L'Ascension commence. Va, et prends garde à ce que tu deviens.",
+   gagnant:"Un pilier a cédé. Un seul. Ma balance ne connaît pas les circonstances — elle ne connaît que le poids."},
   // ── ACTE III — L'ASCENSION ──
-  {id:"c11",acte:3,nom:"Le Colosse Éternel",          pilier:"Santé",       icon:"🌿",diff:"Expert",      xp:820, twist:"endurance",phrase:"Mille guerriers reposent à mes pieds. Viens les rejoindre."},
-  {id:"c12",acte:3,nom:"Le Cœur de Cendres",          pilier:"Amour",       icon:"❤️",diff:"Expert",      xp:900, twist:"passion",  phrase:"J'ai aimé, puis j'ai tout consumé. Ton tour approche."},
-  {id:"c13",acte:3,nom:"Le Roi sans Trône",           pilier:"Argent",      icon:"🪙",diff:"Expert",      xp:1000,twist:"jackpot",  phrase:"L'or du monde entier ne rachètera pas ta défaite."},
-  {id:"c14",acte:3,nom:"Le Prophète du Vide",         pilier:"Spiritualité",icon:"🕯️",diff:"Expert",      xp:1150,twist:"aveugle",  phrase:"Au bout de la Voie, il n'y a que le silence. Et moi."},
-  {id:"c15",acte:3,nom:"Le Maître Suprême",           pilier:"Équilibre",   icon:"🔮",diff:"Expert",      xp:1600,twist:"ultime",   phrase:"Tu as parcouru la Voie tout entière. Prouve maintenant que tu as trouvé l'Équilibre."},
+  {id:"c11",acte:3,nom:"Le Colosse Éternel",          pilier:"Santé",       icon:"🌿",diff:"Expert",      xp:820, twist:"endurance",phrase:"Mille guerriers reposent à mes pieds. Viens les rejoindre.",
+   vaincu:"Tu tiens encore debout. Mille avant toi n'ont pas su. La pierre dure mille ans et ne vit pas un jour. Prends mon savoir, disciple : c'est ce qui plie qui dure.",
+   gagnant:"Repose-toi. Tu as tout donné, et ce n'était pas assez. Mille avant toi ont dit la même chose."},
+  {id:"c12",acte:3,nom:"Le Cœur de Cendres",          pilier:"Amour",       icon:"❤️",diff:"Expert",      xp:900, twist:"passion",  phrase:"J'ai aimé, puis j'ai tout consumé. Ton tour approche.",
+   vaincu:"T",
+   gagnant:"J'ai tout brûlé pour une seule personne. Toi, tu viens de tout brûler pour une manche."},
+  {id:"c13",acte:3,nom:"Le Roi sans Trône",           pilier:"Argent",      icon:"🪙",diff:"Expert",      xp:1000,twist:"jackpot",  phrase:"L'or du monde entier ne rachètera pas ta défaite.",
+   vaincu:"Tu me bats sans couronne, sans trésor, sans rien. C'est ainsi que j'aurais dû régner. On ne possède que ce qu'on peut perdre sans mourir. Prends mon savoir, disciple.",
+   gagnant:"J'ai perdu un royaume. Toi, tu viens de perdre une partie. Nous avons tous deux voulu tout garder."},
+  {id:"c14",acte:3,nom:"Le Prophète du Vide",         pilier:"Spiritualité",icon:"🕯️",diff:"Expert",      xp:1150,twist:"aveugle",  phrase:"Au bout de la Voie, il n'y a que le silence. Et moi.",
+   vaincu:"Tu as traversé le vide et tu parles encore. Alors écoute : le silence n'est pas l'absence, c'est ce qui reste quand le bruit s'en va. Prends mon savoir, disciple. Il ne pèse rien.",
+   gagnant:"Tu as rempli le vide de tes cris. Il les a bus. Reviens quand tu n'auras plus rien à dire."},
+  {id:"c15",acte:3,nom:"Le Maître Suprême",           pilier:"Équilibre",   icon:"🔮",diff:"Expert",      xp:1600,twist:"ultime",   phrase:"Tu as parcouru la Voie tout entière. Prouve maintenant que tu as trouvé l'Équilibre.",
+   vaincu:"Ainsi s'achève la Voie. Tu n'as dominé aucun pilier — tu ne les as pas laissés tomber. C'est tout ce que j'attendais. Nul ne t'a donné ce titre : tu l'as porté jusqu'ici. Lève-toi, Chef de Cercle.",
+   gagnant:"Tu as voulu me vaincre. On ne vainc pas l'équilibre — on le tient, ou on le lâche. Recommence."},
 ];
 const BADGES=[
   {id:"b1",icon:"⚔️",name:"Stratège",   desc:"Gagner 3 manches de suite",       check:s=>s.streak>=3},
@@ -9266,6 +9286,27 @@ const G={
           // Annonce vocale du chef vaincu (après la célébration des résultats)
           setTimeout(function(){ try{ if(S.voixGuide) _parlerGuide((_g?_g.nom:"Le chef")+" vaincu !"); }catch(_){} },700);
         }
+        // ── LA CHUTE : une déroute contre le Gardien de ta frontière te reprend un pas. ──
+        //    Une défaite serrée ne coûte rien. Il faut être écrasé (100 points d'écart)
+        //    pour que la Voie reprenne ce qu'elle a prêté.
+        else if(!_chefWin && _gi===S.campagne.progres && S.campagne.progres>0){
+          var _ecart=(S.jeu?((S.jeu.s2||0)-(S.jeu.s1||0)):0);
+          if(_ecart>=100){
+            var _rangAv=getRang().nom;
+            S.campagne.progres=Math.max(0, S.campagne.progres-1);
+            S._lastCampagne.chute=true;
+            var _rangAp=getRang();
+            setTimeout(function(){
+              if(_rangAp.nom!==_rangAv){
+                showToast("LA VOIE REPREND CE QU'ELLE PRÊTE — tu redeviens "+_rangAp.nom+". Le chemin, lui, n'a pas bougé.", "lose", 6000);
+                try{ if(S.voixGuide) _parlerGuide("La Voie reprend ce qu'elle prête. Tu redeviens "+_rangAp.nom+"."); }catch(_){}
+              } else {
+                showToast("⚑ Déroute — le Gardien te reprend un pas sur la Voie.", "lose", 4200);
+                try{ if(S.voixGuide) _parlerGuide("D\u00e9route. Le Gardien te reprend un pas."); }catch(_){}
+              }
+            }, 1400);
+          }
+        }
         // (défaite chef : S._templeNext reste null → l'écran de résultat propose « Réessayer ce gardien »)
       }
     }catch(e){ if(window.__logErr) window.__logErr(e,"campagne"); }
@@ -11062,7 +11103,7 @@ function renderRegles(app){
         ${[
           {i:"✨",n:"Cartes légendaires",t:"Dès la <strong style='color:var(--goldL)'>manche 6</strong>, deux cartes d'exception entrent en jeu, une seule fois chacune : la <strong style='color:var(--goldL)'>Suprême</strong> (50 pts garantis) et le <strong style='color:#c9b3f0'>Fantôme</strong> (valeur inconnue, 0 à 100). Les toucher ouvre une confirmation <strong style='color:var(--goldL)'>« Jouer / Pas maintenant »</strong> : déclinée, la carte se retire pour la manche et revient ensuite."},
           {i:"🎰",n:"Le Jackpot des Fantômes",t:"Si les <strong style='color:var(--goldL)'>deux joueurs</strong> jouent leur Fantôme dans la même manche, la table bascule : les deux valeurs tournent comme une machine à sous. Le plus haut rafle <strong style='color:var(--goldL)'>tout le score de l'adversaire</strong> plus la valeur de son Fantôme. Le perdant tombe à zéro. En cas d'égalité, on relance."},
-          {i:emblemeMini("Spiritualité",26),n:"La Voie des Quatre Maîtres",t:"Votre <strong style='color:var(--goldL)'>rang</strong> s'affiche sous votre nom et grandit en Campagne : <strong style='color:var(--goldL)'>Disciple → Initié → Gardien → Guide → Chef de Cercle</strong>. Chaque Gardien vaincu vous livre son enseignement ; vaincu, il prononce sa sentence. On ne devient pas chef en dominant un pilier, mais en n'en laissant tomber aucun."},
+          {i:emblemeMini("Spiritualité",26),n:"La Voie des Quatre Maîtres",t:"Votre <strong style='color:var(--goldL)'>rang</strong> s'affiche sous votre nom et grandit en Campagne : <strong style='color:var(--goldL)'>Disciple → Initié → Gardien → Guide → Chef de Cercle</strong>. Chaque Gardien vaincu vous livre son enseignement ; vaincu, il prononce sa sentence. On ne devient pas chef en dominant un pilier, mais en n'en laissant tomber aucun. Et la Voie reprend ce qu'elle prête : une <strong style='color:#e0708a'>déroute</strong> contre le Gardien que tu affrontes — cent points d'écart ou plus — te fait <strong style='color:#e0708a'>reculer d'un pas</strong>. Une défaite serrée ne coûte rien."},
           {i:"🃏",n:"Collection de 48 cartes",t:"Un pool de <strong style='color:var(--goldL)'>48 cartes</strong> ! Chaque partie tire une main différente. L'écran <strong style='color:var(--goldL)'>🃏 Collection</strong> révèle les cartes découvertes et garde les autres en silhouette — collectionne-les toutes."}
 ].map(f=>`
           <div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
