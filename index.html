@@ -1646,7 +1646,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v94.95";
+const BUILD_TAG="v94.96";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -6005,7 +6005,7 @@ DUEL._quitVolontaire = false;
 
 Object.assign(DUEL, {
 
-  _ice(){ return {config:{iceServers:[
+  _ice(){ return {config:{iceCandidatePoolSize:2, iceServers:[
     {urls:"stun:stun.l.google.com:19302"},
     {urls:"stun:stun1.l.google.com:19302"},
     {urls:"stun:stun.relay.metered.ca:80"},
@@ -11646,14 +11646,31 @@ function _duelEnJeu(){
       && (S.ecran==="duel_jeu" || S.ecran==="duel_lobby" || S.ecran==="duel_resultat");
 }
 // Battement de cœur : chaque pair envoie un ping toutes les 5 s ; l'autre répond pong.
-// Si plus rien n'arrive pendant 15 s, la connexion est considérée coupée.
+// Si le silence dépasse ~11 s, on lance une SONDE de confirmation (ping rapproché) : le canal
+// n'est déclaré mort que si cette sonde reste elle aussi sans réponse → détection ~15 s au lieu
+// de 20 s, sans faux positif sur un simple ralentissement réseau. Filet dur maintenu à 20 s.
+var _hbProbe=false;
 function _duelHeartbeat(){
   if(!_duelEnJeu() || !DUEL._lastRx) return;      // jamais connecté encore → rien à surveiller
   if(DUEL._recon && DUEL._recon.active) return;    // reconnexion déjà en cours
   var conn=DUEL.conn;
   if(!conn || !conn.open){ DUEL._onDisconnect("hb-conn-fermee"); return; }
   DUEL._send({type:"ping", t:Date.now()});
-  if(Date.now()-DUEL._lastRx > 20000) DUEL._onDisconnect("hb-silence-20s");
+  var age=Date.now()-DUEL._lastRx;
+  if(age>20000){ DUEL._onDisconnect("hb-silence-20s"); return; }   // filet dur
+  // Fenêtre suspecte : confirmer par une sonde rapprochée avant de conclure à la coupure.
+  if(age>11000 && !_hbProbe){
+    _hbProbe=true;
+    var avant=DUEL._lastRx;
+    DUEL._send({type:"ping", t:Date.now()});
+    setTimeout(function(){
+      _hbProbe=false;
+      if(!_duelEnJeu() || (DUEL._recon && DUEL._recon.active)) return;
+      var c=DUEL.conn;
+      if(!c || !c.open){ DUEL._onDisconnect("hb-sonde-conn-fermee"); return; }
+      if((DUEL._lastRx||0) <= avant){ DUEL._onDisconnect("hb-sonde-sans-reponse"); }
+    }, 4000);
+  }
 }
 setInterval(_duelHeartbeat, 5000);
 // Sauvegarde régulière : même un crash brutal ne peut plus perdre plus de 5 s de partie.
@@ -11686,6 +11703,9 @@ function _duelAuRetour(){
 }
 window.addEventListener("online", _duelAuRetour);
 window.addEventListener("focus", _duelAuRetour);
+// iOS/Safari : un retour via le cache page-arrière (bfcache) ne déclenche pas toujours
+// focus/visibilitychange → pageshow capte ce cas et relance la vérification de connexion.
+window.addEventListener("pageshow", function(e){ _duelAuRetour(); });
 document.addEventListener("visibilitychange",function(){
   if(document.visibilityState==="visible") _duelAuRetour();
 });
