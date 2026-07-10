@@ -1646,7 +1646,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v94.90";
+const BUILD_TAG="v94.94";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -1815,10 +1815,10 @@ const NIVEAUX=[
   {min:0,   label:"Novice",        icon:"🌱",color:"#8BC34A",debloque:null},
   {min:200, label:"Apprenti",      icon:"📚",color:"#64B5F6",debloque:"Thème Aurora débloqué !"},
   {min:500, label:"Initié",        icon:"⚡",color:"#AB47BC",debloque:"Thème Cosmos débloqué !"},
-  {min:1000,label:"Gardien",       icon:"🛡",color:"#C0C0C0",debloque:"Difficulté Expert débloquée !"},
+  {min:1000,label:"Gardien",       icon:"🛡",color:"#C0C0C0",debloque:"Difficulté Expert + thème Cœur Ardent débloqués !"},
   {min:2000,label:"Sage",          icon:"🌟",color:"#FFD700",debloque:"Thème Coucher débloqué !"},
-  {min:3500,label:"Maître",        icon:"👑",color:"#D4AF37",debloque:"Mode Survie débloqué !"},
-  {min:5000,label:"Maître Suprême",icon:"🔮",color:"#FF6B6B",debloque:"Maîtrise totale atteinte !"},
+  {min:3500,label:"Maître",        icon:"👑",color:"#D4AF37",debloque:"Mode Survie + thème Forêt Vive débloqués !"},
+  {min:5000,label:"Maître Suprême",icon:"🔮",color:"#FF6B6B",debloque:"Maîtrise totale + thème Or de l'Abondance !"},
 ];
 
 // ── La Voie des Quatre Maîtres : rangs narratifs (liés aux Maîtres vaincus) ──
@@ -1850,6 +1850,14 @@ const THEMES=[
   {id:"t2",name:"Aurore Boréale",  bg:"radial-gradient(ellipse at top,#0a2e1a,#030d08)",minNiv:1},
   {id:"t3",name:"Cosmos",          bg:"radial-gradient(ellipse at top,#0a0030,#020008)",minNiv:2},
   {id:"t4",name:"Coucher de Soleil",bg:"radial-gradient(ellipse at top,#2e1a0a,#080300)",minNiv:4},
+  {id:"t5",name:"Voie Spirituelle", bg:"radial-gradient(ellipse at top,#2a0f47,#0a0416)",minNiv:0},
+  {id:"t6",name:"Cœur Ardent",      bg:"radial-gradient(ellipse at top,#3a0a18,#120306)",minNiv:3},
+  {id:"t7",name:"Forêt Vive",       bg:"radial-gradient(ellipse at top,#062b1c,#02100a)",minNiv:5},
+  {id:"t8",name:"Or de l'Abondance",bg:"radial-gradient(ellipse at top,#2e2408,#0c0a02)",minNiv:6},
+  {id:"t9", name:"Aube Dorée",    bg:"radial-gradient(ellipse at top,#a86a24 0%,#5e3c16 42%,#1c0f04 100%)",minNiv:0},
+  {id:"t10",name:"Soleil Levant", bg:"radial-gradient(ellipse at top,#c25a22 0%,#7a2e14 42%,#210a05 100%)",minNiv:1},
+  {id:"t11",name:"Sable Chaud",   bg:"radial-gradient(ellipse at top,#9c8236 0%,#544216 42%,#161108 100%)",minNiv:2},
+  {id:"t12",name:"Ciel de Miel",  bg:"radial-gradient(ellipse at top,#c9922a 0%,#6e4e14 42%,#1a1006 100%)",minNiv:5},
 ];
 // ── MODE CAMPAGNE : « La Voie des 4 Piliers » (5 gardiens, pilier fort différent) ──
 const CAMPAGNE=[
@@ -6915,7 +6923,7 @@ function renderDuelJeu(app){
       groupesHtml+='</div></div>';
     });
     app.innerHTML='<div class="screen" style="padding:0;min-height:100dvh;background:radial-gradient(ellipse at top,#1a0535,#070514)">'
-      +'<div style="position:sticky;top:0;z-index:100;background:rgba(7,5,20,0.95);border-bottom:1px solid rgba(212,175,55,0.2);padding:10px 16px;display:flex;align-items:center;justify-content:space-between">'
+      +'<div style="position:sticky;top:0;z-index:100;background:rgba(7,5,20,0.95);border-bottom:1px solid rgba(212,175,55,0.2);padding:calc(env(safe-area-inset-top,0px) + 10px) 16px 10px;display:flex;align-items:center;justify-content:space-between">'
       +'<div style="font-family:Cinzel,serif;font-size:13px;font-weight:700;color:var(--goldL)">⚔️ Sélectionnez vos 10 cartes</div>'
       +'<div style="font-size:14px;font-weight:900;font-family:Cinzel,serif;color:'+(selN>=10?"#45c97a":"var(--gold)")+'">'+selN+'/10</div>'
       +'</div>'
@@ -7006,7 +7014,7 @@ function renderDuelJeu(app){
       cartesHtml+='</div></div>';
     });
     // En-tête collant + compteur (comme le Solo)
-    html+='<div style="position:sticky;top:0;z-index:100;background:rgba(7,5,20,0.95);border-bottom:1px solid rgba(212,175,55,0.2);padding:8px 4px;display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
+    html+='<div style="position:sticky;top:0;z-index:100;background:rgba(7,5,20,0.95);border-bottom:1px solid rgba(212,175,55,0.2);padding:calc(env(safe-area-inset-top,0px) + 8px) 4px 8px;display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
       +'<div style="font-family:Cinzel,serif;font-size:13px;font-weight:700;color:var(--goldL)">⚔️ Sélectionnez vos 10 cartes</div>'
       +'<div style="font-size:14px;font-weight:900;font-family:Cinzel,serif;color:'+(sel>=10?"#45c97a":"var(--gold)")+'">'+sel+'/10</div>'
       +'</div>'
@@ -11724,7 +11732,7 @@ function renderSelection(app){
   app.innerHTML=`
   <div class="screen fade" style="padding:0;min-height:100dvh;background:radial-gradient(ellipse at top,#1a0535,#070514)">
     <div style="position:sticky;top:0;z-index:100;background:rgba(7,5,20,0.95);
-      border-bottom:1px solid rgba(212,175,55,0.2);padding:10px 16px;
+      border-bottom:1px solid rgba(212,175,55,0.2);padding:calc(env(safe-area-inset-top,0px) + 10px) 16px 10px;
       display:flex;align-items:center;justify-content:space-between;gap:10px">
       <div style="display:flex;align-items:center;gap:10px;min-width:0">
         <button onclick="retourMenuDepuisSelection()" aria-label="Retour au menu"
