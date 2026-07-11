@@ -380,7 +380,7 @@ body:has(#tuto-overlay) #guide-fab{ display:none!important; }
 .cv-pill.off.active{opacity:.85;filter:grayscale(.35);background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.16);transform:none;box-shadow:none;}
 .cv-pill.off .cv-plabel{color:var(--muted);}
 .cv-head{text-align:center;font-family:'Cinzel',serif;font-weight:700;font-size:15px;letter-spacing:.5px;margin:2px 0 14px;}
-.cv-cards{display:flex;justify-content:center;align-items:flex-end;min-height:206px;padding:30px 6px 6px;}
+.cv-cards{display:flex;justify-content:center;align-items:flex-end;min-height:206px;padding:30px 2px 6px;}
 .cv-fancard{transition:transform .22s cubic-bezier(.34,1.55,.5,1),filter .2s;cursor:pointer;will-change:transform;}
 @media(hover:hover){ .cv-fancard:hover{transform:rotate(0deg) translateY(-26px) scale(1.08) !important;z-index:100 !important;filter:brightness(1.05) drop-shadow(0 12px 22px rgba(0,0,0,.45));} }
 .cv-fancard:active{transform:rotate(0deg) translateY(-18px) scale(1.05) !important;z-index:100 !important;filter:brightness(1.04);}
@@ -1679,7 +1679,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v95.14";
+const BUILD_TAG="v95.16";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -8541,13 +8541,22 @@ function _cvSel(instId, el){
 // Dispose les cartes d'un combo en ÉVENTAIL (arc) — transforms calculés inline (aucun scintillement).
 function _eventailHTML(cards, renderCard){
   var n=cards.length, mid=(n-1)/2;
-  var spread = n<=1?0 : (n===2?9 : n===3?12 : n===4?11 : 8);   // degrés entre cartes
-  var over   = n<=3? -16 : -26;                                  // chevauchement
+  // Beaucoup de cartes → on RÉDUIT la taille des cartes (uniquement dans ce cas) + on ajuste
+  // l'écartement, pour tout faire tenir sans trop les serrer.
+  var s      = n<=4?1 : (n===5?0.82 : 0.72);                                  // échelle des cartes
+  var spread = n<=1?0 : (n===2?9 : n===3?11 : (n===4?9 : (n===5?7 : 6)));      // degrés entre cartes
+  var over   = n<=3? -16 : (n===4? -24 : (n===5? -22 : -18));                  // chevauchement
+  var dropK  = (n>=5?5:7);
+  var W=Math.round(128*s), H=Math.round(171*s);
   return cards.map(function(card,i){
     var ang=((i-mid)*spread).toFixed(2);
-    var drop=(Math.abs(i-mid)*7).toFixed(1);                     // arc : extrêmes plus bas
-    var st='transform:rotate('+ang+'deg) translateY('+drop+'px);transform-origin:50% 118%;margin:0 '+over+'px;z-index:'+(10+i)+';';
-    return '<div class="cv-fancard" style="'+st+'">'+renderCard(card)+'</div>';
+    var drop=(Math.abs(i-mid)*dropK).toFixed(1);
+    var inner=(s<1)
+      ? '<div style="width:128px;height:171px;transform:scale('+s+');transform-origin:top left">'+renderCard(card)+'</div>'
+      : renderCard(card);
+    var sizeStyle=(s<1)?('width:'+W+'px;height:'+H+'px;'):'';
+    var st=sizeStyle+'transform:rotate('+ang+'deg) translateY('+drop+'px);transform-origin:50% 118%;margin:0 '+over+'px;z-index:'+(10+i)+';';
+    return '<div class="cv-fancard" style="'+st+'">'+inner+'</div>';
   }).join("");
 }
 function comboVedetteHTML(cards, renderCard, instId, opts){
