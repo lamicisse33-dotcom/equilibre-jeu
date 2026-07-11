@@ -1688,7 +1688,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v95.21";
+const BUILD_TAG="v95.23";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -7316,11 +7316,13 @@ function renderDuelJeu(app){
               +' disponibles après les réponses</div>';
           }
           html+='<div style="font-size:11px;color:var(--muted);margin-bottom:2px;text-align:center">Jouez votre meilleure carte !</div>'
-            +'<div style="font-size:9px;color:var(--muted);text-align:center;margin-bottom:8px;font-style:italic">👆 Touche une carte pour la jouer · 👇 appui long sur un objet = infos</div>'
-            +comboVedetteHTML(cartesValides.concat(maMain.filter(function(c){return c.combo!==gs.cb;})), function(carte){
+            +'<div style="font-size:9px;color:var(--muted);text-align:center;margin-bottom:8px;font-style:italic">👆 Touche une carte pour la jouer immédiatement · les jokers se jouent d’un simple toucher</div>'
+            +'<div style="--card-w:86px;--card-h:114px;display:flex;flex-wrap:wrap;justify-content:center;gap:7px;padding:4px 0 10px">'
+            +cartesValides.map(function(carte){
               return '<div onclick="DUEL.jouerCarteById(&quot;'+carte.id+'&quot;)" style="cursor:pointer;flex-shrink:0;touch-action:manipulation;-webkit-user-drag:none;-webkit-touch-callout:none;user-select:none">'
                 +carteMainHTML(carte,{clickable:true,selected:DUEL._repSel===carte.id})+'</div>';
-            }, 'pd', {validCombo:gs.cb, flat:true, renderInvalid:function(carte){ return carteMainHTML(carte,{disabled:true}); }});
+            }).join("")
+            +'</div>';
         }
       } else {
         var jokCards2="";
@@ -8390,9 +8392,8 @@ function _fluidCarte(cols){
 }
 function carteMainHTML(c,opts){
   opts=opts||{};
-  // Grande carte fixe. Ratio 3:4 conservé. (128×171)
-  return '<div style="width:128px;height:171px;overflow:hidden;flex:0 0 auto;scroll-snap-align:start;border-radius:13px">'
-    +'<div style="width:110px;height:156px;transform:scale(1.1636,1.0962);transform-origin:top left">'
+  return '<div style="width:96px;height:128px;overflow:hidden;flex-shrink:0;border-radius:12px">'
+    +'<div style="--card-w:110px;--card-h:156px;width:110px;height:156px;transform:scale(0.873,0.821);transform-origin:top left">'
     +carteRepHTML(c,opts)
     +'</div></div>';
 }
@@ -8631,7 +8632,21 @@ function aperçuMain(main,jokers){
   if(main.length===0)return`<!--HAND--><div class="card" style="text-align:center;padding:16px"><div style="font-size:28px;margin-bottom:6px">📭</div><div style="color:var(--red);font-weight:700">Plus de cartes disponibles</div></div>`;
   return`<!--HAND--><div class="card" style="padding:12px">
     <div style="font-size:10px;color:var(--gold);font-weight:700;margin-bottom:10px;letter-spacing:1px">VOS CARTES (${main.length})</div>
-    ${comboVedetteHTML(main, c=>carteMainHTML(c,{disabled:true}), 'ap')}
+    ${combos.map(combo=>{
+      const cs=main.filter(c=>c.combo===combo);
+      const[pa,pb]=combo.split("+");
+      const sA=PILIER[pa]||{accent:"#888",icon:"?"},sB=PILIER[pb]||{accent:"#888",icon:"?"};
+      return`<div style="margin-bottom:12px">
+        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;padding:0 2px">
+          <div style="height:1px;flex:1;background:linear-gradient(90deg,transparent,${sA.accent}66)"></div>
+          <div style="font-size:9px;font-weight:700;color:${sA.accent};letter-spacing:1px;background:${sA.accent}18;border:1px solid ${sA.accent}44;border-radius:20px;padding:2px 9px;white-space:nowrap">
+            ${emblemeMini(pa)} ${pa} + ${emblemeMini(pb)} ${pb}
+          </div>
+          <div style="height:1px;flex:1;background:linear-gradient(90deg,${sB.accent}66,transparent)"></div>
+        </div>
+        <div style="--card-w:86px;--card-h:114px;display:flex;flex-wrap:wrap;justify-content:center;gap:min(6px,1.5vw)">${cs.map(c=>carteMainHTML(c,{disabled:true})).join("")}</div>
+      </div>`;
+    }).join("")}
     ${jokers.length>0?`<div style="margin-top:8px"><div style="font-size:10px;color:var(--gold);font-weight:700;margin-bottom:5px">VOS JOKERS</div><div style="display:flex;gap:7px">${jokers.map(j=>jokerCardHTML(j,{onClick:`G.useJoker('${j.id}')`})).join("")}</div></div>`:""}
   </div>`;
 }
@@ -11396,10 +11411,10 @@ function renderRegles(app){
         ${[
           {n:"1. Sélection des cartes",i:"🎯",t:"Avant la première manche, choisissez <strong style='color:var(--goldL)'>10 cartes parmi 12</strong>, organisées par Combo. Validez votre sélection quand vous êtes prêt. En Duel, chaque joueur sélectionne ses cartes de son côté."},
           {n:"2. Animation de distribution",i:"✨",t:"Après la sélection, une animation spectaculaire distribue vos 10 cartes qui volent depuis les 4 coins de l'écran et se retournent pour révéler leurs couleurs."},
-          {n:"3. Carte de Base",i:"🎴",t:"Le joueur qui commence choisit un <strong style='color:var(--goldL)'>Pilier de Base</strong>. L'adversaire répond avec un <strong style='color:var(--goldL)'>Pilier différent</strong>. Les deux forment un <strong style='color:var(--goldL)'>Combo</strong>. À chaque manche, la <strong style='color:var(--goldL)'>main alterne</strong> : c'est l'autre joueur qui choisit le Pilier de Base en premier. Les piliers joués s'assombrissent avec leur logo pulsant."},
+          {n:"3. Carte de Base",i:"🎴",t:"Le joueur qui commence choisit un <strong style='color:var(--goldL)'>Pilier de Base</strong>. L'adversaire répond avec un <strong style='color:var(--goldL)'>Pilier différent</strong>. Les deux forment un <strong style='color:var(--goldL)'>Combo</strong>. À chaque manche, la <strong style='color:var(--goldL)'>main alterne</strong> : c'est l'autre joueur qui choisit le Pilier de Base en premier. Les piliers joués s'assombrissent avec leur logo pulsant. <strong style='color:var(--goldL)'>💡 Un coup de pouce t'oriente</strong> : le pilier au <strong style='color:var(--goldL)'>✨ meilleur combo</strong> (à l'attaque) et la <strong style='color:var(--goldL)'>⭐ meilleure réponse</strong> (en défense) sont mis en avant — mais tu restes libre de ton choix."},
           {n:"4. Carte Réponse",i:"🃏",t:"Chaque joueur joue une <strong style='color:var(--goldL)'>Carte Réponse</strong> du Combo actif. Vous avez <strong style='color:var(--goldL)'>20 secondes</strong>. La carte jouée est <strong style='color:var(--red)'>défaussée définitivement</strong>. Si aucune carte valide → pénalité -5 pts, l'adversaire gagne +5 pts bonus. Les <strong style='color:var(--goldL)'>deux cartes-réponses</strong> jouées s'affichent ensuite côte à côte, avec le pot <strong style='color:var(--goldL)'>GAIN TOTAL</strong>, avant le résultat."},
           {n:"5. Jokers (optionnel)",i:"⚡",t:"Deux jokers vivent <strong style='color:var(--goldL)'>dans votre main</strong>, à côté de vos cartes : l'<strong style='color:var(--goldL)'>Espion</strong> 👁 (révèle les 3 meilleures cartes adverses) et l'<strong style='color:var(--goldL)'>Échange</strong> 🔄 (remplace une carte). Un simple toucher les déclenche — aucune validation, aucune interruption. Les jokers offensifs (Brakeur, Multiplicateur) se jouent après les Cartes Réponses."},
-          {n:"6. Résultat automatique",i:"🏆",t:"Le résultat s'affiche automatiquement. La manche suivante démarre après quelques secondes (le temps de bien voir les deux réponses). En Duel, l'hôte contrôle le rythme. Bonus du Sage ou Question surprise peuvent apparaître entre certaines manches. <strong style='color:var(--goldL)'>En cas d'égalité de points</strong>, celui qui a posé sa carte <strong style='color:var(--goldL)'>en premier</strong> remporte le pot — sauf si un <strong style='color:#c9b3f0'>Fantôme</strong> est en jeu : sa valeur étant tirée au hasard, l'égalité reste blanche."},
+          {n:"6. Résultat automatique",i:"🏆",t:"Le résultat s'affiche automatiquement, puis la manche suivante démarre <strong style='color:var(--goldL)'>toute seule</strong> après quelques secondes (le temps de bien voir les deux réponses) — dans <strong style='color:var(--goldL)'>tous les modes</strong>, sans bouton à toucher. Entre certaines manches, un bonus peut surgir : le <strong style='color:var(--goldL)'>Bonus du Sage</strong>, une <strong style='color:var(--goldL)'>Question surprise</strong> ou le <strong style='color:var(--goldL)'>Verdict de la Balance</strong>. <strong style='color:var(--goldL)'>En cas d'égalité de points</strong>, celui qui a posé sa carte <strong style='color:var(--goldL)'>en premier</strong> remporte le pot — sauf si un <strong style='color:#c9b3f0'>Fantôme</strong> est en jeu : sa valeur étant tirée au hasard, l'égalité reste blanche."},
         ].map(s=>`
           <div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.06)">
             <div style="font-size:24px;flex-shrink:0;width:32px;text-align:center">${s.i}</div>
@@ -12341,15 +12356,15 @@ function renderJeu(app){
           `:`
             <!-- Mode normal -->
             <div style="font-size:12px;color:var(--gold);font-weight:700;margin-bottom:2px;text-align:center">
-              ✅ Répondez avec <strong style="color:var(--goldL)">${j.cb}</strong> — les autres combos sont 🔒
+              ✅ Vos cartes — <strong style="color:var(--goldL)">${j.cb}</strong>
             </div>
-            <div style="font-size:9px;color:var(--muted);text-align:center;margin-bottom:8px;font-style:italic">👆 Touche une carte pour la jouer · 👇 appui long = infos</div>
+            <div style="font-size:9px;color:var(--muted);text-align:center;margin-bottom:8px;font-style:italic">👆 Touche une carte pour la jouer immédiatement</div>
             ${vIA.length===0?`<div style="font-size:10px;color:#45c97a;text-align:center;margin-bottom:8px;font-weight:700">💡 L'IA n'a pas de carte valide — jouez et gagnez vos points !</div>`:""}
-            ${comboVedetteHTML(validesJ1.concat(autresJ1), x=>`<div onclick="G.selRep('${x.id}')" draggable="false" style="cursor:pointer;touch-action:manipulation;-webkit-user-drag:none;-webkit-touch-callout:none;user-select:none">${carteMainHTML(x,{selected:j.repChoisie?.id===x.id,masque:(S.jeu&&((S.jeu.twist==="aveugle"||S.jeu.twist==="ultime")||(S.jeu.modif==="brouillard"&&S.jeu.manche%2===0)))})}</div>`, 'pj', {validCombo:j.cb, flat:true, renderInvalid:c=>carteMainHTML(c,{disabled:true})})}
-            ${((!j.phaseEchange && j.mainJokJ1.find(x=>x.id==="j3")) || (!j.phaseEchange && j.mainJokJ1.find(x=>x.id==="j4"))) ? `<div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:14px">
-              ${(!j.phaseEchange && j.mainJokJ1.find(x=>x.id==="j3")) ? `<div style="width:128px;height:171px;display:flex;flex:0 0 auto">${jokerCardHTML(j.mainJokJ1.find(x=>x.id==="j3"),{onClick:"G.useEspion()"})}</div>` : ""}
-              ${(!j.phaseEchange && j.mainJokJ1.find(x=>x.id==="j4")) ? `<div style="width:128px;height:171px;display:flex;flex:0 0 auto">${jokerCardHTML(j.mainJokJ1.find(x=>x.id==="j4"),{onClick:"G.useEchange()"})}</div>` : ""}
-            </div>` : ""}
+            <div style="--card-w:86px;--card-h:114px;display:flex;flex-wrap:wrap;justify-content:center;gap:min(7px,1.8vw)">
+              ${validesJ1.map(x=>`<div onclick="G.selRep('${x.id}')" draggable="false" style="cursor:pointer;touch-action:manipulation;-webkit-user-drag:none;-webkit-touch-callout:none;user-select:none">${carteMainHTML(x,{selected:j.repChoisie?.id===x.id,masque:(S.jeu&&((S.jeu.twist==="aveugle"||S.jeu.twist==="ultime")||(S.jeu.modif==="brouillard"&&S.jeu.manche%2===0)))})}</div>`).join("")}
+              ${(!j.phaseEchange && j.mainJokJ1.find(x=>x.id==="j3")) ? `<div style="width:86px;height:114px;display:flex;flex:0 0 auto">${jokerCardHTML(j.mainJokJ1.find(x=>x.id==="j3"),{onClick:"G.useEspion()"})}</div>` : ""}
+              ${(!j.phaseEchange && j.mainJokJ1.find(x=>x.id==="j4")) ? `<div style="width:86px;height:114px;display:flex;flex:0 0 auto">${jokerCardHTML(j.mainJokJ1.find(x=>x.id==="j4"),{onClick:"G.useEchange()"})}</div>` : ""}
+            </div>
           `}
         </div>
 
@@ -12373,7 +12388,11 @@ function renderJeu(app){
       </div>`:""}
 
 
-      ${""/* Les combos non valides sont désormais intégrés en pastilles verrouillées ci-dessus. */}
+      ${autresJ1.length>0&&validesJ1.length>0?`
+        <div style="margin-bottom:8px">
+          <div style="font-size:10px;color:var(--muted);margin-bottom:5px">Autres cartes non valides (${autresJ1.length})</div>
+          <div style="display:flex;gap:5px;flex-wrap:wrap">${autresJ1.map(c=>carteMainHTML(c,{disabled:true})).join("")}</div>
+        </div>`:""}
 
       ${j.mainJokJ1.filter(x=>x.id==="j1"||x.id==="j2").length>0?`
         <div style="font-size:9px;color:var(--muted);font-style:italic;margin-top:4px">
