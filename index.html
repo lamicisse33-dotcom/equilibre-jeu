@@ -1646,7 +1646,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v94.96";
+const BUILD_TAG="v94.97";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -4927,6 +4927,7 @@ const DUEL = {
         DUEL.gs.phase="selection";
         DUEL.gs.selJ1Done=false;
         DUEL.gs.selJ2Done=false;
+        try{ DUEL._stopRecon(); DUEL._cacherSuspension(); }catch(e){}
         DUEL._send({type:"welcome",
           nom:S.nom||"Hôte",
           icon:"👑",
@@ -4948,6 +4949,7 @@ const DUEL = {
           DUEL._initGS();
           DUEL.gs.phase="selection";
         }
+        try{ DUEL._stopRecon(); DUEL._cacherSuspension(); }catch(e){}
         S.ecran="duel_jeu"; render();
         AUDIO.sfxStart();
         AUDIO.startBg();
@@ -6091,6 +6093,14 @@ Object.assign(DUEL, {
     try{ if(DUEL._dbg) DUEL._dbgLog("!", {type:"disco:"+(DUEL._lastDisco||"?")}); }catch(e){}
     if(DUEL.demo) return;
     if(DUEL._quitVolontaire) return;
+    // Hôte seul dans le lobby : aucun adversaire n'a encore rejoint (phase "attente").
+    // Un hoquet de signalisation n'est PAS une partie suspendue — le peer se ré-enregistre
+    // tout seul via son handler "disconnected". On n'affiche rien et on nettoie tout résidu.
+    if(DUEL.gs && DUEL.gs.phase==="attente"){
+      try{ DUEL._stopRecon(); }catch(e){}
+      try{ DUEL._cacherSuspension(); }catch(e){}
+      return;
+    }
     if(!DUEL._recon) DUEL._recon={active:false,tries:0,timer:null};
     if(S.ecran!=="duel_jeu" && S.ecran!=="duel_lobby" && S.ecran!=="duel_resultat") return; // pas au menu
     if(DUEL._recon.active) return; // déjà en reconnexion
