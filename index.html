@@ -1646,7 +1646,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v94.97";
+const BUILD_TAG="v94.98";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -6116,22 +6116,29 @@ Object.assign(DUEL, {
     if(!DUEL.room){ DUEL._stopRecon(); return; }
     DUEL._recon.tries++;
     // Réveiller la signalisation si le peer est seulement "disconnected" (pas détruit).
+    // reconnect() réclame le MÊME identifiant côté serveur, sans collision.
     try{
       if(DUEL.peer && !DUEL.peer.destroyed && DUEL.peer.disconnected){ DUEL.peer.reconnect(); }
     }catch(e){}
 
-    // Un peer PeerJS "disconnected"/"destroyed" ne rétablira JAMAIS de canal de données
-    // (fréquent après une longue veille : appel, app en arrière-plan). On le reconstruit.
-    var peerMort = !DUEL.peer || DUEL.peer.destroyed || DUEL.peer.disconnected;
+    // IMPORTANT : distinguer un peer DÉTRUIT/absent (à reconstruire) d'un peer seulement
+    // "disconnected" (récupérable via reconnect() ci-dessus). Reconstruire un peer "disconnected"
+    // avec le même id eq-<CODE> provoque "unavailable-id" → reconnexion impossible (deadlock).
+    // On ne reconstruit donc QUE si le peer est réellement mort, et on laisse reconnect() agir sinon.
+    var peerMort = !DUEL.peer || DUEL.peer.destroyed;
+    var peerAttendReco = DUEL.peer && !DUEL.peer.destroyed && DUEL.peer.disconnected;
 
     if(DUEL.isHost){
-      // Hôte : il conserve l'identifiant eq-<CODE> et attend l'invité.
-      // On ne recrée le peer QUE s'il est réellement mort (éviter la valse d'ID côté serveur).
+      // Hôte : garde l'identifiant eq-<CODE>. Reconstruction seulement s'il est mort ; s'il est
+      // "disconnected", reconnect() réclame le même id → on attend. Filet anti-zombie : si reconnect()
+      // reste bloqué plusieurs tentatives, on reconstruit en dernier recours.
       if(peerMort){ DUEL._reconnexionRepartirDeZero(); }
+      else if(peerAttendReco && DUEL._recon.tries % 5 === 0){ DUEL._reconnexionRepartirDeZero(); }
     } else {
-      // Invité (initiateur) : reconstruction si zombie, + filet anti-zombie toutes les 3 tentatives,
-      // sinon on retente simplement la connexion vers l'hôte.
-      if(peerMort || DUEL._recon.tries % 3 === 0){ DUEL._reconnexionRepartirDeZero(); }
+      // Invité : peer mort → reconstruction (nouvel id). "disconnected" → on laisse reconnect() agir
+      // (filet anti-zombie toutes les 4 tentatives). Peer ouvert → (re)connexion à l'hôte.
+      if(peerMort){ DUEL._reconnexionRepartirDeZero(); }
+      else if(peerAttendReco){ if(DUEL._recon.tries % 4 === 0) DUEL._reconnexionRepartirDeZero(); }
       else { DUEL._tenterConnexionHote(); }
     }
 
