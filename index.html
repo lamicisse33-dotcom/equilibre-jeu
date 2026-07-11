@@ -67,7 +67,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet"/>
 <style>
-*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
+/* Le jeu n'est pas un document : pas de sélection de texte ni de menu natif iOS (Copier/Chercher/Traduire)
+   sur un appui long. On réactive la saisie/sélection uniquement dans les champs. */
+input,textarea,[contenteditable]{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default;}
 :root{
   --gold:#D4AF37;--goldL:#F0D060;--text:#EEE8D5;--muted:#9B8FA8;
   --red:#e05555;--green:#45c97a;--deep:#070514;--dark:#0F0A28;
@@ -135,6 +138,9 @@ select{font-family:'Crimson Text',Georgia,serif;}
 @keyframes barFill{from{width:0}to{width:var(--w)}}
 
 .fade{animation:fadeIn 0.28s ease both;}
+/* Même écran re-rendu (ex. toucher une carte en sélection) → ne pas rejouer l'animation
+   d'entrée sur les wrappers .fade : évite le "clignotement" de tout l'écran. */
+#app.no-fade .fade{animation:none !important;}
 .pop{animation:popIn 0.38s cubic-bezier(.34,1.56,.64,1) both;}
 .slideUp{animation:slideUp 0.4s ease both;}
 .slide{animation:slideIn 0.25s ease both;}
@@ -352,6 +358,33 @@ body:has(#tuto-overlay) #guide-fab{ display:none!important; }
   box-shadow:0 0 0 3px var(--acc,#F0D060),0 0 34px 5px var(--acc,#F0D060) !important;
   filter:brightness(1.08) saturate(1.2);
 }
+/* Aide contextuelle : pas de menu natif iOS sur les objets explicables (appui long = fenêtre d'info). */
+[data-info]{ -webkit-touch-callout:none; }
+/* Carrousel horizontal des combos : une ligne qu'on fait glisser, grandes cartes, barre masquée. */
+.combo-carousel{display:flex;flex-wrap:nowrap;gap:8px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:2px 2px 8px;overscroll-behavior-x:contain;}
+.combo-carousel::-webkit-scrollbar{display:none;}
+.combo-carousel > *{flex:0 0 auto;scroll-snap-align:start;}
+/* ── « Combo en vedette » : barre de pastilles + scène des cartes du combo choisi ── */
+.cv-pills{display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;padding:2px 4px 12px;justify-content:flex-start;scroll-snap-type:x proximity;}
+.cv-pills::-webkit-scrollbar{display:none;}
+.cv-pill{flex:0 0 auto;display:flex;align-items:center;cursor:pointer;padding:7px 13px 7px 9px;border-radius:30px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.09);transition:transform .16s cubic-bezier(.34,1.5,.5,1),background .16s,box-shadow .16s;scroll-snap-align:center;}
+.cv-embs{display:inline-flex;align-items:center;}
+.cv-plabel{font-family:'Cinzel',serif;font-weight:700;font-size:11.5px;letter-spacing:.2px;margin-left:9px;white-space:nowrap;color:var(--text);}
+.cv-emb{display:inline-flex;width:28px;height:28px;border-radius:50%;align-items:center;justify-content:center;border:1.5px solid #C9A227;box-shadow:0 1px 4px rgba(0,0,0,.4);background:rgba(0,0,0,.25);}
+.cv-emb+.cv-emb{margin-left:-10px;}
+.cv-pill.active{background:linear-gradient(135deg,#F6E4A0,#F0D060 35%,#D4AF37 70%,#B8912E);border-color:rgba(255,245,210,.6);transform:translateY(-3px) scale(1.05);box-shadow:0 8px 20px rgba(212,175,55,.45),0 0 22px rgba(240,208,96,.3);}
+.cv-pill.active .cv-emb{border-color:#7a5e10;}
+.cv-pill.active .cv-plabel{color:#3a2600;}
+.cv-pill.sugg{box-shadow:0 8px 22px rgba(212,175,55,.5),0 0 30px rgba(240,208,96,.55);}
+.cv-pill.off{opacity:.5;filter:grayscale(.7);}
+.cv-pill.off.active{opacity:.85;filter:grayscale(.35);background:rgba(255,255,255,.06);border-color:rgba(255,255,255,.16);transform:none;box-shadow:none;}
+.cv-pill.off .cv-plabel{color:var(--muted);}
+.cv-head{text-align:center;font-family:'Cinzel',serif;font-weight:700;font-size:15px;letter-spacing:.5px;margin:2px 0 14px;}
+.cv-cards{display:flex;justify-content:center;align-items:flex-end;min-height:206px;padding:30px 6px 6px;}
+.cv-fancard{transition:transform .22s cubic-bezier(.34,1.55,.5,1),filter .2s;cursor:pointer;will-change:transform;}
+@media(hover:hover){ .cv-fancard:hover{transform:rotate(0deg) translateY(-26px) scale(1.08) !important;z-index:100 !important;filter:brightness(1.05) drop-shadow(0 12px 22px rgba(0,0,0,.45));} }
+.cv-fancard:active{transform:rotate(0deg) translateY(-18px) scale(1.05) !important;z-index:100 !important;filter:brightness(1.04);}
+.cv-scene{animation:fadeIn .22s ease both;}
 
 /* ── Carte Réponse ──────────────────────────── */
 .carte-rep{
@@ -1646,7 +1679,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v94.98";
+const BUILD_TAG="v95.14";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -6681,12 +6714,16 @@ function celebrerVictoire(score){
   }[niv];
   showConfetti(cfg.n,cfg.cols);
   var old=document.getElementById("celebration-badge"); if(old&&old.parentNode) old.parentNode.removeChild(old);
+  // Splash plein écran auto-refermé : le palier a son moment, PUIS il s'efface pour révéler
+  // l'écran de résultat déjà rendu dessous → plus de superposition avec le « VICTOIRE ! ».
   var ov=document.createElement("div"); ov.id="celebration-badge";
-  ov.style.cssText="position:fixed;left:0;right:0;top:16%;z-index:10000;display:flex;flex-direction:column;align-items:center;gap:6px;pointer-events:none;animation:celebPop 0.7s cubic-bezier(.2,1.4,.4,1) both";
-  ov.innerHTML='<div style="font-size:66px;line-height:1;filter:drop-shadow(0 0 22px '+cfg.glow+');animation:celebFloat 2s ease-in-out infinite">'+cfg.badge+'</div>'
-    +'<div style="font-family:Cinzel,serif;font-size:26px;font-weight:900;color:'+cfg.coul+';letter-spacing:3px;text-align:center;text-shadow:0 2px 8px rgba(0,0,0,0.85),0 0 26px '+cfg.glow+'">'+cfg.titre+'</div>';
+  ov.style.cssText="position:fixed;inset:0;z-index:9990;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;pointer-events:none;"
+    +"background:radial-gradient(circle at 50% 42%,"+cfg.glow+",rgba(5,3,16,0.93) 60%);animation:celebPop 0.55s cubic-bezier(.2,1.4,.4,1) both";
+  ov.innerHTML='<div style="font-size:84px;line-height:1;filter:drop-shadow(0 0 26px '+cfg.glow+');animation:celebFloat 2s ease-in-out infinite">'+cfg.badge+'</div>'
+    +'<div style="font-family:Cinzel,serif;font-size:32px;font-weight:900;color:'+cfg.coul+';letter-spacing:3px;text-align:center;text-shadow:0 2px 10px rgba(0,0,0,0.9),0 0 30px '+cfg.glow+'">'+cfg.titre+'</div>';
   document.body.appendChild(ov);
-  setTimeout(function(){ if(ov.parentNode) ov.parentNode.removeChild(ov); },3800);
+  setTimeout(function(){ try{ ov.style.transition="opacity 0.55s ease"; ov.style.opacity="0"; }catch(e){} },1650);   // fondu de sortie
+  setTimeout(function(){ if(ov.parentNode) ov.parentNode.removeChild(ov); },2250);                                    // retrait → révèle le résultat
   try{ AUDIO.playCelebration(); if(niv!=="argent"){ setTimeout(function(){ if(AUDIO.sfxFanfare) AUDIO.sfxFanfare(); },250); } }catch(e){}
 }
 
@@ -7078,6 +7115,21 @@ function renderDuelJeu(app){
     var piliersHtml="";
     // En réponse : ai-je au moins une carte de la couleur imposée ? (sinon je pourrai passer)
     var aCouleur = (phase==="choixBase2") && PILIERS.some(function(q){ return q!==gs.b1 && maMain.some(function(c){return c.combo===mkCombo(gs.b1,q);}); });
+    // Pilier CONSEILLÉ : à l'attaque (choixBase) = meilleur combo contenant p ; en réponse
+    // (choixBase2) = meilleur combo formé avec le pilier attaqué gs.b1. Critère : meilleure carte puis total.
+    var _suggPd=null,_suggScd=-1;
+    if(DUEL.myTurn && (phase==="choixBase"||phase==="choixBase2")){
+      PILIERS.forEach(function(p){
+        if(phase==="choixBase2" && p===gs.b1) return;
+        var cs=(phase==="choixBase2")
+          ? maMain.filter(function(c){return c.combo===mkCombo(gs.b1,p);})
+          : maMain.filter(function(c){return c.combo.includes(p);});
+        if(!cs.length) return;
+        var mx=0,s=0; cs.forEach(function(c){var v=c.pts||0; s+=v; if(v>mx)mx=v;});
+        var sc=mx*1000+s;
+        if(sc>_suggScd){ _suggScd=sc; _suggPd=p; }
+      });
+    }
     PILIERS.forEach(function(p){
       if(phase==="choixBase2"&&p===gs.b1) return; // pilier déjà joué interdit
       var st=PILIER[p];
@@ -7093,11 +7145,12 @@ function renderDuelJeu(app){
           +'</div>';
       } else {
         var _clic=DUEL.myTurn;
+        var _sug=(p===_suggPd);
         piliersHtml+='<div style="display:flex;flex-direction:column;align-items:center;gap:4px'+(_clic?'':';opacity:0.45')+'">'
-          +'<div '+(_clic?'onclick="AUDIO.sfxClick();DUEL.choisirBase(\''+p+'\')" style="cursor:pointer"':'style="cursor:default"')+'>'
+          +'<div '+(_clic?'onclick="AUDIO.sfxClick();DUEL.choisirBase(\''+p+'\')" style="cursor:pointer'+(_sug?';filter:drop-shadow(0 0 11px rgba(240,208,96,0.75))':'')+'"':'style="cursor:default"')+'>'
           +pilierCard(p,{size:'sm'})
           +'</div>'
-          +'<div style="font-size:8px;color:'+st.accent+';font-weight:700">'+nbValide+' carte'+(nbValide!==1?'s':'')+'</div>'
+          +'<div style="font-size:8px;color:'+(_sug?'var(--goldL)':st.accent)+';font-weight:700">'+(_sug?'✨ ':'')+nbValide+' carte'+(nbValide!==1?'s':'')+'</div>'
           +'</div>';
       }
     });
@@ -7251,13 +7304,11 @@ function renderDuelJeu(app){
               +' disponibles après les réponses</div>';
           }
           html+='<div style="font-size:11px;color:var(--muted);margin-bottom:2px;text-align:center">Jouez votre meilleure carte !</div>'
-            +'<div style="font-size:9px;color:var(--muted);text-align:center;margin-bottom:8px;font-style:italic">👆 Touche une carte pour la jouer immédiatement · les jokers se jouent d’un simple toucher</div>'
-            +'<div style="--card-w:86px;--card-h:114px;display:flex;flex-wrap:wrap;justify-content:center;gap:7px;padding:4px 0 10px">'
-            +cartesValides.map(function(carte){
+            +'<div style="font-size:9px;color:var(--muted);text-align:center;margin-bottom:8px;font-style:italic">👆 Touche une carte pour la jouer · 👇 appui long sur un objet = infos</div>'
+            +comboVedetteHTML(cartesValides.concat(maMain.filter(function(c){return c.combo!==gs.cb;})), function(carte){
               return '<div onclick="DUEL.jouerCarteById(&quot;'+carte.id+'&quot;)" style="cursor:pointer;flex-shrink:0;touch-action:manipulation;-webkit-user-drag:none;-webkit-touch-callout:none;user-select:none">'
                 +carteMainHTML(carte,{clickable:true,selected:DUEL._repSel===carte.id})+'</div>';
-            }).join("")
-            +'</div>';
+            }, 'pd', {validCombo:gs.cb, renderInvalid:function(carte){ return carteMainHTML(carte,{disabled:true}); }});
         }
       } else {
         var jokCards2="";
@@ -7683,8 +7734,8 @@ function guideTexte(){
   if(e==="selection") return {t:"La sélection",m:"Choisis tes <b>10 meilleures cartes</b> parmi les 12. Garde les plus fortes, et un peu de chaque combo pour pouvoir t'adapter."};
   if(e==="jeu" && S.jeu){
     var p=S.jeu.phase;
-    if(p==="choixBase") return {t:"Forme ton Combo",m:"Choisis <b>2 piliers</b> pour créer ton Combo (ex. "+emblemeMini("Amour",18)+"+"+emblemeMini("Argent",18)+"). Ta carte devra appartenir à ce combo."};
-    if(p==="iaChoisitBase") return {t:"Réponds au combo",m:"L'adversaire a ouvert. Choisis un pilier qui forme un combo <b>valide</b> avec le sien, puis joue ta carte."};
+    if(p==="choixBase") return {t:"À toi d'attaquer",m:"Touche <b>un seul pilier</b> pour le jouer : c'est ta force. L'adversaire devra répondre avec un pilier <b>différent</b> — la carte la plus forte remporte la manche."};
+    if(p==="iaChoisitBase") return {t:"Réponds à l'attaque",m:"L'adversaire a joué un pilier. Réponds en jouant une <b>carte d'un pilier différent</b> — la plus forte remporte la manche."};
     if(p==="afficheBases") return {t:"Joue ta carte",m:"Pose une carte de ton combo — <b>la plus forte l'emporte</b>. Garde tes cartes à 40 pour les gros enjeux. Tes jokers peuvent renverser la manche."};
     if(p==="apresReponses"||p==="fin") return {t:"Le verdict",m:"Les deux cartes sont révélées et les points comptés. La manche suivante démarre <b>toute seule</b>."};
   }
@@ -7698,7 +7749,7 @@ function guideTexte(){
     if(dp==="apresReponses") return {t:"Le verdict",m:"Les cartes sont révélées. La manche suivante s'enchaîne automatiquement."};
   }
   if(e==="fin") return {t:"La partie est finie",m:"Ton XP et tes badges sont enregistrés. Rejoue pour faire grandir ta série de victoires."};
-  return {t:"Le Sage veille",m:"Forme un <b>combo</b> de 2 piliers, joue ta carte, et l'emporte avec la plus forte. Garde tes atouts pour les moments qui comptent."};
+  return {t:"Le Sage veille",m:"Chaque manche, joue <b>un pilier</b> ; avec celui de l'adversaire, ils forment un <b>combo</b>. La carte la plus forte l'emporte — garde tes atouts pour les moments qui comptent."};
 }
 function appelerGuide(){
   try{ AUDIO && AUDIO.sfxConfirm && AUDIO.sfxConfirm(); }catch(_){}
@@ -7734,6 +7785,116 @@ function basculerVoixGuide(){
   if(S.voixGuide){ _parlerGuide(_guideVocal(guideTexte())); }
   else { _stopVoixGuide(); }
 }
+// ══════════════════════════════════════════════════════════════════
+// AIDE CONTEXTUELLE — appui long sur un objet → fenêtre d'explication.
+// Les objets explicables portent un attribut data-info="<clé>".
+// Le dico réutilise les descriptions déjà définies (JOKERS, PILIER, MODIFS…).
+// ══════════════════════════════════════════════════════════════════
+var _infoTxtCourant="";
+function _infoObjet(key){
+  if(!key) return null;
+  // Jokers : données JOKERS (nom, icône, effet) + quand les jouer.
+  if(key.indexOf("joker_")===0){
+    var jid=key.slice(6);
+    var jk=(typeof JOKERS!=="undefined") && JOKERS.find(function(x){return x.id===jid;});
+    if(jk){
+      var quand={j1:"Se joue après les réponses.",j2:"Se joue après les réponses.",j3:"Se joue avant ta réponse.",j4:"Se joue si tu n'as aucune carte jouable."}[jid]||"";
+      return {icon:jk.icon, titre:jk.name+" · Joker", accent:jk.color,
+        texte:jk.desc+(quand?" "+quand:"")+" Un joker ne sert qu'<b>une fois</b> par partie — garde-le pour un moment décisif."};
+    }
+  }
+  // Piliers : icône + rôle + citation.
+  if(key.indexOf("pilier_")===0){
+    var pn=key.slice(7);
+    var pl=(typeof PILIER!=="undefined") && PILIER[pn];
+    if(pl){
+      return {icon:pl.icon, titre:pn, accent:pl.accent,
+        texte:"L'un des 4 piliers de vie. Choisis-le comme <b>ta force</b> : associé au pilier de l'adversaire, il forme un combo, et tu joues une carte de ce combo. <i>« "+(pl.cit||"")+" »</i>"};
+    }
+  }
+  // Cartes légendaires.
+  if(key==="carte_supreme") return {icon:"👑", titre:"Carte Suprême", accent:"#F0D060",
+    texte:"La carte des maîtres : <b>50 points garantis</b>, la plus haute valeur du jeu. Elle apparaît à la manche 6 — joue-la quand le pot est gros pour écraser la manche."};
+  if(key==="carte_fantome") return {icon:"👻", titre:"Carte Fantôme", accent:"#9b8cff",
+    texte:"Sa valeur reste <b>cachée</b> jusqu'à ce que tu la joues. Elle apparaît à la manche 6 et alimente le <b>Jackpot des Fantômes</b> — un pari : elle peut tout rafler… ou ne rien valoir."};
+  // Modificateurs de partie (Solo).
+  if(key.indexOf("modif_")===0){
+    var mk=key.slice(6);
+    var mo=(typeof MODIFS!=="undefined") && MODIFS[mk];
+    if(mo) return {icon:mo.icon, titre:mo.nom, accent:"#c084ff",
+      texte:mo.desc+" C'est un <b>modificateur</b> : il change les règles de cette partie. Adapte ta stratégie en conséquence."};
+  }
+  // Bandeau d'ambiance (contexte narratif de la manche).
+  if(key==="contexte") return {icon:"🎭", titre:"L'enjeu de la manche", accent:"#c08457",
+    texte:"Une mise en situation qui donne le ton. C'est de l'ambiance — ça ne change pas les règles, mais ça rappelle que chaque décision compte."};
+  // Barre de score / balance.
+  if(key==="balance") return {icon:"⚖️", titre:"La Balance", accent:"#F0D060",
+    texte:"Le fléau penche vers celui qui <b>mène au score</b>. Ton total d'un côté, celui de l'adversaire de l'autre — l'équilibre bascule à chaque manche."};
+  return null;
+}
+function fermerInfo(){ try{ _stopVoixGuide(); }catch(_){} var o=document.getElementById('info-ov'); if(o) o.remove(); }
+function _direInfo(){ try{ if(_voixDispo() && _infoTxtCourant) _parlerGuide(_sansEmoji(_infoTxtCourant),{rate:0.95}); }catch(_){} }
+function _ouvrirInfo(key){
+  var d=_infoObjet(key);
+  if(!d) return;
+  try{ AUDIO && AUDIO.sfxConfirm && AUDIO.sfxConfirm(); }catch(_){}
+  try{ if(navigator.vibrate) navigator.vibrate(12); }catch(_){}
+  var old=document.getElementById('info-ov'); if(old) old.remove();
+  _infoTxtCourant=d.texte;
+  var acc=d.accent||'#F0D060';
+  var ov=document.createElement('div');
+  ov.id='info-ov';
+  ov.style.cssText='position:fixed;inset:0;z-index:9200;background:rgba(4,3,10,0.74);display:flex;align-items:center;justify-content:center;padding:24px;animation:celebPop 0.28s ease';
+  ov.onclick=function(ev){ if(ev.target===ov){ fermerInfo(); } };
+  var voix=_voixDispo()
+    ? '<button onclick="_direInfo()" style="width:100%;padding:10px;border-radius:12px;margin-bottom:10px;border:1px solid rgba(240,208,96,0.35);background:rgba(240,208,96,0.08);color:var(--goldL);font-size:13px;font-weight:700;cursor:pointer">🔊 Voix</button>'
+    : '';
+  ov.innerHTML='<div style="max-width:330px;width:100%;background:linear-gradient(180deg,#1a1330,#0c0818);border:1px solid '+acc+'66;border-radius:20px;padding:24px 22px;text-align:center;box-shadow:0 20px 60px rgba(0,0,0,0.6),0 0 40px '+acc+'33">'
+    +'<div style="font-size:44px;line-height:1;margin-bottom:8px">'+d.icon+'</div>'
+    +'<div style="font-family:Cinzel,serif;font-size:19px;font-weight:900;color:'+acc+';margin-bottom:10px">'+d.titre+'</div>'
+    +'<div style="font-size:14px;color:var(--text);line-height:1.6;margin-bottom:18px">'+d.texte+'</div>'
+    +voix
+    +'<button onclick="fermerInfo()" style="width:100%;padding:13px;border-radius:12px;border:1px solid rgba(255,245,210,0.5);background:linear-gradient(135deg,#F6E4A0,#F0D060 30%,#D4AF37 60%,#B8912E);color:#241703;font-family:Cinzel,serif;font-weight:700;font-size:14px;letter-spacing:1px;cursor:pointer">✓ Compris</button>'
+    +'</div>';
+  document.body.appendChild(ov);
+  try{ if(S.voixGuide) _direInfo(); }catch(_){}
+}
+// Détecteur d'appui long global (délégation via data-info). Un appui long ouvre l'info
+// SANS déclencher le clic de l'objet (on avale le clic qui suit). Tap normal = comportement habituel.
+(function(){
+  var timer=null, sx=0, sy=0, moved=false, key=null, _consume=false;
+  function clear(){ if(timer){ clearTimeout(timer); timer=null; } }
+  document.addEventListener('pointerdown', function(e){
+    _consume=false; key=null;
+    var el=e.target && e.target.closest && e.target.closest('[data-info]');
+    if(!el) return;
+    key=el.getAttribute('data-info');
+    sx=e.clientX; sy=e.clientY; moved=false;
+    clear();
+    timer=setTimeout(function(){
+      timer=null;
+      if(moved || !key) return;
+      _consume=true;            // le clic qui suivra ne doit PAS jouer l'objet
+      _ouvrirInfo(key);
+    }, 480);
+  }, {passive:true});
+  document.addEventListener('pointermove', function(e){
+    if(!timer) return;
+    if(Math.abs(e.clientX-sx)>10 || Math.abs(e.clientY-sy)>10){ moved=true; clear(); }
+  }, {passive:true});
+  ['pointerup','pointercancel','pointerleave'].forEach(function(ev){
+    document.addEventListener(ev, clear, {passive:true});
+  });
+  document.addEventListener('scroll', clear, {passive:true, capture:true});
+  // Avaler le clic déclenché juste après un appui long (capture → n'atteint jamais l'objet).
+  document.addEventListener('click', function(e){
+    if(_consume){ _consume=false; e.stopPropagation(); e.preventDefault(); }
+  }, true);
+  // Bloquer le menu contextuel natif (iOS/desktop) sur les objets explicables.
+  document.addEventListener('contextmenu', function(e){
+    if(e.target && e.target.closest && e.target.closest('[data-info]')) e.preventDefault();
+  });
+})();
 // ── Pop-up centré de confirmation de sélection (Retour / Valider) ──
 function selConfirmModalHTML(validerJs, retourJs){
   return '<div id="sel-modal-ov" style="position:fixed;inset:0;z-index:8500;background:rgba(4,3,10,0.72);display:flex;align-items:center;justify-content:center;padding:24px">'
@@ -7864,6 +8025,7 @@ function render(){
   if(S.theme!==_lastTheme){ setBg(S.theme); _lastTheme=S.theme; }
   const app=document.getElementById("app");
   app.innerHTML="";
+  app.classList.toggle("no-fade", S.ecran===_lastEcran); // re-rendu du même écran → pas de ré-animation (anti-clignotement)
   const fn={menu:renderMenu,selection:renderSelection,jeu:renderJeu,duel_menu:renderDuelMenu,duel_connecting:renderDuelConnecting,duel_lobby:renderDuelLobby,duel_jeu:renderDuelJeu,duel_resultat:renderDuelResultat,
     resultat:renderResultat,classement:renderClassement,statistiques:renderStats,defis:renderDefis,
     badges:renderBadges,regles:renderRegles,apropos:renderApropos,collection:renderCollection,themes:renderThemes,campagne:renderCampagne,gardien_intro:renderGardienIntro,temple:renderTemple,disciple_intro:renderDiscipleIntro,confidentialite:renderConfidentialite,
@@ -7939,7 +8101,7 @@ function pilierCard(p,opts={}){
   if(typeof CARTE_IMG!=="undefined" && CARTE_IMG[p]){
     const cnt=(showCount!=null)?('<div style="position:absolute;top:3px;right:3px;z-index:3;min-width:16px;height:16px;padding:0 4px;border-radius:8px;background:'+st.accent+';color:#fff;font-size:10px;font-weight:900;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 4px rgba(0,0,0,0.5)">'+showCount+'</div>'):'';
     const interactif=(!!onClick && !disabled && !played && !selected);
-    return '<div class="'+cls+(interactif?' pilier-vivant':'')+'" '+((disabled||played)?'':'onclick="'+onClick+'"')+'\n'
+    return '<div class="'+cls+(interactif?' pilier-vivant':'')+'" data-info="pilier_'+p+'" '+((disabled||played)?'':'onclick="'+onClick+'"')+'\n'
       +'    style="--acc:'+st.accent+';width:'+sz.w+'px;height:'+sz.h+'px;border-radius:14px;overflow:hidden;position:relative;flex-shrink:0;'
       +'box-sizing:border-box;'
       +'cursor:'+((disabled||played)?'default':'pointer')+';'
@@ -8201,10 +8363,24 @@ function carteRepHTML(c,opts={}){
 
 // Carte-réponse de la main affichée EXACTEMENT à la taille d'un pilier (76×100),
 // via une boîte fixe + mise à l'échelle de la carte (dessinée en 110×156).
+// Cartes de combo FLUIDES : un nombre CONSTANT par ligne, largeur qui s'adapte à la largeur
+// réelle de l'écran (fini l'enroulement irrégulier). On calcule la largeur d'une cellule + les
+// échelles pour rendre la carte native (110×156) à cette taille, en gardant le ratio 3:4 d'origine.
+function _fluidCarte(cols){
+  cols = cols||3;
+  var vw = Math.min((window.innerWidth||360), 560);
+  var avail = vw - 24 - 14 - 8;                 // padding .card + marge écran + sécurité
+  var gap = 6;
+  var w = (avail - (cols-1)*gap) / cols;
+  w = Math.max(66, Math.min(w, 104));           // lisible, jamais surdimensionné
+  var h = w*4/3;                                 // même ratio d'affichage que l'original (96×128)
+  return { w:Math.round(w), h:Math.round(h), sx:+(w/110).toFixed(4), sy:+(h/156).toFixed(4) };
+}
 function carteMainHTML(c,opts){
   opts=opts||{};
-  return '<div style="width:96px;height:128px;overflow:hidden;flex-shrink:0;border-radius:12px">'
-    +'<div style="--card-w:110px;--card-h:156px;width:110px;height:156px;transform:scale(0.873,0.821);transform-origin:top left">'
+  // Grande carte fixe. Ratio 3:4 conservé. (128×171)
+  return '<div style="width:128px;height:171px;overflow:hidden;flex:0 0 auto;scroll-snap-align:start;border-radius:13px">'
+    +'<div style="width:110px;height:156px;transform:scale(1.1636,1.0962);transform-origin:top left">'
     +carteRepHTML(c,opts)
     +'</div></div>';
 }
@@ -8217,7 +8393,7 @@ function jokerCardHTML(j,opts={}){
   // Motif hexagonal subtil
   const hexPat=`<svg style="position:absolute;inset:0;width:100%;height:100%;opacity:0.04;pointer-events:none" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="h${j.id}" width="20" height="22" patternUnits="userSpaceOnUse"><polygon points="10,1 19,5.5 19,16.5 10,21 1,16.5 1,5.5" fill="none" stroke="${j.color}" stroke-width="0.7"/></pattern></defs><rect width="100%" height="100%" fill="url(#h${j.id})"/></svg>`;
 
-  return`<div class="carte-joker ${used?"used":""}" style="
+  return`<div class="carte-joker ${used?"used":""}" data-info="joker_${j.id}" style="
     background:${used?"#0a0a16":
       `radial-gradient(ellipse at 50% 25%,${j.color}55 0%,transparent 60%),
        linear-gradient(165deg,${j.color}77 0%,${j.color}22 40%,#050310 100%)`};
@@ -8304,13 +8480,16 @@ function scoreBarHTML(s1,s2,nom,nomAdv){
   }
   const gap=Math.abs(s1-s2);
   const serre=(s1>0||s2>0)&&gap<=5;
+  // Total de parties gagnées en solo — motivant, ne fait que monter. (Solo uniquement : S.jeu présent.)
+  const vic=(S.jeu&&S.stats&&S.stats.victoires)||0;
+  const vicBadge = vic>0 ? ` <span style="color:var(--goldL);font-weight:800;font-size:9px;text-shadow:0 0 8px rgba(240,208,96,0.55)">🏆${vic}</span>` : "";
   // Le fléau penche vers le meneur (max ~11°)
   const ang=Math.max(-11,Math.min(11,-(s1-s2)/14));
   return`<div class="card" style="padding:6px 12px 7px;position:relative;overflow:hidden">
     ${serre?`<div style="position:absolute;top:5px;left:50%;transform:translateX(-50%);font-family:'Cinzel',serif;font-size:8px;letter-spacing:1.5px;font-weight:800;color:#0A0711;background:linear-gradient(135deg,var(--goldL),var(--gold));padding:1px 8px;border-radius:20px;box-shadow:0 0 12px rgba(240,208,96,0.55);z-index:2">⚡ SERRÉ</div>`:""}
     <div style="display:flex;align-items:center;justify-content:space-between;gap:4px">
       <div style="display:flex;flex-direction:column;align-items:flex-start;min-width:52px">
-        <span style="font-size:8px;color:var(--muted);letter-spacing:0.3px;white-space:nowrap">${nom}${flame}</span>
+        <span style="font-size:8px;color:var(--muted);letter-spacing:0.3px;white-space:nowrap">${nom}${vicBadge}${flame}</span>
         <span style="font-family:'Cinzel',serif;font-weight:900;font-size:22px;line-height:1;color:${lead1?"var(--goldL)":"var(--text)"};${lead1?"text-shadow:0 0 14px rgba(240,208,96,0.45)":""}">${s1}</span>
       </div>
       <svg viewBox="0 0 200 52" style="flex:1;max-width:148px;height:44px" fill="none">
@@ -8337,32 +8516,84 @@ function scoreBarHTML(s1,s2,nom,nomAdv){
 
 function contexteHTML(manche){
   const ctx=CONTEXTES[(manche-1)%CONTEXTES.length];
-  return`<div style="background:linear-gradient(135deg,rgba(45,27,105,0.5),rgba(26,13,61,0.5));border:1px solid rgba(192,132,87,0.4);border-radius:10px;padding:4px 11px;margin-bottom:6px;text-align:center">
+  return`<div data-info="contexte" style="background:linear-gradient(135deg,rgba(45,27,105,0.5),rgba(26,13,61,0.5));border:1px solid rgba(192,132,87,0.4);border-radius:10px;padding:4px 11px;margin-bottom:6px;text-align:center">
     <div style="font-size:11px;font-weight:700;color:var(--goldL);line-height:1.25">🎭 ${ctx.t}</div>
     <div style="font-size:9px;color:var(--muted);font-style:italic;line-height:1.25">${ctx.d}</div>
   </div>`;
 }
 
+// ── « Combo en vedette » : pastilles de combos + une seule scène de cartes affichée ──
+function _cvEmb(p){ return '<span class="cv-emb">'+emblemeMini(p,20)+'</span>'; }
+// Abréviation courte et UNIQUE des piliers (les emblèmes lèvent l'ambiguïté A/A, S/S).
+function _abbr(p){ return ({"Amour":"A","Argent":"Ar","Santé":"S","Spiritualité":"Sp"})[p] || (p?p.charAt(0):"?"); }
+function _cvSel(instId, el){
+  try{
+    var combo=el.getAttribute('data-combo');
+    var pills=document.querySelectorAll('.cv-pill[data-cv="'+instId+'"]');
+    for(var i=0;i<pills.length;i++) pills[i].classList.toggle('active', pills[i]===el);
+    var scenes=document.querySelectorAll('.cv-scene[data-cv="'+instId+'"]');
+    for(var j=0;j<scenes.length;j++) scenes[j].style.display=(scenes[j].getAttribute('data-combo')===combo)?'block':'none';
+    try{ el.scrollIntoView({block:'nearest',inline:'center'}); }catch(_){}
+    if(AUDIO&&AUDIO.sfxClick) AUDIO.sfxClick();
+  }catch(e){}
+}
+// cards: liste de cartes ; renderCard(carte)->HTML ; instId: identifiant unique de l'instance.
+// Dispose les cartes d'un combo en ÉVENTAIL (arc) — transforms calculés inline (aucun scintillement).
+function _eventailHTML(cards, renderCard){
+  var n=cards.length, mid=(n-1)/2;
+  var spread = n<=1?0 : (n===2?9 : n===3?12 : n===4?11 : 8);   // degrés entre cartes
+  var over   = n<=3? -16 : -26;                                  // chevauchement
+  return cards.map(function(card,i){
+    var ang=((i-mid)*spread).toFixed(2);
+    var drop=(Math.abs(i-mid)*7).toFixed(1);                     // arc : extrêmes plus bas
+    var st='transform:rotate('+ang+'deg) translateY('+drop+'px);transform-origin:50% 118%;margin:0 '+over+'px;z-index:'+(10+i)+';';
+    return '<div class="cv-fancard" style="'+st+'">'+renderCard(card)+'</div>';
+  }).join("");
+}
+function comboVedetteHTML(cards, renderCard, instId, opts){
+  opts=opts||{};
+  var validCombo=opts.validCombo||null;              // si fourni : seul ce combo répond, les autres sont verrouillés
+  var renderInvalid=opts.renderInvalid||renderCard;
+  var groups={}, order=[];
+  cards.forEach(function(c){ var k=c.combo||"?"; if(!groups[k]){groups[k]=[];order.push(k);} groups[k].push(c); });
+  if(order.length===0) return "";
+  // Combo affiché par défaut : le combo imposé (réponse) si fourni, sinon le MEILLEUR combo
+  // du joueur (meilleure carte d'abord, puis meilleur total) → suggestion automatique.
+  var def;
+  if(validCombo && groups[validCombo]){ def=validCombo; }
+  else {
+    def=order[0]; var bestScore=-1;
+    order.forEach(function(k){
+      var s=0,mx=0;
+      groups[k].forEach(function(c){ var p=(c.pts||0); s+=p; if(p>mx)mx=p; });
+      var score=mx*1000+s;
+      if(score>bestScore){ bestScore=score; def=k; }
+    });
+  }
+  var suggere = !validCombo && order.length>1;   // n'annoncer "meilleur combo" que s'il y a un choix
+  var pills=order.map(function(combo){
+    var pp=combo.split("+");
+    var off=validCombo && combo!==validCombo;
+    return '<div class="cv-pill'+(off?' off':'')+(combo===def?' active':'')+(combo===def&&suggere?' sugg':'')+'" data-cv="'+instId+'" data-combo="'+combo+'" onclick="_cvSel(\''+instId+'\',this)"><span class="cv-embs">'+_cvEmb(pp[0])+_cvEmb(pp[1])+'</span><span class="cv-plabel">'+(off?'🔒':'')+(combo===def&&suggere?'✨':'')+_abbr(pp[0])+'+'+_abbr(pp[1])+'</span></div>';
+  }).join("");
+  var scenes=order.map(function(combo){
+    var pp=combo.split("+");
+    var sA=PILIER[pp[0]]||{accent:"#888"}, sB=PILIER[pp[1]]||{accent:"#888"};
+    var off=validCombo && combo!==validCombo;
+    var head='<div class="cv-head"><span style="color:'+sA.accent+'">'+emblemeMini(pp[0],16)+' '+pp[0]+'</span><span style="color:var(--muted)"> · </span><span style="color:'+sB.accent+'">'+emblemeMini(pp[1],16)+' '+pp[1]+'</span></div>'
+      + (off?'<div style="text-align:center;font-size:10px;color:var(--muted);margin:-8px 0 10px;font-style:italic">🔒 Ce combo ne répond pas à l\'attaque</div>'
+            : (combo===def && suggere ? '<div style="text-align:center;font-size:10px;color:var(--goldL);margin:-8px 0 10px;font-weight:700;letter-spacing:.5px">✨ Votre meilleur combo</div>' : ''));
+    return '<div class="cv-scene" data-cv="'+instId+'" data-combo="'+combo+'" style="display:'+(combo===def?"block":"none")+'">'+head+'<div class="cv-cards">'+_eventailHTML(groups[combo], off?renderInvalid:renderCard)+'</div></div>';
+  }).join("");
+  var pillsBar = order.length>1 ? '<div class="cv-pills">'+pills+'</div>' : '';
+  return pillsBar+scenes;
+}
 function aperçuMain(main,jokers){
   const combos=[...new Set(main.map(c=>c.combo))];
   if(main.length===0)return`<!--HAND--><div class="card" style="text-align:center;padding:16px"><div style="font-size:28px;margin-bottom:6px">📭</div><div style="color:var(--red);font-weight:700">Plus de cartes disponibles</div></div>`;
   return`<!--HAND--><div class="card" style="padding:12px">
     <div style="font-size:10px;color:var(--gold);font-weight:700;margin-bottom:10px;letter-spacing:1px">VOS CARTES (${main.length})</div>
-    ${combos.map(combo=>{
-      const cs=main.filter(c=>c.combo===combo);
-      const[pa,pb]=combo.split("+");
-      const sA=PILIER[pa]||{accent:"#888",icon:"?"},sB=PILIER[pb]||{accent:"#888",icon:"?"};
-      return`<div style="margin-bottom:12px">
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;padding:0 2px">
-          <div style="height:1px;flex:1;background:linear-gradient(90deg,transparent,${sA.accent}66)"></div>
-          <div style="font-size:9px;font-weight:700;color:${sA.accent};letter-spacing:1px;background:${sA.accent}18;border:1px solid ${sA.accent}44;border-radius:20px;padding:2px 9px;white-space:nowrap">
-            ${emblemeMini(pa)} ${pa} + ${emblemeMini(pb)} ${pb}
-          </div>
-          <div style="height:1px;flex:1;background:linear-gradient(90deg,${sB.accent}66,transparent)"></div>
-        </div>
-        <div style="--card-w:86px;--card-h:114px;display:flex;flex-wrap:wrap;justify-content:center;gap:min(6px,1.5vw)">${cs.map(c=>carteMainHTML(c,{disabled:true})).join("")}</div>
-      </div>`;
-    }).join("")}
+    ${comboVedetteHTML(main, c=>carteMainHTML(c,{disabled:true}), 'ap')}
     ${jokers.length>0?`<div style="margin-top:8px"><div style="font-size:10px;color:var(--gold);font-weight:700;margin-bottom:5px">VOS JOKERS</div><div style="display:flex;gap:7px">${jokers.map(j=>jokerCardHTML(j,{onClick:`G.useJoker('${j.id}')`})).join("")}</div></div>`:""}
   </div>`;
 }
@@ -11880,6 +12111,15 @@ function renderJeu(app){
 
   // Phase : Sélection cartes (déjà gérée séparément)
   if(j.phase==="choixBase"){
+    // Pilier d'attaque CONSEILLÉ : celui dont tu tiens le meilleur combo (meilleure carte, puis total).
+    var _suggForce=null,_suggFScore=-1;
+    PILIERS.forEach(function(p){
+      var cs=j.mainRepJ1.filter(function(c){return c.combo.includes(p);});
+      if(!cs.length) return;
+      var mx=0,s=0; cs.forEach(function(c){var v=c.pts||0; s+=v; if(v>mx)mx=v;});
+      var sc=mx*1000+s;
+      if(sc>_suggFScore){ _suggFScore=sc; _suggForce=p; }
+    });
     content=`
       ${contexteHTML(j.manche)}
       ${banniereEvenement(j)}
@@ -11892,9 +12132,10 @@ function renderJeu(app){
         ${PILIERS.map(p=>{
           const nbCom=j.mainRepJ1.filter(c=>c.combo.includes(p)).length;
           const bloque=nbCom===0;
+          const sug=(!bloque && p===_suggForce);
           return`<div style="display:flex;flex-direction:column;align-items:center;gap:4px${bloque?';opacity:0.3;filter:grayscale(0.75)':''}">
-            ${bloque?`<div style="cursor:not-allowed">${pilierCard(p,{size:"sm"})}</div>`:pilierCard(p,{size:"sm",onClick:`AUDIO.sfxClick();G.choisirBase('${p}')`})}
-            <div style="font-size:8px;color:${bloque?'var(--muted)':PILIER[p].accent};text-align:center;max-width:88px;line-height:1.3;font-style:italic">${bloque?'aucune carte':PILIER[p].cit.slice(0,32)+'…'}</div>
+            ${bloque?`<div style="cursor:not-allowed">${pilierCard(p,{size:"sm"})}</div>`:`<div${sug?' style="filter:drop-shadow(0 0 11px rgba(240,208,96,0.8))"':''}>${pilierCard(p,{size:"sm",onClick:`AUDIO.sfxClick();G.choisirBase('${p}')`})}</div>`}
+            <div style="font-size:8px;color:${sug?'var(--goldL)':(bloque?'var(--muted)':PILIER[p].accent)};text-align:center;max-width:88px;line-height:1.3;font-style:italic;font-weight:${sug?'700':'400'}">${bloque?'aucune carte':(sug?'✨ meilleur combo':PILIER[p].cit.slice(0,32)+'…')}</div>
           </div>`;
         }).join("")}
       </div>
@@ -11920,6 +12161,17 @@ function renderJeu(app){
     </div>`;
   }
   else if(j.phase==="iaChoisitBase"){
+    // Pilier de réponse CONSEILLÉ : celui dont le combo (avec le pilier attaqué j.b2) a les
+    // meilleures cartes (meilleure carte d'abord, puis meilleur total).
+    var _suggP=null,_suggScore=-1;
+    PILIERS.forEach(function(p){
+      if(p===j.b2) return;
+      var cs=j.mainRepJ1.filter(function(c){return c.combo===mkCombo(p,j.b2);});
+      if(!cs.length) return;
+      var mx=0,s=0; cs.forEach(function(c){var v=c.pts||0; s+=v; if(v>mx)mx=v;});
+      var sc=mx*1000+s;
+      if(sc>_suggScore){ _suggScore=sc; _suggP=p; }
+    });
     content=`<div class="fade">
       ${contexteHTML(j.manche)}
       ${banniereEvenement(j)}
@@ -11931,6 +12183,7 @@ function renderJeu(app){
         <div style="font-size:13px;font-weight:700;color:var(--muted)">
           🎴 ${S.nom} — Répondez avec un autre pilier
         </div>
+        ${_suggP?`<div style="font-size:9px;color:var(--goldL);margin-top:3px">✨ = pilier au meilleur combo (conseillé)</div>`:""}
       </div>
       <!-- 4 piliers : IA en grand et lumineuse, 3 autres cliquables -->
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:min(6px,1.5vw);width:100%;margin-bottom:12px">
@@ -11942,18 +12195,18 @@ function renderJeu(app){
           return`<div style="display:flex;flex-direction:column;align-items:center;gap:4px">
             ${isIA
               ? pilierCard(p,{size:"sm",played:true})
-              : pilierCard(p,{size:"sm",onClick:`G.j1RepondIA('${p}')`})
+              : `<div${p===_suggP?' style="filter:drop-shadow(0 0 11px rgba(240,208,96,0.75))"':''}>${pilierCard(p,{size:"sm",onClick:`G.j1RepondIA('${p}')`})}</div>`
             }
             ${isIA
               ? `<div style="font-size:9px;font-weight:900;color:${stP.accent};
                   background:${stP.accent}22;border:1px solid ${stP.accent}66;
                   border-radius:8px;padding:3px 10px;letter-spacing:1px">
                   ✦ IA A JOUÉ</div>`
-              : `<div style="font-size:9px;font-weight:700;color:${nb>0?"var(--green)":"var(--red)"};
-                  background:${nb>0?"rgba(69,201,122,0.1)":"rgba(224,85,85,0.1)"};
+              : `<div style="font-size:9px;font-weight:700;color:${p===_suggP?'var(--goldL)':(nb>0?"var(--green)":"var(--red)")};
+                  background:${p===_suggP?'rgba(240,208,96,0.16)':(nb>0?"rgba(69,201,122,0.1)":"rgba(224,85,85,0.1)")};
                   border-radius:8px;padding:2px 7px;
-                  border:1px solid ${nb>0?"rgba(69,201,122,0.3)":"rgba(224,85,85,0.3)"}">
-                  ${nb>0?nb+" ✓":"0 ✗"}</div>`
+                  border:1px solid ${p===_suggP?'rgba(240,208,96,0.55)':(nb>0?"rgba(69,201,122,0.3)":"rgba(224,85,85,0.3)")}">
+                  ${p===_suggP?'✨ '+nb+' ✓':(nb>0?nb+" ✓":"0 ✗")}</div>`
             }
           </div>`;
         }).join("")}
@@ -12047,15 +12300,15 @@ function renderJeu(app){
           `:`
             <!-- Mode normal -->
             <div style="font-size:12px;color:var(--gold);font-weight:700;margin-bottom:2px;text-align:center">
-              ✅ Vos cartes — <strong style="color:var(--goldL)">${j.cb}</strong>
+              ✅ Répondez avec <strong style="color:var(--goldL)">${j.cb}</strong> — les autres combos sont 🔒
             </div>
-            <div style="font-size:9px;color:var(--muted);text-align:center;margin-bottom:8px;font-style:italic">👆 Touche une carte pour la jouer immédiatement</div>
+            <div style="font-size:9px;color:var(--muted);text-align:center;margin-bottom:8px;font-style:italic">👆 Touche une carte pour la jouer · 👇 appui long = infos</div>
             ${vIA.length===0?`<div style="font-size:10px;color:#45c97a;text-align:center;margin-bottom:8px;font-weight:700">💡 L'IA n'a pas de carte valide — jouez et gagnez vos points !</div>`:""}
-            <div style="--card-w:86px;--card-h:114px;display:flex;flex-wrap:wrap;justify-content:center;gap:min(7px,1.8vw)">
-              ${validesJ1.map(x=>`<div onclick="G.selRep('${x.id}')" draggable="false" style="cursor:pointer;touch-action:manipulation;-webkit-user-drag:none;-webkit-touch-callout:none;user-select:none">${carteMainHTML(x,{selected:j.repChoisie?.id===x.id,masque:(S.jeu&&((S.jeu.twist==="aveugle"||S.jeu.twist==="ultime")||(S.jeu.modif==="brouillard"&&S.jeu.manche%2===0)))})}</div>`).join("")}
-              ${(!j.phaseEchange && j.mainJokJ1.find(x=>x.id==="j3")) ? `<div style="width:86px;height:114px;display:flex;flex:0 0 auto">${jokerCardHTML(j.mainJokJ1.find(x=>x.id==="j3"),{onClick:"G.useEspion()"})}</div>` : ""}
-              ${(!j.phaseEchange && j.mainJokJ1.find(x=>x.id==="j4")) ? `<div style="width:86px;height:114px;display:flex;flex:0 0 auto">${jokerCardHTML(j.mainJokJ1.find(x=>x.id==="j4"),{onClick:"G.useEchange()"})}</div>` : ""}
-            </div>
+            ${comboVedetteHTML(validesJ1.concat(autresJ1), x=>`<div onclick="G.selRep('${x.id}')" draggable="false" style="cursor:pointer;touch-action:manipulation;-webkit-user-drag:none;-webkit-touch-callout:none;user-select:none">${carteMainHTML(x,{selected:j.repChoisie?.id===x.id,masque:(S.jeu&&((S.jeu.twist==="aveugle"||S.jeu.twist==="ultime")||(S.jeu.modif==="brouillard"&&S.jeu.manche%2===0)))})}</div>`, 'pj', {validCombo:j.cb, renderInvalid:c=>carteMainHTML(c,{disabled:true})})}
+            ${((!j.phaseEchange && j.mainJokJ1.find(x=>x.id==="j3")) || (!j.phaseEchange && j.mainJokJ1.find(x=>x.id==="j4"))) ? `<div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:14px">
+              ${(!j.phaseEchange && j.mainJokJ1.find(x=>x.id==="j3")) ? `<div style="width:128px;height:171px;display:flex;flex:0 0 auto">${jokerCardHTML(j.mainJokJ1.find(x=>x.id==="j3"),{onClick:"G.useEspion()"})}</div>` : ""}
+              ${(!j.phaseEchange && j.mainJokJ1.find(x=>x.id==="j4")) ? `<div style="width:128px;height:171px;display:flex;flex:0 0 auto">${jokerCardHTML(j.mainJokJ1.find(x=>x.id==="j4"),{onClick:"G.useEchange()"})}</div>` : ""}
+            </div>` : ""}
           `}
         </div>
 
@@ -12079,11 +12332,7 @@ function renderJeu(app){
       </div>`:""}
 
 
-      ${autresJ1.length>0&&validesJ1.length>0?`
-        <div style="margin-bottom:8px">
-          <div style="font-size:10px;color:var(--muted);margin-bottom:5px">Autres cartes non valides (${autresJ1.length})</div>
-          <div style="display:flex;gap:5px;flex-wrap:wrap">${autresJ1.map(c=>carteMainHTML(c,{disabled:true})).join("")}</div>
-        </div>`:""}
+      ${""/* Les combos non valides sont désormais intégrés en pastilles verrouillées ci-dessus. */}
 
       ${j.mainJokJ1.filter(x=>x.id==="j1"||x.id==="j2").length>0?`
         <div style="font-size:9px;color:var(--muted);font-style:italic;margin-top:4px">
