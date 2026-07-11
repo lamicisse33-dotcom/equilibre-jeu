@@ -381,6 +381,15 @@ body:has(#tuto-overlay) #guide-fab{ display:none!important; }
 .cv-pill.off .cv-plabel{color:var(--muted);}
 .cv-head{text-align:center;font-family:'Cinzel',serif;font-weight:700;font-size:15px;letter-spacing:.5px;margin:2px 0 14px;}
 .cv-cards{display:flex;justify-content:center;align-items:flex-end;min-height:206px;padding:30px 2px 6px;}
+/* Grille de cartes à plat : côte à côte, retour à la ligne, toutes visibles, sans défilement. */
+.cv-grid{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:9px;padding:10px 4px 8px;}
+.cv-tile{flex:0 0 auto;transition:transform .14s ease;cursor:pointer;}
+.cv-tile:active{transform:scale(0.95);}
+/* Rangée à plat (carte réponse) : grandes cartes non chevauchées, valeurs 100% visibles, défilables si nombreuses. */
+.cv-flat{display:flex;flex-wrap:nowrap;gap:12px;overflow-x:auto;overflow-y:hidden;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding:10px 6px 12px;overscroll-behavior-x:contain;justify-content:safe center;min-height:188px;align-items:center;}
+.cv-flat::-webkit-scrollbar{display:none;}
+.cv-flat > *{flex:0 0 auto;scroll-snap-align:center;transition:transform .14s ease;}
+.cv-flat > *:active{transform:scale(0.96);}
 .cv-fancard{transition:transform .22s cubic-bezier(.34,1.55,.5,1),filter .2s;cursor:pointer;will-change:transform;}
 @media(hover:hover){ .cv-fancard:hover{transform:rotate(0deg) translateY(-26px) scale(1.08) !important;z-index:100 !important;filter:brightness(1.05) drop-shadow(0 12px 22px rgba(0,0,0,.45));} }
 .cv-fancard:active{transform:rotate(0deg) translateY(-18px) scale(1.05) !important;z-index:100 !important;filter:brightness(1.04);}
@@ -1679,13 +1688,13 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v95.16";
+const BUILD_TAG="v95.21";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
    (ni en Solo, ni pour l'IA, ni en Duel via La Course à l'Équilibre),
    et son bloc de règles est masqué. Repasser à true pour réactiver. */
-const BALANCE_ENABLED = false;
+const BALANCE_ENABLED = true;
 // ── Diagnostic : révèle le détail réel des erreurs (un « Script error. » nu = erreur d'un script tiers cross-origin, ex. PeerJS) ──
 window.addEventListener("error", function(ev){
   // Erreur tierce sans détail (ex. Google Analytics gêné par la prévention du tracking) : bruit bénin → on n'encombre pas la console
@@ -3554,7 +3563,7 @@ const BONUS_SAGE = {
       if(G._apresInt) clearTimeout(G._apresInt);
       G._apresInt=setTimeout(function(){
         G._apresInt=null;
-        if(S.jeu&&!TOURNOI.actif) G.mancheSuivante();
+        if(S.jeu) G.mancheSuivante();
       },300);
     } else {
       render();
@@ -4274,7 +4283,7 @@ const BONUS_DESTIN = {
       if(typeof G!=="undefined" && G._apresInt) clearTimeout(G._apresInt);
       if(typeof G!=="undefined") G._apresInt=setTimeout(function(){
         G._apresInt=null;
-        if(S.jeu && (typeof TOURNOI==="undefined" || !TOURNOI.actif)) G.mancheSuivante();
+        if(S.jeu) G.mancheSuivante();
       },300);
     } else {
       if(typeof render==="function") render();
@@ -4469,7 +4478,7 @@ const BONUS = {
       G._apresInt=setTimeout(function(){
         G._apresInt=null;
         if(ov) ov.classList.remove("active");
-        if(S.jeu&&!TOURNOI.actif) G.mancheSuivante();
+        if(S.jeu) G.mancheSuivante();
       },1900);
     } else {
       setTimeout(function(){if(ov) ov.classList.remove("active");render();},400);
@@ -7154,6 +7163,9 @@ function renderDuelJeu(app){
           +'</div>';
       }
     });
+    if(phase==="choixBase2" && DUEL.myTurn && _suggPd){
+      html+='<div style="text-align:center;margin-bottom:10px"><div style="display:inline-block;font-size:12px;font-weight:700;color:var(--goldL);background:rgba(240,208,96,0.12);border:1px solid rgba(240,208,96,0.45);border-radius:20px;padding:4px 14px;box-shadow:0 0 18px rgba(240,208,96,0.25)">⭐ Meilleure réponse : '+emblemeMini(_suggPd,15)+' '+_suggPd+'</div></div>';
+    }
     html+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:min(8px,2vw);margin-bottom:12px">'+piliersHtml+'</div>';
 
     // Aperçu de mes cartes réponse groupées par combo — identique au Solo
@@ -7308,7 +7320,7 @@ function renderDuelJeu(app){
             +comboVedetteHTML(cartesValides.concat(maMain.filter(function(c){return c.combo!==gs.cb;})), function(carte){
               return '<div onclick="DUEL.jouerCarteById(&quot;'+carte.id+'&quot;)" style="cursor:pointer;flex-shrink:0;touch-action:manipulation;-webkit-user-drag:none;-webkit-touch-callout:none;user-select:none">'
                 +carteMainHTML(carte,{clickable:true,selected:DUEL._repSel===carte.id})+'</div>';
-            }, 'pd', {validCombo:gs.cb, renderInvalid:function(carte){ return carteMainHTML(carte,{disabled:true}); }});
+            }, 'pd', {validCombo:gs.cb, flat:true, renderInvalid:function(carte){ return carteMainHTML(carte,{disabled:true}); }});
         }
       } else {
         var jokCards2="";
@@ -8559,6 +8571,22 @@ function _eventailHTML(cards, renderCard){
     return '<div class="cv-fancard" style="'+st+'">'+inner+'</div>';
   }).join("");
 }
+// Disposition À PLAT : cartes grandes, non chevauchées, valeurs 100% visibles (rangée défilable
+// si beaucoup de cartes). Utilisée pour la carte réponse — lisibilité maximale, un seul toucher.
+function _aplatHTML(cards, renderCard){
+  return cards.map(renderCard).join("");
+}
+// Disposition GRILLE : cartes à plat côte à côte, non chevauchées, TOUTES visibles (retour à la
+// ligne si besoin), redimensionnées pour tenir sans défiler. Lisibilité maximale des valeurs.
+function _grilleHTML(cards, renderCard){
+  var n=cards.length;
+  var s = n<=3?0.86 : (n===4?0.80 : 0.72);           // 3/ligne ; se réduit si 4-5+ pour tout afficher
+  var W=Math.round(128*s), H=Math.round(171*s);
+  return cards.map(function(card){
+    return '<div class="cv-tile" style="width:'+W+'px;height:'+H+'px;overflow:hidden;border-radius:12px">'
+      +'<div style="width:128px;height:171px;transform:scale('+s+');transform-origin:top left">'+renderCard(card)+'</div></div>';
+  }).join("");
+}
 function comboVedetteHTML(cards, renderCard, instId, opts){
   opts=opts||{};
   var validCombo=opts.validCombo||null;              // si fourni : seul ce combo répond, les autres sont verrouillés
@@ -8592,7 +8620,8 @@ function comboVedetteHTML(cards, renderCard, instId, opts){
     var head='<div class="cv-head"><span style="color:'+sA.accent+'">'+emblemeMini(pp[0],16)+' '+pp[0]+'</span><span style="color:var(--muted)"> · </span><span style="color:'+sB.accent+'">'+emblemeMini(pp[1],16)+' '+pp[1]+'</span></div>'
       + (off?'<div style="text-align:center;font-size:10px;color:var(--muted);margin:-8px 0 10px;font-style:italic">🔒 Ce combo ne répond pas à l\'attaque</div>'
             : (combo===def && suggere ? '<div style="text-align:center;font-size:10px;color:var(--goldL);margin:-8px 0 10px;font-weight:700;letter-spacing:.5px">✨ Votre meilleur combo</div>' : ''));
-    return '<div class="cv-scene" data-cv="'+instId+'" data-combo="'+combo+'" style="display:'+(combo===def?"block":"none")+'">'+head+'<div class="cv-cards">'+_eventailHTML(groups[combo], off?renderInvalid:renderCard)+'</div></div>';
+    var _rc = off?renderInvalid:renderCard;
+    return '<div class="cv-scene" data-cv="'+instId+'" data-combo="'+combo+'" style="display:'+(combo===def?"block":"none")+'">'+head+'<div class="cv-grid">'+_grilleHTML(groups[combo], _rc)+'</div></div>';
   }).join("");
   var pillsBar = order.length>1 ? '<div class="cv-pills">'+pills+'</div>' : '';
   return pillsBar+scenes;
@@ -9053,7 +9082,7 @@ const G={
       j.gainFinal={p1:0,p2:0,joker:null};
       render();
       if(G._apresInt) clearTimeout(G._apresInt);
-      G._apresInt=setTimeout(function(){G._apresInt=null;if(S.jeu&&!TOURNOI.actif)G.mancheSuivante();},700);
+      G._apresInt=setTimeout(function(){G._apresInt=null;if(S.jeu)G.mancheSuivante();},700);
       return;
     }
 
@@ -9068,7 +9097,7 @@ const G={
       j.gainFinal={p1:0,p2:cIA.pts+bonus,joker:null};
       render();
       if(G._apresInt) clearTimeout(G._apresInt);
-      G._apresInt=setTimeout(function(){G._apresInt=null;if(S.jeu&&!TOURNOI.actif)G.mancheSuivante();},700);
+      G._apresInt=setTimeout(function(){G._apresInt=null;if(S.jeu)G.mancheSuivante();},700);
       return;
     }
 
@@ -9083,7 +9112,7 @@ const G={
       j.gainFinal={p1:cJ1.pts+bonus,p2:0,joker:null};
       render();
       if(G._apresInt) clearTimeout(G._apresInt);
-      G._apresInt=setTimeout(function(){G._apresInt=null;if(S.jeu&&!TOURNOI.actif)G.mancheSuivante();},700);
+      G._apresInt=setTimeout(function(){G._apresInt=null;if(S.jeu)G.mancheSuivante();},700);
       return;
     }
 
@@ -9426,25 +9455,28 @@ const G={
     // Toujours planifier mancheSuivante — annulée si bonus se lance
     if(G._apresInt) clearTimeout(G._apresInt);
     // Rythme : rapide sans joker, et on laisse 1,5 s si un joker (ou un événement) a été joué
-    var _delaiFin = (_fantJ||_fantIA) ? 3200 : (jokerFinal || jIAUsed || _evM) ? 1000 : 500;
+    var _delaiFin = (_fantJ||_fantIA) ? 3200 : (jokerFinal || jIAUsed || _evM) ? 1400 : 1100;
     G._apresInt=setTimeout(function(){
       G._apresInt=null;
-      if(S.jeu&&S.jeu.phase==="fin"&&!TOURNOI.actif) G.mancheSuivante();
+      if(S.jeu&&S.jeu.phase==="fin") G.mancheSuivante();
     }, _delaiFin);
 
     if(j.bonusManches&&j.bonusManches.has(j.manche)){
+      // Manche à bonus : on ANNULE l'avance auto tout de suite (sinon l'enchaînement automatique
+      // pourrait sauter le bonus). Le bonus (ou _tenterBonus) relancera la manche suivante ensuite.
+      if(G._apresInt){ clearTimeout(G._apresInt); G._apresInt=null; }
       // Le bonus attend son tour au lieu d'être perdu : si une autre séquence occupe l'écran
       // (joker, célébration, cartes légendaires, autre bonus), on suspend la manche et on retente.
       // Après 15 essais, on renonce au bonus mais la partie continue normalement.
       var _tenterBonus=function(essai){
         if(!S.jeu || S.jeu!==j) return;                          // partie changée / terminée
-        if(j.manche>=j.total || j.mainRepJ1.length===0) return;  // dernière manche → pas de bonus
+        if(j.manche>=j.total || j.mainRepJ1.length===0){ if(S.jeu) G.mancheSuivante(); return; }  // dernière manche → pas de bonus, on enchaîne (évite tout blocage)
         var _occupe = (typeof _sceneOccupee==="function" && _sceneOccupee())
                    || !!document.getElementById("celebration-badge");
         if(_occupe){
           if(G._apresInt){ clearTimeout(G._apresInt); G._apresInt=null; }   // la manche attend
           if((essai||0) < 15){ setTimeout(function(){ _tenterBonus((essai||0)+1); }, 900); return; }
-          G._apresInt=setTimeout(function(){ G._apresInt=null; if(S.jeu && !TOURNOI.actif) G.mancheSuivante(); }, 250);
+          G._apresInt=setTimeout(function(){ G._apresInt=null; if(S.jeu) G.mancheSuivante(); }, 250);
           return;
         }
         // Annuler le setTimeout et laisser le bonus gérer la manche suivante
@@ -9470,7 +9502,7 @@ const G={
           try{ ["destin-bonus-overlay","sage-bonus-overlay","bonus-overlay"].forEach(function(id){
             var o=document.getElementById(id); if(o) o.classList.remove("active"); }); }catch(_){}
           if(G._apresInt) clearTimeout(G._apresInt);
-          G._apresInt=setTimeout(function(){ G._apresInt=null; if(S.jeu && !TOURNOI.actif) G.mancheSuivante(); }, 300);
+          G._apresInt=setTimeout(function(){ G._apresInt=null; if(S.jeu) G.mancheSuivante(); }, 300);
         }
       };
       setTimeout(function(){ _tenterBonus(0); }, 1800);
@@ -12192,7 +12224,7 @@ function renderJeu(app){
         <div style="font-size:13px;font-weight:700;color:var(--muted)">
           🎴 ${S.nom} — Répondez avec un autre pilier
         </div>
-        ${_suggP?`<div style="font-size:9px;color:var(--goldL);margin-top:3px">✨ = pilier au meilleur combo (conseillé)</div>`:""}
+        ${_suggP?`<div style="display:inline-block;margin-top:7px;font-size:12px;font-weight:700;color:var(--goldL);background:rgba(240,208,96,0.12);border:1px solid rgba(240,208,96,0.45);border-radius:20px;padding:4px 14px;box-shadow:0 0 18px rgba(240,208,96,0.25)">⭐ Meilleure réponse : ${emblemeMini(_suggP,15)} ${_suggP}</div>`:""}
       </div>
       <!-- 4 piliers : IA en grand et lumineuse, 3 autres cliquables -->
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:min(6px,1.5vw);width:100%;margin-bottom:12px">
@@ -12313,7 +12345,7 @@ function renderJeu(app){
             </div>
             <div style="font-size:9px;color:var(--muted);text-align:center;margin-bottom:8px;font-style:italic">👆 Touche une carte pour la jouer · 👇 appui long = infos</div>
             ${vIA.length===0?`<div style="font-size:10px;color:#45c97a;text-align:center;margin-bottom:8px;font-weight:700">💡 L'IA n'a pas de carte valide — jouez et gagnez vos points !</div>`:""}
-            ${comboVedetteHTML(validesJ1.concat(autresJ1), x=>`<div onclick="G.selRep('${x.id}')" draggable="false" style="cursor:pointer;touch-action:manipulation;-webkit-user-drag:none;-webkit-touch-callout:none;user-select:none">${carteMainHTML(x,{selected:j.repChoisie?.id===x.id,masque:(S.jeu&&((S.jeu.twist==="aveugle"||S.jeu.twist==="ultime")||(S.jeu.modif==="brouillard"&&S.jeu.manche%2===0)))})}</div>`, 'pj', {validCombo:j.cb, renderInvalid:c=>carteMainHTML(c,{disabled:true})})}
+            ${comboVedetteHTML(validesJ1.concat(autresJ1), x=>`<div onclick="G.selRep('${x.id}')" draggable="false" style="cursor:pointer;touch-action:manipulation;-webkit-user-drag:none;-webkit-touch-callout:none;user-select:none">${carteMainHTML(x,{selected:j.repChoisie?.id===x.id,masque:(S.jeu&&((S.jeu.twist==="aveugle"||S.jeu.twist==="ultime")||(S.jeu.modif==="brouillard"&&S.jeu.manche%2===0)))})}</div>`, 'pj', {validCombo:j.cb, flat:true, renderInvalid:c=>carteMainHTML(c,{disabled:true})})}
             ${((!j.phaseEchange && j.mainJokJ1.find(x=>x.id==="j3")) || (!j.phaseEchange && j.mainJokJ1.find(x=>x.id==="j4"))) ? `<div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-top:14px">
               ${(!j.phaseEchange && j.mainJokJ1.find(x=>x.id==="j3")) ? `<div style="width:128px;height:171px;display:flex;flex:0 0 auto">${jokerCardHTML(j.mainJokJ1.find(x=>x.id==="j3"),{onClick:"G.useEspion()"})}</div>` : ""}
               ${(!j.phaseEchange && j.mainJokJ1.find(x=>x.id==="j4")) ? `<div style="width:128px;height:171px;display:flex;flex:0 0 auto">${jokerCardHTML(j.mainJokJ1.find(x=>x.id==="j4"),{onClick:"G.useEchange()"})}</div>` : ""}
@@ -12486,9 +12518,7 @@ function renderJeu(app){
         Cartes restantes : ${j.mainRepJ1.length} · Jokers : ${j.mainJokJ1.length}
         ${j.streak>=2?`<span style="margin-left:8px;color:#ff6b35">🔥 Streak ×${j.streak}</span>`:""}
       </div>
-      ${TOURNOI.actif?`<button class="btn-gold" onclick="AUDIO.sfxConfirm();G.mancheSuivante()">
-        ${j.manche>=j.total?"🏆 Voir les résultats":`Manche suivante (${j.manche+1}/${j.total}) →`}
-      </button>`:`<div style="text-align:center;font-size:11px;color:var(--muted);letter-spacing:2px;padding:8px 0;font-family:'Cinzel',serif;opacity:.8">${j.manche>=j.total?"🏆 Résultats…":"Manche suivante…"}</div>`}
+      ${""/* Plus de bouton/texte « Manche suivante » : l'enchaînement est désormais automatique dans tous les modes. */}
     </div>`;
   }
 
