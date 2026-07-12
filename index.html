@@ -1688,7 +1688,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v95.23";
+const BUILD_TAG="v95.27";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -2906,10 +2906,16 @@ function shuffleRep(q){
 
 // Bonus imprévisible : 1 à 5 fois par partie, manches aléatoires
 function initBonusManches(){
-  const total = 1 + Math.floor(Math.random()*5); // entre 1 et 5
+  const total = 1 + Math.floor(Math.random()*2);   // 1 ou 2 bonus par partie (moins fréquents)
+  const MIN_GAP = 3;                                 // au moins 3 manches d'écart entre deux bonus
   const manches = new Set();
-  while(manches.size < total){
-    manches.add(2 + Math.floor(Math.random()*10)); // manches 2-11
+  let essais = 0;
+  while(manches.size < total && essais < 80){
+    essais++;
+    const m = 2 + Math.floor(Math.random()*9);       // manches 2-10
+    let ok = true;
+    manches.forEach(x => { if(Math.abs(x - m) < MIN_GAP) ok = false; });
+    if(ok) manches.add(m);
   }
   return manches;
 }
@@ -3804,13 +3810,40 @@ const BONUS_DESTIN = {
     }
     AUDIO.init();
     var ov=document.getElementById("destin-bonus-overlay");
-    if(!ov) return;
+    if(!ov){ // overlay introuvable → on n'immobilise pas la manche : on enchaîne.
+      if(!opts.duel && typeof G!=="undefined" && typeof S!=="undefined" && S.jeu && S.jeu.phase==="fin"){
+        if(G._apresInt) clearTimeout(G._apresInt);
+        G._apresInt=setTimeout(function(){ G._apresInt=null; if(S.jeu) G.mancheSuivante(); }, 200);
+      }
+      return;
+    }
     this._duel = !!opts.duel;
     this._duelHooks = opts.hooks || null;
     this._advProgress = 0; this._progT = 0;
     if(this._duel && opts.W && opts.balls){ this._appliquerDefi(opts.W, opts.balls); }
     else { this._genererDefi(); }
     ov.classList.add("active");
+
+    // FILET MAÎTRE (Solo) : le Bonus du Destin ne peut JAMAIS figer la partie. Si toute sa séquence
+    // (intro + 30 s + verdict) n'a pas conclu au bout de 45 s, on ferme et on enchaîne de force.
+    if(!opts.duel){
+      var _selfM=this;
+      if(this._masterT){ clearTimeout(this._masterT); }
+      this._masterT=setTimeout(function(){
+        _selfM._masterT=null;
+        var ovM=document.getElementById("destin-bonus-overlay");
+        if(ovM && ovM.classList.contains("active")){
+          try{ _selfM.close(_selfM._pendingGain||0); }
+          catch(e){
+            try{ ovM.classList.remove("active"); }catch(_){}
+            if(typeof S!=="undefined" && S.jeu && S.jeu.phase==="fin" && typeof G!=="undefined"){
+              if(G._apresInt) clearTimeout(G._apresInt);
+              G._apresInt=setTimeout(function(){ G._apresInt=null; if(S.jeu) G.mancheSuivante(); }, 200);
+            }
+          }
+        }
+      }, 45000);
+    }
 
     // Reset visuel
     var stage=document.getElementById("destin-stage");
@@ -4262,6 +4295,7 @@ const BONUS_DESTIN = {
   },
 
   close(gain){
+    if(this._masterT){ clearTimeout(this._masterT); this._masterT=null; }
     this._stopTimer();
     var ov=document.getElementById("destin-bonus-overlay");
     if(!ov || !ov.classList.contains("active")) return;  // déjà fermé
@@ -9480,6 +9514,14 @@ const G={
       // Manche à bonus : on ANNULE l'avance auto tout de suite (sinon l'enchaînement automatique
       // pourrait sauter le bonus). Le bonus (ou _tenterBonus) relancera la manche suivante ensuite.
       if(G._apresInt){ clearTimeout(G._apresInt); G._apresInt=null; }
+      // FILET DE SÉCURITÉ DUR : si après 7 s la manche est TOUJOURS au résultat et qu'aucun bonus
+      // n'occupe l'écran, on force l'enchaînement — le jeu ne peut JAMAIS rester bloqué ici.
+      setTimeout(function(){
+        if(S.jeu===j && j.phase==="fin"){
+          var occ=(typeof _sceneOccupee==="function" && _sceneOccupee()) || !!document.getElementById("celebration-badge");
+          if(!occ){ try{ G.mancheSuivante(); }catch(e){} }
+        }
+      }, 7000);
       // Le bonus attend son tour au lieu d'être perdu : si une autre séquence occupe l'écran
       // (joker, célébration, cartes légendaires, autre bonus), on suspend la manche et on retente.
       // Après 15 essais, on renonce au bonus mais la partie continue normalement.
