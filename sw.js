@@ -12,7 +12,7 @@
    - HTML : réseau d'abord (tes mises à jour s'appliquent en ligne), repli cache hors-ligne.
    - Icônes/manifeste : cache d'abord.
    Pense à changer VERSION quand tu déploies une nouvelle version du jeu. */
-const VERSION = "equilibre-v95-55";
+const VERSION = "equilibre-v95-57";
 const SHELL = [
   "./",
   "./index.html",
@@ -22,8 +22,14 @@ const SHELL = [
   "./apple-touch-icon.png"
 ];
 
+self.addEventListener("message", function(e){
+  // Déclenché par la bannière "Mettre à jour" côté page
+  if(e.data && e.data.type === "SKIP_WAITING") self.skipWaiting();
+});
+
 self.addEventListener("install", function(e){
-  self.skipWaiting();
+  // On n'active PAS d'office : le nouveau SW attend que le joueur accepte la mise à jour
+  // (évite de recharger en pleine partie). La page propose la bannière puis envoie SKIP_WAITING.
   e.waitUntil(
     caches.open(VERSION).then(function(cache){
       // best-effort : on ne bloque pas l'installation si une ressource manque
