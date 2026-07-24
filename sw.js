@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════════
-   ⚖️  ÉQUILIBRE — Les 4 Piliers de Vie · Service Worker
+   ⚖️  ÉQUILIBRE · Service Worker
    © 2026 KHALAM (Khadi & Lamine). Tous droits réservés.
 
    Création originale protégée par le droit d'auteur. Aucune licence n'est
@@ -12,14 +12,19 @@
    - HTML : réseau d'abord (tes mises à jour s'appliquent en ligne), repli cache hors-ligne.
    - Icônes/manifeste : cache d'abord.
    Pense à changer VERSION quand tu déploies une nouvelle version du jeu. */
-const VERSION = "equilibre-v95-57";
+const VERSION = "equilibre-v96-40";
 const SHELL = [
   "./",
   "./index.html",
   "./manifest.json",
   "./icon-192.png",
   "./icon-512.png",
-  "./apple-touch-icon.png"
+  "./apple-touch-icon.png",
+  "./theme-aube.webp",
+  "./theme-plein-jour.webp",
+  "./theme-crepuscule.webp",
+  "./theme-nuit.webp",
+  "./theme-pleine-lune.webp"
 ];
 
 self.addEventListener("message", function(e){

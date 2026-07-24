@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <!--
   ═══════════════════════════════════════════════════════════════════════
-   ⚖️  ÉQUILIBRE — Les 4 Piliers de Vie
+   ⚖️  ÉQUILIBRE
   ═══════════════════════════════════════════════════════════════════════
 
    © 2026 KHALAM (Khadi & Lamine). Tous droits réservés.
@@ -63,7 +63,7 @@
 <meta name="theme-color" content="#12082e"/>
 <link rel="apple-touch-icon" href="apple-touch-icon.png"/>
 <link rel="manifest" href="manifest.json"/>
-<title>⚖️ ÉQUILIBRE — Les 4 Piliers de Vie</title>
+<title>⚖️ ÉQUILIBRE</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap" rel="stylesheet"/>
 <style>
@@ -247,6 +247,93 @@ html.lite .sb-icone-fixe{backdrop-filter:none!important;-webkit-backdrop-filter:
 
 /* ─── Écrans de jeu plein-hauteur : la PAGE ne défile pas ; seule la zone interne (VOS CARTES) défile, en-tête figé ─── */
 html.app-lock,body.app-lock{height:100%;overflow:hidden;overscroll-behavior:none;}
+/* Ecran de jeu fige : les animations d'entree ne se rejouent plus a chaque rendu.
+   C'est elles qui faisaient bouger la main a chaque changement de phase.
+   Les autres ecrans gardent les leurs (app-lock n'est pose que sur le jeu). */
+html.app-lock .fade,
+html.app-lock .pop,
+html.app-lock .slide,
+html.app-lock .slideUp,
+html.app-lock #app.screen-anim{ animation:none !important; }
+/* Rien ne deborde de l'ecran de jeu. */
+html.app-lock #app{ overflow:hidden; }
+/* La main ne pivote pas et ne se laisse pas trainer. */
+.hand-grid, .hand-grid > *{ rotate:none; }
+
+/* ── Habillage de Campagne : fond plein ecran selon le monde (aube -> pleine lune) ── */
+body.camp-bg::before{
+  content:""; position:fixed; inset:0; z-index:-2;
+  background-image:var(--camp-img,none);
+  background-size:cover; background-position:center bottom;
+  background-repeat:no-repeat;
+  transition:opacity .6s ease;
+}
+/* Un voile tres leger pour ancrer les cartes claires sans noircir le paysage */
+body.camp-bg::after{
+  content:""; position:fixed; inset:0; z-index:-1; pointer-events:none;
+  background:linear-gradient(180deg,rgba(0,0,0,0.10) 0%,rgba(0,0,0,0) 30%,rgba(0,0,0,0.18) 100%);
+}
+
+/* Bouton PASSER : gris, clignotant, pour attirer l'oeil quand c'est la seule action */
+.btn-pass{
+  width:100%; padding:13px 12px; border-radius:14px; cursor:pointer;
+  font-family:'Cinzel',serif; font-size:15px; font-weight:800; letter-spacing:0.5px;
+  color:#d8d8e0;
+  background:linear-gradient(135deg,#3a3a44,#26262e);
+  border:1.5px solid #6a6a76;
+  box-shadow:0 4px 14px rgba(0,0,0,0.4);
+  animation:passPulse 1.15s ease-in-out infinite;
+}
+.btn-pass:active{ transform:scale(0.96); }
+@keyframes passPulse{
+  0%,100%{ box-shadow:0 4px 14px rgba(0,0,0,0.4),0 0 0 0 rgba(180,180,195,0.5); opacity:1; }
+  50%{ box-shadow:0 4px 18px rgba(0,0,0,0.4),0 0 0 9px rgba(180,180,195,0); opacity:0.82; }
+}
+
+/* ══ ECRAN DE JEU COMPACT ══════════════════════════════════════════════
+   Un seul bloc continu : piliers et cartes reponses dans la meme foulee,
+   sans panneau separe ni cadre intermediaire. Tout est resserre pour tenir
+   sur une hauteur d'ecran. Ne s'applique qu'au jeu (app-lock). */
+
+/* Marges generales divisees */
+html.app-lock .screen{ padding:8px 8px 4px !important; }
+
+/* Le panneau de la main perd son cadre : il n'est plus une zone a part */
+html.app-lock .card{
+  padding:6px !important;
+  margin-bottom:6px !important;
+  border-radius:12px;
+}
+html.app-lock .hand-grid{ gap:5px; }
+
+/* Cartes piliers reduites : c'est le poste le plus lourd du haut */
+html.app-lock{
+  --pilier-sm:min(52px,13vw);
+  --pilier-md:min(60px,15vw);
+  --pilier-lg:min(72px,18vw);
+}
+/* Le titre de la main disparait : le nombre de cartes se voit sur la grille */
+html.app-lock .hand-grid{ margin-top:2px; }
+html.app-lock #app div[style*="VOS CARTES"]{ display:none; }
+/* Bandeau de score resserre */
+html.app-lock #app div[style*="border-radius:16px"]{ padding:6px 10px !important; }
+/* Lignes de statut : interligne minimal */
+html.app-lock #app div[style*="text-align:center"][style*="margin-bottom:9px"]{ margin-bottom:3px !important; }
+html.app-lock #app div[style*="margin:2px 0"]{ margin:0 !important; }
+
+/* Bandeaux (evenement, modificateur) : hauteur reduite de moitie */
+html.app-lock .bandeau-evt,
+html.app-lock .card-glow{ padding:5px 8px !important; }
+
+/* Interlignes resserres partout dans le jeu */
+html.app-lock #app div[style*="margin-bottom:12px"]{ margin-bottom:6px !important; }
+html.app-lock #app div[style*="margin-bottom:10px"]{ margin-bottom:5px !important; }
+/* iOS : overflow:hidden ne suffit pas, le doigt fait encore rebondir la page.
+   Le body fige reellement avec position:fixed. */
+body.app-lock{position:fixed;top:0;left:0;right:0;bottom:0;width:100%;}
+/* La main ne se laisse ni faire glisser ni selectionner : seuls les appuis passent. */
+.hand-grid{touch-action:manipulation;overscroll-behavior:contain;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;}
 
 /* ─── Bouton GUIDE flottant (le Sage) : très visible, pulse pour attirer l'œil ─── */
 @keyframes guidePulse{
@@ -608,6 +695,90 @@ body:has(#tuto-overlay) #guide-fab{ display:none!important; }
 @keyframes screenIn{0%{opacity:0;transform:translateY(10px)}100%{opacity:1;transform:translateY(0)}}
 #app.screen-anim{animation:screenIn 0.32s cubic-bezier(.22,1,.36,1) both;}
 @keyframes mote{0%{transform:translateY(0) translateX(0);opacity:0}12%{opacity:0.9}88%{opacity:0.6}100%{transform:translateY(-104vh) translateX(24px);opacity:0}}
+
+/* ── Grille de selection des cartes : alignee, densite selon l'ecran ──
+   Telephone 4/rangee · Tablette 5 · Desktop 6. Carte reduite ICI uniquement. */
+.sel-grid{
+  display:grid;
+  grid-template-columns:repeat(3,var(--card-w));
+  gap:min(6px,1.6vw);
+  justify-content:center;
+  align-items:start;
+  /* On deborde de 6px de chaque cote pour recuperer le padding du parent :
+     les cartes vont ainsi jusqu'aux bords de l'ecran. */
+  width:calc(100% + 12px);
+  margin-left:-6px;
+  box-sizing:border-box;
+  /* 3 colonnes x 4 rangees = 12 cartes. La LARGEUR est prioritaire : la carte
+     prend toute la place horizontale disponible, quitte a defiler un peu. */
+  --card-w:min( 132px, calc((100vw - 36px) / 3), calc((100dvh - 175px) / 5.12) );
+  /* Ratio abaisse de 1.42 a 1.28 : la carte se compacte en resserrant
+     l'espace vide interne, sans toucher a sa largeur. */
+  --card-h:calc(var(--card-w) * 1.28);
+}
+@media(min-width:600px){ .sel-grid{--card-w:min(168px, calc((100% - 12px) / 3));} }
+
+/* ── Main du joueur : une seule grille horizontale, 4 par rangee ── */
+.hand-grid{
+  display:grid;
+  grid-template-columns:repeat(4,var(--hand-w));
+  gap:6px;
+  justify-content:center;
+  align-items:start;
+  align-content:start;
+  box-sizing:border-box;
+  /* Pas de debordement lateral : une carte soulevee doit rester dans l'ecran. */
+  width:100%;
+  /* Taille de base de la carte de main : 96x128, comme a l'origine.
+     Aucune mise a l'echelle automatique — elle ne change jamais. */
+  --hand-w:96px;
+  --hand-h:104px;     /* largeur inchangee, hauteur resserree : -24px par rangee */
+  --hand-kx:0.873;
+  --hand-ky:0.667;
+}
+.hand-c{transition:transform .28s cubic-bezier(.34,1.3,.64,1),opacity .28s,filter .28s;}
+.hand-up{transform:translateY(-6px);filter:drop-shadow(0 7px 15px rgba(240,208,96,0.55));opacity:1;}
+.hand-dim{transform:scale(0.93);opacity:0.38;filter:grayscale(0.55);}
+.hand-arme{transform:translateY(-6px);opacity:1;filter:none;
+  outline:2px solid var(--goldL);outline-offset:1px;
+  box-shadow:0 0 20px rgba(240,208,96,0.85),0 8px 18px rgba(0,0,0,0.6);
+  animation:armePulse 1.1s ease-in-out infinite;}
+@keyframes armePulse{0%,100%{box-shadow:0 0 16px rgba(240,208,96,0.65),0 8px 18px rgba(0,0,0,0.6);}
+  50%{box-shadow:0 0 30px rgba(240,208,96,1),0 8px 18px rgba(0,0,0,0.6);}}
+
+/* ── Ecran de selection : plein ecran fige, aucun defilement ── */
+.sel-screen{
+  position:fixed; inset:0; z-index:60;
+  height:100dvh; max-height:100dvh;
+  max-width:none; margin:0; padding:0;
+  display:flex; flex-direction:column; align-items:stretch;
+  overflow:hidden;
+}
+.sel-head{
+  flex:0 0 auto;
+  padding:calc(env(safe-area-inset-top,0px) + 8px) 14px 8px;
+  background:rgba(7,5,20,0.95);
+  border-bottom:1px solid rgba(212,175,55,0.2);
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+}
+.sel-back{
+  flex-shrink:0; min-height:36px; padding:0 12px; border-radius:12px; cursor:pointer;
+  border:1px solid rgba(212,175,55,0.45); background:rgba(240,208,96,0.1);
+  color:var(--goldL); font-family:'Cinzel',serif; font-size:12px; font-weight:800;
+  letter-spacing:0.5px; display:flex; align-items:center; gap:6px;
+}
+.sel-body{
+  flex:1 1 auto; min-height:0;
+  display:flex; align-items:center; justify-content:center;
+  padding:8px 10px; overflow:hidden;
+}
+.sel-foot{
+  flex:0 0 auto;
+  padding:9px 14px calc(env(safe-area-inset-bottom,0px) + 9px);
+  text-align:center; font-size:12px; color:var(--muted);
+  background:rgba(7,5,20,0.95);
+  border-top:1px solid rgba(255,255,255,0.06);
+}
 
 /* Desktop optimizations */
 @media(min-width:640px){
@@ -1244,7 +1415,7 @@ html.lite .bd-ball{transition:opacity 0.2s ease;}
       <div class="sp-balance">⚖️</div>
     </div>
     <div class="sp-title">ÉQUILIBRE</div>
-    <div class="sp-sub">LES 4 PILIERS DE VIE</div>
+    <div class="sp-sub">TROUVEZ VOTRE ÉQUILIBRE</div>
     <div class="sp-div"></div>
     <div class="sp-credit">le couple KHALAM</div>
   </div>
@@ -1688,7 +1859,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v95.57";
+const BUILD_TAG="v96.40";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -7000,31 +7171,22 @@ function renderDuelJeu(app){
     var combosS=[]; poolS.forEach(function(x){ if(combosS.indexOf(x.combo)<0) combosS.push(x.combo); });
     combosS.sort();
     var groupesHtml="";
-    combosS.forEach(function(combo){
-      var cartes=poolS.filter(function(x){return x.combo===combo;});
-      var pa=combo.split("+")[0], pb=combo.split("+")[1];
-      var sA=PILIER[pa]||{accent:"#D4AF37",icon:"⭐"}, sB=PILIER[pb]||{accent:"#D4AF37",icon:"⭐"};
-      groupesHtml+='<div style="margin-bottom:12px">'
-        +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;padding:0 2px">'
-        +'<div style="height:1px;flex:1;background:linear-gradient(90deg,transparent,'+sA.accent+'66)"></div>'
-        +'<div style="font-size:10px;font-weight:700;color:'+sA.accent+';letter-spacing:1px;background:'+sA.accent+'18;border:1px solid '+sA.accent+'44;border-radius:20px;padding:2px 8px">'
-        +emblemeMini(pa)+' '+pa+' + '+emblemeMini(pb)+' '+pb+'</div>'
-        +'<div style="height:1px;flex:1;background:linear-gradient(90deg,'+sB.accent+'66,transparent)"></div>'
-        +'</div>'
-        +'<div style="display:flex;flex-direction:row;gap:min(8px,2vw);justify-content:center;flex-wrap:wrap">';
-      cartes.forEach(function(carte){
-        var sel2=selMainS.some(function(s){return s.id===carte.id;});
-        groupesHtml+='<div onclick="DUEL.toggleSel(&quot;'+carte.id+'&quot;)" style="cursor:pointer;flex-shrink:0;touch-action:manipulation;-webkit-user-drag:none;-webkit-touch-callout:none;user-select:none">'
-          +carteRepHTML(carte,{selected:sel2,clickable:true})+'</div>';
-      });
-      groupesHtml+='</div></div>';
-    });
+      var _tri = poolS.slice().sort(function(a,b){
+    return a.combo===b.combo ? ((b.pts||0)-(a.pts||0)) : (a.combo<b.combo?-1:1);
+  });
+  groupesHtml+='<div class="sel-grid">';
+  _tri.forEach(function(carte){
+    var sel2=selMainS.some(function(s){return s.id===carte.id;});
+    groupesHtml+='<div onclick="DUEL.toggleSel(&quot;'+carte.id+'&quot;)" style="cursor:pointer;touch-action:manipulation;-webkit-user-drag:none;-webkit-touch-callout:none;user-select:none">'
+      +carteRepHTML(carte,{selected:sel2,clickable:true})+'</div>';
+  });
+  groupesHtml+='</div>';
     app.innerHTML='<div class="screen" style="padding:0;min-height:100dvh;background:radial-gradient(ellipse at top,#1a0535,#070514)">'
       +'<div style="position:sticky;top:env(safe-area-inset-top,0px);z-index:100;background:rgba(7,5,20,0.95);border-bottom:1px solid rgba(212,175,55,0.2);padding:10px 16px;display:flex;align-items:center;justify-content:space-between">'
       +'<div style="font-family:Cinzel,serif;font-size:13px;font-weight:700;color:var(--goldL)">⚔️ Sélectionnez vos 10 cartes</div>'
       +'<div style="font-size:14px;font-weight:900;font-family:Cinzel,serif;color:'+(selN>=10?"#45c97a":"var(--gold)")+'">'+selN+'/10</div>'
       +'</div>'
-      +'<div style="padding:12px 16px 16px">'+groupesHtml+'<div style="height:90px"></div></div>'
+      +'<div style="padding:12px 16px 16px;width:100%;box-sizing:border-box">'+groupesHtml+'<div style="height:90px"></div></div>'
       +'</div>'
       +'<div style="position:fixed;bottom:0;left:0;right:0;z-index:200;padding:10px 16px env(safe-area-inset-bottom,16px);background:linear-gradient(to top,rgba(7,5,20,0.98) 70%,transparent)">'
       +(selN>=10
@@ -7090,26 +7252,16 @@ function renderDuelJeu(app){
     var combos=[];pool.forEach(function(x){if(combos.indexOf(x.combo)<0)combos.push(x.combo);});
     combos.sort(); // combos triés, comme le Solo
     var cartesHtml="";
-    combos.forEach(function(combo){
-      var cartes=pool.filter(function(x){return x.combo===combo;});
-      var pa=combo.split("+")[0];var pb=combo.split("+")[1];
-      var sA=PILIER[pa]||{accent:"#D4AF37",icon:"⭐"};var sB=PILIER[pb]||{accent:"#D4AF37",icon:"⭐"};
-      cartesHtml+='<div style="margin-bottom:12px">'
-        +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;padding:0 2px">'
-        +'<div style="height:1px;flex:1;background:linear-gradient(90deg,transparent,'+sA.accent+'66)"></div>'
-        +'<div style="font-size:10px;font-weight:700;color:'+sA.accent+';letter-spacing:1px;background:'+sA.accent+'18;border:1px solid '+sA.accent+'44;border-radius:20px;padding:2px 8px">'
-        +emblemeMini(pa)+' '+pa+' + '+emblemeMini(pb)+' '+pb
-        +'</div>'
-        +'<div style="height:1px;flex:1;background:linear-gradient(90deg,'+sB.accent+'66,transparent)"></div>'
-        +'</div>'
-        +'<div style="display:flex;flex-direction:row;gap:min(8px,2vw);justify-content:center;flex-wrap:wrap">';
-      cartes.forEach(function(carte){
-        var sel2=selMain.some(function(s){return s.id===carte.id;});
-        cartesHtml+='<div onclick="DUEL.toggleSel(&quot;'+carte.id+'&quot;)" style="cursor:pointer;flex-shrink:0;touch-action:manipulation;-webkit-user-drag:none;-webkit-touch-callout:none;user-select:none">'
-        +carteRepHTML(carte,{selected:sel2,clickable:true})+'</div>';
-      });
-      cartesHtml+='</div></div>';
-    });
+      var _tri = pool.slice().sort(function(a,b){
+    return a.combo===b.combo ? ((b.pts||0)-(a.pts||0)) : (a.combo<b.combo?-1:1);
+  });
+  cartesHtml+='<div class="sel-grid">';
+  _tri.forEach(function(carte){
+    var sel2=selMain.some(function(s){return s.id===carte.id;});
+    cartesHtml+='<div onclick="DUEL.toggleSel(&quot;'+carte.id+'&quot;)" style="cursor:pointer;touch-action:manipulation;-webkit-user-drag:none;-webkit-touch-callout:none;user-select:none">'
+      +carteRepHTML(carte,{selected:sel2,clickable:true})+'</div>';
+  });
+  cartesHtml+='</div>';
     // En-tête collant + compteur (comme le Solo)
     html+='<div style="position:sticky;top:env(safe-area-inset-top,0px);z-index:100;background:rgba(7,5,20,0.95);border-bottom:1px solid rgba(212,175,55,0.2);padding:8px 4px;display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">'
       +'<div style="font-family:Cinzel,serif;font-size:13px;font-weight:700;color:var(--goldL)">⚔️ Sélectionnez vos 10 cartes</div>'
@@ -7347,7 +7499,7 @@ function renderDuelJeu(app){
           if(mesJoks.some(function(x){return x.id==="j1"||x.id==="j2";})){
             html+='<div style="font-size:9px;color:var(--muted);font-style:italic;text-align:center;margin-bottom:8px">'
               +'💡 '+mesJoks.filter(function(x){return x.id==="j1"||x.id==="j2";}).map(function(x){return x.name;}).join(" & ")
-              +' disponibles après les réponses</div>';
+              +' · touche pour amorcer avant de jouer</div>';
           }
           html+='<div style="font-size:11px;color:var(--muted);margin-bottom:2px;text-align:center">Jouez votre meilleure carte !</div>'
             +'<div style="font-size:9px;color:var(--muted);text-align:center;margin-bottom:8px;font-style:italic">👆 Touche une carte pour la jouer immédiatement · les jokers se jouent d’un simple toucher</div>'
@@ -7771,7 +7923,7 @@ function guideTexte(){
   // ── 3) Écrans hors partie ──
   if(e==="menu") return {t:"Par où commencer ?",m:"<b>Solo</b> pour apprendre contre Rara. <b>Campagne</b> pour affronter les Gardiens et gagner ton rang. <b>Duel</b> pour jouer contre un ami, à distance."};
   if(e==="regles") return {t:"Le mode d'emploi",m:"Tout le jeu est expliqué ici. Le bouton <b>🔊 Écouter</b>, en bas à droite, te le lit à voix haute pendant que tu fais autre chose."};
-  if(e==="campagne") return {t:"La Voie des Maîtres",m:"Affronte les Gardiens dans l'ordre. Chaque victoire t'apporte leur enseignement et fait <b>monter ton rang</b> : Disciple, Initié, Gardien, Guide, Chef de Cercle."};
+  if(e==="campagne") return {t:"La Campagne",m:"Affronte les Gardiens dans l'ordre. Chaque victoire t'apporte leur enseignement et fait <b>monter ton rang</b> : Disciple, Initié, Gardien, Guide, Chef de Cercle."};
   if(e==="gardien_intro") return {t:"Face au Gardien",m:"Écoute-le. Chaque Gardien a une faiblesse liée à son pilier. Prépare tes cartes fortes : il joue mieux que l'IA ordinaire."};
   if(e==="duel_menu") return {t:"Jouer à deux",m:"<b>Créer</b> une partie te donne un code à 4 lettres. Ton ami le saisit dans <b>Rejoindre</b>. Vous pouvez être n'importe où."};
   if(e==="duel_lobby") return {t:"En attente",m:"Transmets ton code à ton adversaire. La partie démarre dès qu'il rejoint. Ne quitte pas cet écran."};
@@ -7982,6 +8134,17 @@ function _guideVeille(){
 var _ecranVoix=null;
 var _ecranScroll=null;
 function render(){
+  // Habillage de campagne : present uniquement sur les ecrans de campagne/combat.
+  try{
+    var _ec=(typeof S!=="undefined")?S.ecran:"";
+    var _enCamp=(_ec==="jeu" && typeof S.campagneEnCours==="number" && S.campagneEnCours>=0)
+             || _ec==="gardien_intro" || _ec==="campagne" || _ec==="temple";
+    if(_enCamp && typeof S.campagneEnCours==="number" && S.campagneEnCours>=0){
+      poserFondCampagne(S.campagneEnCours);
+    } else {
+      retirerFondCampagne();
+    }
+  }catch(_){}
   // Toute fenêtre qui quitte l'écran coupe la lecture immédiatement.
   // Seule exception : la lecture du mode d'emploi, lancée volontairement par le joueur.
   try{
@@ -8101,7 +8264,22 @@ function render(){
   }catch(e){}
   // Sauvegarde automatique de la partie en cours
   try{ sauvegarderPartieEnCours(); sauvegarderDuelEnCours(); }catch(e){ if(window.__logErr) window.__logErr(e,"sauvegarde"); }
+  // La main s'ajuste a la place qui lui reste : tout tient sur un ecran.
+  try{ ajusterMain(); }catch(_){}   // synchrone : aucune frame peinte a la mauvaise taille
 }
+
+// ── Ajustement automatique de la main ────────────────────────────────
+// L'ecran de jeu est verrouille (app-lock) : rien ne defile. Une main trop
+// grande n'est donc pas repoussee, elle est ROGNEE. On mesure la hauteur
+// reellement disponible sous la grille et on en deduit l'echelle des cartes.
+// La taille de la carte de main est entierement fixee par le CSS (96 x 104).
+// Plus aucune fonction ne retouche le DOM apres le rendu : c'etait la source
+// du "petit puis grand" — une premiere image peinte, puis une modification.
+function ajusterMain(){}
+try{
+  window.addEventListener("resize",function(){ if(typeof S!=="undefined"&&S.jeu) S.jeu._handK=null; requestAnimationFrame(ajusterMain); });
+  window.addEventListener("orientationchange",function(){ if(typeof S!=="undefined"&&S.jeu) S.jeu._handK=null; setTimeout(ajusterMain,250); });
+}catch(_){}
 
 // ════════════════════════════════════════════════
 // COMPOSANTS HTML
@@ -8428,15 +8606,18 @@ function _fluidCarte(cols){
 }
 function carteMainHTML(c,opts){
   opts=opts||{};
-  return '<div style="width:96px;height:128px;overflow:hidden;flex-shrink:0;border-radius:12px">'
-    +'<div style="--card-w:110px;--card-h:156px;width:110px;height:156px;transform:scale(0.873,0.821);transform-origin:top left">'
+  return '<div style="width:var(--hand-w,96px);height:var(--hand-h,128px);overflow:hidden;flex-shrink:0;border-radius:12px">'
+    +'<div style="--card-w:110px;--card-h:156px;width:110px;height:156px;transform:scale(var(--hand-kx,0.873),var(--hand-ky,0.821));transform-origin:top left">'
     +carteRepHTML(c,opts)
     +'</div></div>';
 }
 
 function jokerCardHTML(j,opts={}){
   const{used=false,bonus=0,onClick=""}=opts;
-  const phaseLabel={j1:"Après réponses",j2:"Après réponses",j3:"Avant réponse",j4:"Si aucune carte"}[j.id]||"";
+  // En solo, Brakeur (j1) et Multiplicateur (j2) s'amorcent AVANT de jouer (v96.17).
+  // En Duel, la regle n'a pas change : ils restent "Apres reponses".
+  const _soloJeu=(typeof S!=="undefined" && S.jeu && !(typeof DUEL!=="undefined" && DUEL.gs));
+  const phaseLabel={j1:_soloJeu?"À amorcer":"Après réponses",j2:_soloJeu?"À amorcer":"Après réponses",j3:"Avant réponse",j4:"Si aucune carte"}[j.id]||"";
   const phaseCol={j1:"#9b59b6",j2:"#3498db",j3:"#27ae60",j4:"#8e44ad"}[j.id]||j.color;
 
   // Motif hexagonal subtil
@@ -8663,27 +8844,18 @@ function comboVedetteHTML(cards, renderCard, instId, opts){
   var pillsBar = order.length>1 ? '<div class="cv-pills">'+pills+'</div>' : '';
   return pillsBar+scenes;
 }
-function aperçuMain(main,jokers){
+function aperçuMain(main,jokers,pilier){
   const combos=[...new Set(main.map(c=>c.combo))];
   if(main.length===0)return`<!--HAND--><div class="card" style="text-align:center;padding:16px"><div style="font-size:28px;margin-bottom:6px">📭</div><div style="color:var(--red);font-weight:700">Plus de cartes disponibles</div></div>`;
   return`<!--HAND--><div class="card" style="padding:12px">
-    <div style="font-size:10px;color:var(--gold);font-weight:700;margin-bottom:10px;letter-spacing:1px">VOS CARTES (${main.length})</div>
-    ${combos.map(combo=>{
-      const cs=main.filter(c=>c.combo===combo);
-      const[pa,pb]=combo.split("+");
-      const sA=PILIER[pa]||{accent:"#888",icon:"?"},sB=PILIER[pb]||{accent:"#888",icon:"?"};
-      return`<div style="margin-bottom:12px">
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;padding:0 2px">
-          <div style="height:1px;flex:1;background:linear-gradient(90deg,transparent,${sA.accent}66)"></div>
-          <div style="font-size:9px;font-weight:700;color:${sA.accent};letter-spacing:1px;background:${sA.accent}18;border:1px solid ${sA.accent}44;border-radius:20px;padding:2px 9px;white-space:nowrap">
-            ${emblemeMini(pa)} ${pa} + ${emblemeMini(pb)} ${pb}
-          </div>
-          <div style="height:1px;flex:1;background:linear-gradient(90deg,${sB.accent}66,transparent)"></div>
-        </div>
-        <div style="--card-w:86px;--card-h:114px;display:flex;flex-wrap:wrap;justify-content:center;gap:min(6px,1.5vw)">${cs.map(c=>carteMainHTML(c,{disabled:true})).join("")}</div>
-      </div>`;
-    }).join("")}
-    ${jokers.length>0?`<div style="margin-top:8px"><div style="font-size:10px;color:var(--gold);font-weight:700;margin-bottom:5px">VOS JOKERS</div><div style="display:flex;gap:7px">${jokers.map(j=>jokerCardHTML(j,{onClick:`G.useJoker('${j.id}')`})).join("")}</div></div>`:""}
+    
+    <div class="hand-grid">${main.slice().sort(function(a,b){
+      return a.combo===b.combo ? ((b.pts||0)-(a.pts||0)) : (a.combo<b.combo?-1:1);
+    }).map(function(c){
+      var cl = pilier ? (c.combo.indexOf(pilier)>=0 ? "hand-c hand-up" : "hand-c hand-dim") : "hand-c";
+      return '<div class="'+cl+'">'+carteMainHTML(c,{disabled:true})+'</div>';
+    }).join("")}${jokers.map(function(jk){ var _arm=(typeof S!=="undefined"&&S.jeu&&S.jeu.jokerArme===jk.id); var _act=(jk.id==="j1"||jk.id==="j2")?("G.armerJoker('"+jk.id+"')"):("G.useJoker('"+jk.id+"')"); return '<div class="hand-c'+(_arm?" hand-arme":"")+'" style="width:var(--hand-w);height:var(--hand-h);overflow:hidden;border-radius:12px"><div style="width:110px;height:156px;display:flex;transform:scale(var(--hand-kx),var(--hand-ky));transform-origin:top left">'+jokerCardHTML(jk,{onClick:_act})+'</div></div>'; }).join("")}</div>
+    ${""}
   </div>`;
 }
 
@@ -8878,6 +9050,7 @@ const G={
     if(j.selTemp.length<10)return;
     j.mainRepJ1=[...j.selTemp];
     j.mainJokJ1=[...j.allJokJ1];
+    j._handK=null; j._handRows=null;   // echelle de main a remesurer
     // Lancer animation distribution avant de passer à choixBase
     showCardDealAnimation(j.mainRepJ1, function(){
       // IA sélectionne ses 10
@@ -8934,9 +9107,8 @@ const G={
     if(j.phase!=="choixBase")return;
     if(!j.mainRepJ1.some(c=>c.combo.includes(p))){ showToast("Aucune carte "+p+" — choisis un pilier où tu as une carte","info",2200); return; }
     j.b1=p;j.phase="j1AChoisi";
-    const iaPr=IA_PROFILS[S.diff]||IA_PROFILS.Intermédiaire;
-    G.showIADlg(pick(iaPr.dlg.bluff));
-    render();
+    // Plus d'ecran d'attente : l'IA repond immediatement apres ton coup.
+    G.iaRepond();
   },
 
   iaRepond(){
@@ -9054,12 +9226,14 @@ const G={
   passerTour(){
     G.stopTimer();
     AUDIO.sfxClick();
+    if(S.jeu) S.jeu._passeManuel=true;   // appui volontaire : on enchainera sans ecran de resultat
     G.execRep(null);
   },
 
   execRep(cJ1){
     const j=S.jeu;
     G.stopTimer();
+    const _passeManuel = !!j._passeManuel; j._passeManuel=false;
     const vIA=j.mainRepJ2.filter(c=>c.combo===j.cb);
     let cIA=null;
     if(vIA.length>0){
@@ -9128,6 +9302,13 @@ const G={
       j.s1=Math.max(0,j.s1-5);
       j.s2=Math.max(0,j.s2-5);
       showToast("❌ Aucune carte des deux côtés — -5 pts chacun !","lose",2200);
+      if(_passeManuel){
+        // Passe volontaire : la manche suivante demarre tout de suite.
+        // Le toast suffit a informer, l'ecran de resultat n'apporte rien.
+        if(G._apresInt){ clearTimeout(G._apresInt); G._apresInt=null; }
+        G.mancheSuivante();
+        return;
+      }
       j.phase="fin";
       j.msg="🤝 Aucune carte — -5 pts chacun";
       j.gainFinal={p1:0,p2:0,joker:null};
@@ -9167,29 +9348,30 @@ const G={
       return;
     }
 
-    // Cas normal — les deux ont une carte
-    var _aJokerOff = j.mainJokJ1 && j.mainJokJ1.some(x=>x.id==="j1"||x.id==="j2");
-    if(!_aJokerOff){
-      // Aucun joker offensif à jouer → résultat direct, sans attente ni bouton
-      if(G._apresInt){ clearTimeout(G._apresInt); G._apresInt=null; }
-      G.resoudre(j.repChoisie,j.repIA,null);
-      return;
-    }
-    // Joker offensif possible → écran de décision, 5 s pour choisir (sinon résultat sans joker)
+    // Cas normal — les deux ont une carte.
+    // Le joker offensif ne s'ouvre plus en fenetre : il s'amorce depuis la main,
+    // AVANT de jouer sa carte. Ici on ne fait qu'appliquer ce qui a ete amorce.
     if(G._apresInt){ clearTimeout(G._apresInt); G._apresInt=null; }
     if(G._jokerInt){ clearInterval(G._jokerInt); G._jokerInt=null; }
-    j.phase="apresReponses";
-    j._jokerSec=5;
+    var _arme=j.jokerArme; j.jokerArme=null;
+    if(_arme && j.mainJokJ1 && j.mainJokJ1.some(function(x){return x.id===_arme;})){
+      G.appliquerJoker(_arme);   // consomme le joker, joue le son et la cinematique
+      return;
+    }
+    G.resoudre(j.repChoisie,j.repIA,null);
+  },
+
+  // Amorce (ou desamorce) Brakeur / Multiplicateur depuis la main.
+  // Un seul joker amorce a la fois ; un second appui sur le meme le retire.
+  armerJoker(id){
+    const j=S.jeu;
+    if(!j) return;
+    if(id!=="j1" && id!=="j2") return;
+    if(!j.mainJokJ1 || !j.mainJokJ1.some(function(x){return x.id===id;})) return;
+    if(j.phase==="fin" || j.phase==="apresReponses") return;
+    j.jokerArme = (j.jokerArme===id) ? null : id;
+    try{ if(typeof AUDIO!=="undefined" && AUDIO.sfxClick) AUDIO.sfxClick(); }catch(_){}
     render();
-    G._jokerInt=setInterval(function(){
-      if(!S.jeu || S.jeu.phase!=="apresReponses"){ clearInterval(G._jokerInt); G._jokerInt=null; return; }
-      S.jeu._jokerSec--;
-      var el=document.getElementById("joker-sec"); if(el) el.textContent=Math.max(0,S.jeu._jokerSec);
-      if(S.jeu._jokerSec<=0){
-        clearInterval(G._jokerInt); G._jokerInt=null;
-        if(!TOURNOI.actif) G.resoudre(S.jeu.repChoisie,S.jeu.repIA,null);
-      }
-    },1000);
   },
 
   useJoker(id){
@@ -9877,36 +10059,15 @@ const G={
       // Le timer normal démarre pour qu'il puisse jouer son joker (ou passer via le bouton).
     }
 
-    // ── Timer 20s normal ──
-    j.timerSec=20;
-    G._timerInt=setInterval(()=>{
-      if(!S.jeu||S.jeu.phase!=="afficheBases"){clearInterval(G._timerInt);return;}
-      j.timerSec--;
-      G.updateTimer();
-      if(j.timerSec<=0){
-        clearInterval(G._timerInt);
-        if(!G._timerFired){
-          G._timerFired=true;
-          if(S.jeu?.repChoisie) G.jouerRep();
-          else G.execRep(null);
-        }
-      }
-    },1000);
+    // ── Compte à rebours retiré (v96.5) ──
+    // Le joueur prend le temps qu'il veut : aucun passage automatique.
+    // Seule une action volontaire (carte, joker, bouton Passer) résout la manche.
+    j.timerSec=0;
   },
   stopTimer(){
     clearInterval(G._timerInt);
     G._timerFired=true; // empêche double appel
     if(S.jeu)S.jeu.timerSec=0;
-  },
-  updateTimer(){
-    const el=document.getElementById("timerNum");
-    const bar=document.getElementById("timerBar");
-    if(!el||!bar)return;
-    const sec=S.jeu?.timerSec||0;
-    const col=sec<=5?"#e05555":sec<=10?"#FFA500":"#45c97a";
-    el.textContent=sec;el.style.color=col;
-    bar.style.width=(sec/20*100)+"%";bar.style.background=col;
-    if(sec<=5)el.closest?.(".timer-wrap")?.style?.setProperty?.("animation","urgence 0.5s infinite");
   },
 };
 
@@ -9961,6 +10122,24 @@ function showTutoriel(force){
   dessine();
 }
 
+// ── Habillage de Campagne : associe chaque gardien a son monde ──
+var CAMP_MONDES=["aube","aube","aube","plein-jour","plein-jour","plein-jour",
+  "crepuscule","crepuscule","crepuscule","nuit","nuit","nuit",
+  "pleine-lune","pleine-lune","pleine-lune"];
+function poserFondCampagne(i){
+  try{
+    var m=CAMP_MONDES[i];
+    if(!m){ retirerFondCampagne(); return; }
+    document.body.classList.add("camp-bg");
+    document.body.style.setProperty("--camp-img","url('theme-"+m+".webp')");
+  }catch(_){}
+}
+function retirerFondCampagne(){
+  try{
+    document.body.classList.remove("camp-bg");
+    document.body.style.removeProperty("--camp-img");
+  }catch(_){}
+}
 function lancerGardien(i){
   try{
     if(!S.campagne) S.campagne={progres:0};
@@ -9969,6 +10148,7 @@ function lancerGardien(i){
     S.diff=CAMPAGNE[i].diff;
     S.campagneEnCours=i;
     S.survieActif=false;
+    poserFondCampagne(i);
     G.startJeu(false);
     if(S.jeu){
       var _actC=Math.floor(i/5);            // 0=Acte I, 1=Acte II, 2=Acte III
@@ -10251,7 +10431,7 @@ function renderCampagne(app){
       </div>
       <div style="padding:0 18px">
         <div style="text-align:center;margin:6px 0 16px">
-          <div style="font-family:'Cinzel',serif;font-size:16px;color:var(--goldL);font-weight:700">La Voie des 4 Piliers</div>
+          <div style="font-family:'Cinzel',serif;font-size:16px;color:var(--goldL);font-weight:700">Campagne</div>
           <div style="font-size:11px;color:var(--muted);margin-top:4px">Affronte les 5 gardiens et trouve l'Équilibre.</div>
           <div style="height:6px;border-radius:3px;background:rgba(255,255,255,0.08);overflow:hidden;margin-top:10px">
             <div style="height:100%;width:${Math.round(prog/CAMPAGNE.length*100)}%;background:linear-gradient(90deg,var(--gold),#45c97a);border-radius:3px"></div>
@@ -10414,7 +10594,7 @@ function renderApropos(app){
         <div style="text-align:center;margin:12px 0 4px">
           <div style="font-size:58px;filter:drop-shadow(0 0 20px rgba(212,175,55,0.55))">⚖️</div>
           <div style="font-family:'Cinzel',serif;font-size:28px;font-weight:900;color:var(--goldL);letter-spacing:3px">ÉQUILIBRE</div>
-          <div style="font-size:11px;color:#c7b8e0;letter-spacing:3px;margin-top:3px">LES 4 PILIERS DE VIE</div>
+          <div style="font-size:11px;color:#c7b8e0;letter-spacing:3px;margin-top:3px">TROUVEZ VOTRE ÉQUILIBRE</div>
         </div>
         <div style="background:linear-gradient(135deg,rgba(45,27,105,0.55),rgba(26,13,61,0.4));border:1px solid rgba(212,175,55,0.35);border-radius:16px;padding:18px;margin-top:16px;text-align:center">
           <div style="font-size:10px;color:var(--gold);letter-spacing:2px;margin-bottom:7px">CRÉÉ AVEC ❤️ PAR</div>
@@ -10485,8 +10665,8 @@ function renderMenu(app){
           </div>
         </div>
         <div style="text-align:right">
-          <div style="font-size:9px;color:var(--muted);letter-spacing:2px;margin-bottom:4px">ÉQUILIBRE</div>
-          <div style="font-family:Cinzel,serif;font-size:11px;color:var(--gold)">⚖️ Les 4 Piliers</div>
+          <div style="font-size:9px;color:var(--muted);letter-spacing:2px;margin-bottom:4px">UN JEU KHALAM</div>
+          <div style="font-family:Cinzel,serif;font-size:11px;color:var(--gold)">⚖️ ÉQUILIBRE</div>
         </div>
       </div>
       <!-- Barre XP -->
@@ -10537,7 +10717,7 @@ function renderMenu(app){
           color:#fff;font-family:Cinzel,serif;font-size:17px;font-weight:900;
           letter-spacing:1px;box-shadow:0 5px 20px rgba(110,60,170,0.4),inset 0 1px 0 rgba(255,255,255,0.28);
           display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;text-shadow:0 1px 3px rgba(0,0,0,0.4)">
-          <span>LA VOIE</span>
+          <span>CAMPAGNE</span>
           <span style="font-size:9px;font-family:sans-serif;font-weight:600;opacity:0.85;letter-spacing:0.5px;display:inline-flex;align-items:center;gap:4px;justify-content:center">
             ${rangEmblemeHTML(getRang(),13)}<span>${getRang().nom} · ${(S.campagne?S.campagne.progres:0)}/${CAMPAGNE.length} gardiens${((S.campagne?S.campagne.progres:0)>=CAMPAGNE.length)?" · La Montée ouverte":""}</span>
           </span>
@@ -10773,7 +10953,7 @@ function _dessinerResultat(cv,d,qr){
   x.font="bold 62px 'Cinzel',Georgia,serif";x.fillStyle="#F0D060";
   x.fillText("⚖️ ÉQUILIBRE",W/2,282);
   x.font="24px 'Cinzel',Georgia,serif";x.fillStyle="#c7b8e0";
-  x.fillText("LES 4 PILIERS DE VIE",W/2,338);
+  x.fillText("TROUVEZ VOTRE ÉQUILIBRE",W/2,338);
   x.strokeStyle="rgba(212,175,55,0.5)";x.lineWidth=3;
   x.beginPath();x.moveTo(W*0.26,392);x.lineTo(W*0.74,392);x.stroke();
   var resTxt=d.egal?"ÉGALITÉ":d.gagne?"VICTOIRE":"DÉFAITE";
@@ -10903,39 +11083,6 @@ function partagerResultatDuel(){
   var d={gagne:g,egal:e,nom:(S.nom||"Vous"),sj:ms,sa:as,advNom:advNom,
     txt:"⚖️ ÉQUILIBRE DUEL — "+(e?"ÉGALITÉ 🤝":g?"VICTOIRE 🏆":"DÉFAITE 💀")+" !\n"+(S.nom||"Vous")+" "+ms+" — "+as+" "+advNom+"\n🎮 https://lamicisse33-dotcom.github.io/equilibre-jeu/\n#Equilibre #Duel1v1"};
   partagerAvecImage(d);
-}
-function _ancienPartageResultatDuel(){
-  var gs=DUEL.gs||{};
-  var ms=DUEL.isHost?(gs.s1||0):(gs.s2||0);
-  var as=DUEL.isHost?(gs.s2||0):(gs.s1||0);
-  var advNom=(DUEL.adversaire&&DUEL.adversaire.nom)||"Adversaire";
-  var res=ms>as?"VICTOIRE 🏆":(ms===as?"ÉGALITÉ 🤝":"DÉFAITE 💀");
-  var txt="⚖️ ÉQUILIBRE DUEL — "+res+" !\n"
-    +(S.nom||"Vous")+" : "+ms+" pts vs "+advNom+" : "+as+" pts\n"
-    +"#Equilibre #Duel1v1";
-  // 1) Partage natif
-  try {
-    if(navigator && navigator.share){
-      navigator.share({title:"ÉQUILIBRE",text:txt}).catch(function(err){
-        // annulation = normal ; autre échec → on copie
-        if(!(err && err.name==="AbortError")){
-          if(navigator.clipboard&&navigator.clipboard.writeText){
-            navigator.clipboard.writeText(txt).then(function(){showToast("✅ Copié !","win",2500);}).catch(function(){_partagerFallback(txt);});
-          } else _partagerFallback(txt);
-        }
-      });
-      return;
-    }
-  } catch(e){}
-  // 2) Presse-papiers
-  try {
-    if(navigator && navigator.clipboard && navigator.clipboard.writeText){
-      navigator.clipboard.writeText(txt).then(function(){showToast("✅ Résultat copié ! Collez où vous voulez 📋","win",3000);}).catch(function(){_partagerFallback(txt);});
-      return;
-    }
-  } catch(e){}
-  // 3) Repli visible garanti
-  _partagerFallback(txt);
 }
 
 function renderResultat(app){
@@ -11431,7 +11578,7 @@ function renderRegles(app){
       <div class="card" style="margin-bottom:14px">
         ${[
           {i:"⚔️",n:"JOUER",c:"var(--goldL)",t:"Une partie contre l'IA sur 12 manches (3 niveaux : Rara, Maguy, Bolito). La porte d'entrée, pour dix minutes de jeu."},
-          {i:emblemeMini("Spiritualité",28),n:"LA VOIE",c:"#b06bff",t:"Le cœur du jeu : <strong style='color:var(--goldL)'>15 gardiens</strong> en 3 actes. Chaque victoire livre l'enseignement d'un Maître et fait grandir ton <strong style='color:var(--goldL)'>rang</strong> — Disciple, Initié, Gardien, Guide, Chef de Cercle. Une fois la Voie accomplie, <strong style='color:#bcd8ff'>La Montée</strong> s'ouvre : des paliers sans fin, l'adversaire toujours plus fort."},
+          {i:emblemeMini("Spiritualité",28),n:"CAMPAGNE",c:"#b06bff",t:"Le cœur du jeu : <strong style='color:var(--goldL)'>15 gardiens</strong> en 3 actes. Chaque victoire livre l'enseignement d'un Maître et fait grandir ton <strong style='color:var(--goldL)'>rang</strong> — Disciple, Initié, Gardien, Guide, Chef de Cercle. Une fois la Voie accomplie, <strong style='color:#bcd8ff'>La Montée</strong> s'ouvre : des paliers sans fin, l'adversaire toujours plus fort."},
           {i:"⚔️",n:"Duel 1v1 en ligne",c:"#45c97a",t:"Affrontez un vrai adversaire en temps réel (2 téléphones). L'hôte crée un duel → un code de 4 lettres est généré → l'invité le saisit → la partie démarre. Un deck de 24 cartes Réponses est tiré (parmi les 48 du jeu) puis réparti équitablement — 12 chacun. Chat intégré 💬, reconnexion automatique en cas de coupure, et revanche en un clic. Les manches s'enchaînent automatiquement."},
           {i:"🎯",n:"L'ÉPREUVE DU JOUR",c:"#45c97a",t:"Chaque jour, un défi se présente de lui-même sur l'accueil : l'<strong style='color:#45c97a'>Épreuve du Souffle</strong> (trois vies, IA en Expert) ou le <strong style='color:var(--goldL)'>Cercle des Trois</strong> (trois adversaires à la suite). On ne les cherche pas dans un menu : ils viennent à toi."},
         ].map(m=>`
@@ -11586,7 +11733,7 @@ function renderRegles(app){
         ${[
           {i:"✨",n:"Cartes légendaires",t:"Dès la <strong style='color:var(--goldL)'>manche 6</strong>, deux cartes d'exception entrent en jeu, une seule fois chacune : la <strong style='color:var(--goldL)'>Suprême</strong> (50 pts garantis) et le <strong style='color:#c9b3f0'>Fantôme</strong> (valeur inconnue, 0 à 100). Les toucher ouvre une confirmation <strong style='color:var(--goldL)'>« Jouer / Pas maintenant »</strong> : déclinée, la carte se retire pour la manche et revient ensuite."},
           {i:"🎰",n:"Le Jackpot des Fantômes",t:"Si les <strong style='color:var(--goldL)'>deux joueurs</strong> jouent leur Fantôme dans la même manche, la table bascule : les deux valeurs tournent comme une machine à sous. Le plus haut rafle <strong style='color:var(--goldL)'>tout le score de l'adversaire</strong> plus la valeur de son Fantôme. Le perdant tombe à zéro. En cas d'égalité, on relance."},
-          {i:emblemeMini("Spiritualité",26),n:"La Voie des Quatre Maîtres",t:"Votre <strong style='color:var(--goldL)'>rang</strong> s'affiche sous votre nom et grandit en Campagne : <strong style='color:var(--goldL)'>Disciple → Initié → Gardien → Guide → Chef de Cercle</strong>. Chaque Gardien vaincu vous livre son enseignement ; vaincu, il prononce sa sentence. On ne devient pas chef en dominant un pilier, mais en n'en laissant tomber aucun. Et la Voie reprend ce qu'elle prête : une <strong style='color:#e0708a'>déroute</strong> contre le Gardien que tu affrontes — cent points d'écart ou plus — te fait <strong style='color:#e0708a'>reculer d'un pas</strong>. Une défaite serrée ne coûte rien."},
+          {i:emblemeMini("Spiritualité",26),n:"La Campagne",t:"Votre <strong style='color:var(--goldL)'>rang</strong> s'affiche sous votre nom et grandit en Campagne : <strong style='color:var(--goldL)'>Disciple → Initié → Gardien → Guide → Chef de Cercle</strong>. Chaque Gardien vaincu vous livre son enseignement ; vaincu, il prononce sa sentence. On ne devient pas chef en dominant un pilier, mais en n'en laissant tomber aucun. Et la Voie reprend ce qu'elle prête : une <strong style='color:#e0708a'>déroute</strong> contre le Gardien que tu affrontes — cent points d'écart ou plus — te fait <strong style='color:#e0708a'>reculer d'un pas</strong>. Une défaite serrée ne coûte rien."},
           {i:"🃏",n:"Collection de 48 cartes",t:"Un pool de <strong style='color:var(--goldL)'>48 cartes</strong> ! Chaque partie tire une main différente. L'écran <strong style='color:var(--goldL)'>🃏 Collection</strong> révèle les cartes découvertes et garde les autres en silhouette — collectionne-les toutes."}
 ].map(f=>`
           <div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
@@ -11898,7 +12045,7 @@ charger();
     +'-webkit-background-clip:text;-webkit-text-fill-color:transparent;'
     +'letter-spacing:4px;animation:dealTitle 0.8s 0.2s both">ÉQUILIBRE</div>'
     +'<div style="font-size:11px;color:rgba(212,175,55,0.5);letter-spacing:6px;margin-top:6px;'
-    +'font-family:Cinzel,serif;animation:dealTitle 0.8s 0.4s both;opacity:0">LES 4 PILIERS DE VIE</div>'
+    +'font-family:Cinzel,serif;animation:dealTitle 0.8s 0.4s both;opacity:0">TROUVEZ VOTRE ÉQUILIBRE</div>'
     +'<div style="margin-top:40px;display:flex;gap:8px">'
     +'<div style="width:8px;height:8px;border-radius:50%;background:var(--gold);animation:lobbyPulse 1s 0.6s infinite"></div>'
     +'<div style="width:8px;height:8px;border-radius:50%;background:var(--gold);animation:lobbyPulse 1s 0.8s infinite"></div>'
@@ -12076,75 +12223,40 @@ try{ verifierPartieEnCours(); }catch(e){ if(window.__logErr) window.__logErr(e,"
 function renderSelection(app){
   const j=S.jeu;
 
-  // Grouper les cartes par combo
-  const combosUniques=[...new Set(j.allRepJ1.map(function(c){return c.combo;}))].sort();
-  let groupesHtml="";
-
-  combosUniques.forEach(function(combo){
-    const cartesCombo=j.allRepJ1.filter(function(c){return c.combo===combo;});
-    const [p1,p2]=combo.split("+");
-    const st1=PILIER[p1]||{accent:"#D4AF37",icon:"⭐"};
-    const st2=PILIER[p2]||{accent:"#D4AF37",icon:"⭐"};
-
-    // En-tête du combo
-    groupesHtml+=`<div style="margin-bottom:12px">
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;padding:0 2px">
-        <div style="height:1px;flex:1;background:linear-gradient(90deg,transparent,${st1.accent}66)"></div>
-        <div style="font-size:10px;font-weight:700;color:${st1.accent};letter-spacing:1px;
-          background:${st1.accent}18;border:1px solid ${st1.accent}44;
-          border-radius:20px;padding:2px 8px">
-          ${emblemeMini(p1)} ${p1} + ${emblemeMini(p2)} ${p2}
-        </div>
-        <div style="height:1px;flex:1;background:linear-gradient(90deg,${st2.accent}66,transparent)"></div>
-      </div>
-      <div style="display:flex;flex-direction:row;gap:min(8px,2vw);justify-content:center;flex-wrap:wrap">`;
-
-    cartesCombo.forEach(function(carte){
-      const choisi=j.selTemp.find(function(x){return x.id===carte.id;});
-      groupesHtml+=`<div onclick="G.toggleSel('${carte.id}')" draggable="false" style="cursor:pointer;flex-shrink:0;touch-action:manipulation;-webkit-user-drag:none;-webkit-touch-callout:none;user-select:none">
-        ${carteRepHTML(carte,{selected:!!choisi,clickable:true})}
-      </div>`;
-    });
-
-    groupesHtml+=`</div></div>`;
+  // Une seule grille continue : 12 cartes, 3 rangees de 4.
+  // Tri par combo => les cartes d'un meme combo restent voisines.
+  const triSel=j.allRepJ1.slice().sort(function(a,b){
+    return a.combo===b.combo ? ((b.pts||0)-(a.pts||0)) : (a.combo<b.combo?-1:1);
   });
+  let groupesHtml='<div class="sel-grid">';
+  triSel.forEach(function(carte){
+    const choisi=j.selTemp.find(function(x){return x.id===carte.id;});
+    groupesHtml+=`<div onclick="G.toggleSel('${carte.id}')" draggable="false" style="cursor:pointer;touch-action:manipulation;-webkit-user-drag:none;-webkit-touch-callout:none;user-select:none">${carteRepHTML(carte,{selected:!!choisi,clickable:true})}</div>`;
+  });
+  groupesHtml+="</div>";
 
   app.innerHTML=`
-  <div class="screen fade" style="padding:0;min-height:100dvh;background:radial-gradient(ellipse at top,#1a0535,#070514)">
-    <div style="position:sticky;top:env(safe-area-inset-top,0px);z-index:100;background:rgba(7,5,20,0.95);
-      border-bottom:1px solid rgba(212,175,55,0.2);padding:10px 16px;
-      display:flex;align-items:center;justify-content:space-between;gap:10px">
+  <div class="screen fade sel-screen" style="background:radial-gradient(ellipse at top,#1a0535,#070514)">
+
+    <div class="sel-head">
       <div style="display:flex;align-items:center;gap:10px;min-width:0">
-        <button onclick="retourMenuDepuisSelection()" aria-label="Retour au menu"
-          style="flex-shrink:0;min-height:36px;padding:0 12px;border-radius:12px;cursor:pointer;
-          border:1px solid rgba(212,175,55,0.45);background:rgba(240,208,96,0.1);
-          color:var(--goldL);font-family:'Cinzel',serif;font-size:12px;font-weight:800;letter-spacing:0.5px;
-          display:flex;align-items:center;gap:6px"><span style="font-size:15px">←</span>Retour</button>
-        <div style="font-family:Cinzel,serif;font-size:13px;font-weight:700;color:var(--goldL);
-          white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-        ⚔️ Sélectionnez vos 10 cartes
-      </div>
+        <button class="sel-back" onclick="retourMenuDepuisSelection()" aria-label="Retour au menu"><span style="font-size:15px">&#8592;</span>Retour</button>
+        <div style="font-family:Cinzel,serif;font-size:13px;font-weight:700;color:var(--goldL);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+          &#9876;&#65039; Sélectionnez vos 10 cartes
+        </div>
       </div>
       <div style="font-size:14px;font-weight:900;font-family:Cinzel,serif;flex-shrink:0;
         color:${j.selTemp.length>=10?"#45c97a":"var(--gold)"}">${j.selTemp.length}/10</div>
     </div>
-    <div style="padding:12px 16px 16px">
-      ${groupesHtml}
-      <div style="height:150px"></div>
-    </div>
-  </div>
 
-  <!-- Barre du bas : compteur / validation de secours -->
-  <div style="position:fixed;bottom:0;left:0;right:0;z-index:200;
-    padding:10px 16px env(safe-area-inset-bottom,16px);
-    background:linear-gradient(to top,rgba(7,5,20,0.98) 70%,transparent)">
-    ${j.selTemp.length>=10
-      ?``
-      :`<div style="text-align:center;padding:12px;font-size:12px;color:var(--muted);
-          background:rgba(255,255,255,0.04);border-radius:12px;border:1px solid rgba(255,255,255,0.08)">
-          Sélectionnez encore <strong style="color:var(--goldL)">${10-j.selTemp.length}</strong> carte${10-j.selTemp.length>1?"s":""}
-        </div>`
-    }
+    <div class="sel-body">${groupesHtml}</div>
+
+    <div class="sel-foot">
+      ${j.selTemp.length>=10
+        ? `<span style="color:#45c97a;font-weight:700">&#10003; Sélection complète</span>`
+        : `Sélectionnez encore <strong style="color:var(--goldL)">${10-j.selTemp.length}</strong> carte${10-j.selTemp.length>1?"s":""}`}
+    </div>
+
   </div>`;
 }
 
@@ -12284,6 +12396,13 @@ function renderJeu(app){
       var sc=mx*1000+s;
       if(sc>_suggScore){ _suggScore=sc; _suggP=p; }
     });
+    // Aucun pilier ne peut repondre : le joueur est bloque, il faut le lui dire
+    // et lui donner le bouton tout de suite plutot que de le laisser chercher.
+    var _aucuneReponse=true;
+    PILIERS.forEach(function(p){
+      if(p===j.b2) return;
+      if(j.mainRepJ1.some(function(c){return c.combo===mkCombo(p,j.b2);})) _aucuneReponse=false;
+    });
     content=`<div class="fade">
       ${contexteHTML(j.manche)}
       ${banniereEvenement(j)}
@@ -12297,6 +12416,15 @@ function renderJeu(app){
         </div>
         ${_suggP?`<div style="display:inline-block;margin-top:7px;font-size:12px;font-weight:700;color:var(--goldL);background:rgba(240,208,96,0.12);border:1px solid rgba(240,208,96,0.45);border-radius:20px;padding:4px 14px;box-shadow:0 0 18px rgba(240,208,96,0.25)">⭐ Meilleure réponse : ${emblemeMini(_suggP,15)} ${_suggP}</div>`:""}
       </div>
+      ${_aucuneReponse?`
+        <div style="text-align:center;margin:6px 0 10px">
+          <div style="font-size:12px;color:var(--red);font-weight:700;margin-bottom:8px">
+            ⚠️ Aucune carte ne répond à <strong style="color:var(--goldL)">${j.b2}</strong>
+          </div>
+          <button class="btn-pass" style="max-width:340px"
+            onclick="G.passerTour()">⏭️ Passer ce tour (0 pts)</button>
+        </div>`:""}
+
       <!-- 4 piliers : IA en grand et lumineuse, 3 autres cliquables -->
       <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:min(6px,1.5vw);width:100%;margin-bottom:12px">
         ${PILIERS.map(p=>{
@@ -12324,7 +12452,7 @@ function renderJeu(app){
         }).join("")}
       </div>
     </div>
-      ${aperçuMain(j.mainRepJ1,j.mainJokJ1)}`;
+      ${aperçuMain(j.mainRepJ1,j.mainJokJ1,j.b2)}`;
   }
   else if(j.phase==="afficheBases"){
     const urgent=j.timerSec<=5,timerCol=urgent?"#e05555":j.timerSec<=10?"#FFA500":"#45c97a";
@@ -12377,20 +12505,12 @@ function renderJeu(app){
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100px,22vw),1fr));gap:min(8px,2vw);justify-items:center">${j.repIAVues.map(c=>carteRepHTML(c,{disabled:true})).join("")}</div>
       </div>`:""}
 
-      <div class="timer-wrap" style="${urgent?"animation:urgence 0.5s infinite":""}">
-        <div style="text-align:center;margin-bottom:8px">
-          <div id="timerNum" class="timer-num" style="font-size:40px;color:${timerCol}">${j.timerSec}</div>
-          <div style="height:4px;border-radius:2px;background:rgba(255,255,255,0.1);overflow:hidden;max-width:180px;margin:2px auto">
-            <div id="timerBar" style="height:100%;width:${j.timerSec/20*100}%;background:${timerCol};border-radius:2px;transition:width 1s linear"></div>
-          </div>
-        </div>
-      </div>
 
-      ${validesJ1.length>0?`
-        <div style="background:${j.phaseEchange?"rgba(74,20,140,0.6)":"rgba(45,27,105,0.55)"};
-          border:2px solid ${j.phaseEchange?"#9B59B6":"var(--gold)"};
-          border-radius:14px;padding:12px 10px;margin-bottom:10px;
-          transition:all 0.3s">
+      ${/* la main reste affichee, avec ou sans carte valide */ true?`
+        <div style="background:${j.phaseEchange?"rgba(74,20,140,0.6)":"transparent"};
+          border:${j.phaseEchange?"2px solid #9B59B6":"none"};
+          border-radius:${j.phaseEchange?"14px":"0"};padding:${j.phaseEchange?"12px 10px":"2px 0 0"};
+          margin-bottom:4px">
 
           ${j.phaseEchange?`
             <!-- Mode Échange : choisir la carte à sacrifier -->
@@ -12411,48 +12531,58 @@ function renderJeu(app){
             </button>
           `:`
             <!-- Mode normal -->
-            <div style="font-size:12px;color:var(--gold);font-weight:700;margin-bottom:2px;text-align:center">
-              ✅ Vos cartes — <strong style="color:var(--goldL)">${j.cb}</strong>
-            </div>
-            <div style="font-size:9px;color:var(--muted);text-align:center;margin-bottom:8px;font-style:italic">👆 Touche une carte pour la jouer immédiatement</div>
+            ${validesJ1.length>0?`
+              <div style="font-size:12px;color:var(--gold);font-weight:700;margin-bottom:2px;text-align:center">
+                ✅ Vos cartes — <strong style="color:var(--goldL)">${j.cb}</strong>
+              </div>
+              <div style="font-size:9px;color:var(--muted);text-align:center;margin-bottom:8px;font-style:italic">👆 Touche une carte pour la jouer immédiatement</div>
+            `:`
+              <div style="font-size:12px;color:var(--red);font-weight:700;margin-bottom:6px;text-align:center">
+                ⚠️ Aucune carte valide pour <strong style="color:var(--goldL)">${j.cb}</strong>
+              </div>
+              <button class="btn-pass" style="margin-bottom:8px" onclick="G.passerTour()">⏭️ Passer ce tour (0 pts)</button>
+            `}
             ${vIA.length===0?`<div style="font-size:10px;color:#45c97a;text-align:center;margin-bottom:8px;font-weight:700">💡 L'IA n'a pas de carte valide — jouez et gagnez vos points !</div>`:""}
-            <div style="--card-w:86px;--card-h:114px;display:flex;flex-wrap:wrap;justify-content:center;gap:min(7px,1.8vw)">
-              ${validesJ1.map(x=>`<div onclick="G.selRep('${x.id}')" draggable="false" style="cursor:pointer;touch-action:manipulation;-webkit-user-drag:none;-webkit-touch-callout:none;user-select:none">${carteMainHTML(x,{selected:j.repChoisie?.id===x.id,masque:(S.jeu&&((S.jeu.twist==="aveugle"||S.jeu.twist==="ultime")||(S.jeu.modif==="brouillard"&&S.jeu.manche%2===0)))})}</div>`).join("")}
-              ${(!j.phaseEchange && j.mainJokJ1.find(x=>x.id==="j3")) ? `<div style="width:86px;height:114px;display:flex;flex:0 0 auto">${jokerCardHTML(j.mainJokJ1.find(x=>x.id==="j3"),{onClick:"G.useEspion()"})}</div>` : ""}
-              ${(!j.phaseEchange && j.mainJokJ1.find(x=>x.id==="j4")) ? `<div style="width:86px;height:114px;display:flex;flex:0 0 auto">${jokerCardHTML(j.mainJokJ1.find(x=>x.id==="j4"),{onClick:"G.useEchange()"})}</div>` : ""}
-            </div>
+            <div class="hand-grid">${(function(){
+              // Main unique : les cartes demandees ressortent, les autres restent
+              // a leur place, grisees. Aucun panneau separe, aucun reclassement.
+              var vus={}, liste=[];
+              j.mainRepJ1.forEach(function(x){ if(!vus[x.id]){ vus[x.id]=1; liste.push(x); } });
+              validesJ1.forEach(function(x){ if(!vus[x.id]){ vus[x.id]=1; liste.push(x); } });
+              liste.sort(function(a,b){
+                return a.combo===b.combo ? ((b.pts||0)-(a.pts||0)) : (a.combo<b.combo?-1:1);
+              });
+              var out=liste.map(function(x){
+                var ok=validesJ1.some(function(v){ return v.id===x.id; });
+                if(ok) return '<div class="hand-c hand-up" onclick="G.selRep(\''+x.id+'\')" draggable="false"'
+                  +' style="cursor:pointer;touch-action:manipulation;-webkit-user-drag:none;-webkit-touch-callout:none;user-select:none">'
+                  +carteMainHTML(x,{})+'</div>';
+                return '<div class="hand-c hand-dim">'+carteMainHTML(x,{disabled:true})+'</div>';
+              }).join("");
+              if(!j.phaseEchange){
+                [["j1","G.armerJoker('j1')"],["j2","G.armerJoker('j2')"],["j3","G.useEspion()"],["j4","G.useEchange()"]].forEach(function(p){
+                  var jk=j.mainJokJ1.find(function(z){ return z.id===p[0]; });
+                  if(!jk) return;
+                  out+='<div class="hand-c'+(j.jokerArme===p[0]?" hand-arme":"")+'" style="width:var(--hand-w);height:var(--hand-h);overflow:hidden;border-radius:12px">'
+                    +'<div style="width:110px;height:156px;display:flex;transform:scale(var(--hand-kx),var(--hand-ky));transform-origin:top left">'
+                    +jokerCardHTML(jk,{onClick:p[1]})+'</div></div>';
+                });
+              }
+              return out;
+            })()}</div>
           `}
         </div>
 
       `:""}
 
-      ${validesJ1.length===0&&!j.phaseEchange?`<div style="margin-bottom:10px">
-        ${j.mainJokJ1.find(x=>x.id==="j4")?`
-          <div style="font-size:11px;color:var(--red);text-align:center;margin-bottom:8px">
-            ⚠️ Aucune carte valide pour <strong>${j.cb}</strong>
-          </div>
-          <button class="btn-ghost" style="width:100%;margin-bottom:10px" onclick="G.passerTour()">⏭️ Passer ce tour (0 pts)</button>
-          <div style="font-size:10px;color:#9B59B6;text-align:center;margin-bottom:8px;font-weight:700">
-            🔄 …ou utilisez l'Échange pour piocher une carte du combo
-          </div>
-          <div style="display:flex;gap:7px">
-            ${jokerCardHTML(j.mainJokJ1.find(x=>x.id==="j4"),{onClick:"G.useEchangeLibre()"})}
-          </div>
-        `:`<div style="font-size:11px;color:var(--red);text-align:center;margin-bottom:4px">
-            ⚡ Aucune carte valide pour <strong>${j.cb}</strong> — passage automatique…
-          </div>`}
-      </div>`:""}
+      ${/* plus de fenetre dediee : la main reste, avec un simple bouton Passer */""}
 
 
-      ${autresJ1.length>0&&validesJ1.length>0?`
-        <div style="margin-bottom:8px">
-          <div style="font-size:10px;color:var(--muted);margin-bottom:5px">Autres cartes non valides (${autresJ1.length})</div>
-          <div style="display:flex;gap:5px;flex-wrap:wrap">${autresJ1.map(c=>carteMainHTML(c,{disabled:true})).join("")}</div>
-        </div>`:""}
+      ${/* cartes non valides : desormais grisees dans la main unique */""}
 
       ${j.mainJokJ1.filter(x=>x.id==="j1"||x.id==="j2").length>0?`
         <div style="font-size:9px;color:var(--muted);font-style:italic;margin-top:4px">
-          💡 ${j.mainJokJ1.filter(x=>x.id==="j1"||x.id==="j2").map(x=>x.name).join(" & ")} disponibles après les réponses
+          💡 ${j.mainJokJ1.filter(x=>x.id==="j1"||x.id==="j2").map(x=>x.name).join(" & ")} · touche pour amorcer avant de jouer
         </div>`:""}
     </div>`;
   }
@@ -12622,26 +12752,18 @@ function renderJeu(app){
       ${scoreBarHTML(j.s1,j.s2,S.nom)}
       ${(j.twist==="jackpot"||j.twist==="ultime")?`<div style="text-align:center;font-size:11px;color:#F39C12;font-weight:800;letter-spacing:1px;margin:2px 0;text-shadow:0 0 10px rgba(243,156,18,0.5)">💰 JACKPOT : ${j.jackpot} pts</div>`:""}
       ${j.modif?`<div style="text-align:center;font-size:11px;font-weight:800;letter-spacing:1px;margin:2px 0;color:#c9a0ff">${MODIFS_SOLO[j.modif].icon} ${MODIFS_SOLO[j.modif].nom.toUpperCase()}${j.modif==="maudit"?" · "+j.modifMaudit+" ½":""}${j.modif==="destin"?(j.manche===j.modifDestinManche?" · ×2 MAINTENANT !":" · manche "+j.modifDestinManche):""}${j.modif==="brouillard"?(j.manche%2===0?" · 🌫️ actif":""):""}</div>`:""}
-      ${j.iaDlg||j.iaTyping?iaBulle(iaPr,j.iaDlg,j.iaTyping):""}
+      ${j.iaDlg||j.iaTyping?`<div style="position:fixed;left:8px;right:8px;top:calc(env(safe-area-inset-top,0px) + 92px);z-index:150;pointer-events:none">${iaBulle(iaPr,j.iaDlg,j.iaTyping)}</div>`:""}
       ${_cTop}
     </div>
 
-    <!-- Cartes-réponses (zone défilante) -->
-    <div style="flex:1;min-height:0;overflow-y:auto;-webkit-overflow-scrolling:touch;width:100%">
+    <!-- Cartes-réponses : zone FIGEE, plus de defilement interne -->
+    <div style="flex:1;min-height:0;overflow:hidden;width:100%;display:flex;flex-direction:column;justify-content:flex-start">
       ${_cHand}
     </div>
   </div>`;
 
-  // Auto iaRepond après 0.6s en phase j1AChoisi (plus de bouton — automatique)
-  if(j.phase==="j1AChoisi"){
-    if(G._iaInt) clearTimeout(G._iaInt);
-    G._iaInt=setTimeout(function(){
-      G._iaInt=null;
-      if(S.jeu&&S.jeu.phase==="j1AChoisi") G.iaRepond();
-    },600);
-  } else {
-    if(G._iaInt){ clearTimeout(G._iaInt); G._iaInt=null; }
-  }
+  // La phase j1AChoisi est desormais traversee sans attente (voir choisirBase).
+  if(G._iaInt){ clearTimeout(G._iaInt); G._iaInt=null; }
 }
 
 // ── Invite « Ajouter à l'écran d'accueil » (PWA) ──
