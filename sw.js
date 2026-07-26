@@ -12,14 +12,19 @@
    - HTML : réseau d'abord (tes mises à jour s'appliquent en ligne), repli cache hors-ligne.
    - Icônes/manifeste : cache d'abord.
    Pense à changer VERSION quand tu déploies une nouvelle version du jeu. */
-const VERSION = "equilibre-v95-58";
+const VERSION = "equilibre-v95-87";
 const SHELL = [
   "./",
   "./index.html",
   "./manifest.json",
   "./icon-192.png",
   "./icon-512.png",
-  "./apple-touch-icon.png"
+  "./apple-touch-icon.png",
+  "./theme-sante.webp",
+  "./theme-amour.webp",
+  "./theme-argent.webp",
+  "./theme-spiritualite.webp",
+  "./theme-equilibre.webp"
 ];
 
 self.addEventListener("message", function(e){

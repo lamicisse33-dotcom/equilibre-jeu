@@ -4,7 +4,7 @@
    ⚖️  ÉQUILIBRE — Les 4 Piliers de Vie
   ═══════════════════════════════════════════════════════════════════════
 
-   © 2026 KHALAM (Khadi & Lamine). Tous droits réservés.
+   © 2026 KHALAM. Tous droits réservés.
 
    Le jeu ÉQUILIBRE — son concept, ses règles, ses contenus, ses cartes,
    ses illustrations, ses textes, son identité visuelle et son code source —
@@ -141,6 +141,13 @@ select{font-family:'Crimson Text',Georgia,serif;}
 /* Même écran re-rendu (ex. toucher une carte en sélection) → ne pas rejouer l'animation
    d'entrée sur les wrappers .fade : évite le "clignotement" de tout l'écran. */
 #app.no-fade .fade{animation:none !important;}
+/* Même règle pour toutes les animations d'entrée : un re-rendu du MÊME écran
+   ne doit rien ré-animer, sinon les cartes clignotent et sautent. */
+#app.no-fade .ia-bubble,
+#app.no-fade .main-avant>div,
+#app.no-fade .main-arriere,
+#app.no-fade .cv-scene,
+#app.no-fade .ia-bubble{animation:none !important;}
 .pop{animation:popIn 0.38s cubic-bezier(.34,1.56,.64,1) both;}
 .slideUp{animation:slideUp 0.4s ease both;}
 .slide{animation:slideIn 0.25s ease both;}
@@ -339,7 +346,9 @@ body:has(#tuto-overlay) #guide-fab{ display:none!important; }
 .pilier-card.glow{animation:glow 2s infinite;}
 /* ── Sélection de pilier « vivante » (halo pulsé + soulèvement + ombre colorée) ── */
 .pilier-card.pilier-vivant{
-  animation:pilierRespire 2.6s ease-in-out infinite;
+  /* Halo FIXE. Une animation infinie repart à zéro à chaque reconstruction du
+     DOM : le halo sautait visiblement à chaque rendu. */
+  box-shadow:0 3px 12px rgba(0,0,0,.55),0 0 15px 0 var(--acc,#F0D060);
   transition:transform .18s cubic-bezier(.34,1.5,.5,1),box-shadow .18s,filter .18s;
 }
 @keyframes pilierRespire{
@@ -411,8 +420,41 @@ body:has(#tuto-overlay) #guide-fab{ display:none!important; }
   box-shadow:0 0 0 2px #F0D06088,0 0 36px rgba(240,208,96,0.65),0 16px 36px rgba(0,0,0,0.8) !important;
 }
 .carte-rep.disabled{opacity:0.75;cursor:default;}
+/* ── Main : facteur d'échelle piloté par la largeur d'écran ─────────────
+   Toutes les cartes de la main dérivent d'une carte de référence 110 × 156
+   réduite par transform. --kv cale cette réduction sur le téléphone. */
+:root{--kv:0.92;}
+@media (min-width:375px){:root{--kv:0.96;}}
+@media (min-width:390px){:root{--kv:1;}}
+@media (min-width:414px){:root{--kv:1.07;}}
+@media (min-width:430px){:root{--kv:1.11;}}
+@media (max-width:359px){:root{--kv:0.82;}}
+
+.main-jokers{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:4px}
+.main-grille{display:flex;flex-direction:column;gap:5px;align-items:center}
+.main-grille .rang{display:flex;justify-content:center;gap:6px}
+
+/* Les cartes du combo demandé s'avancent */
+.main-avant{display:flex;flex-wrap:wrap;justify-content:center;align-items:flex-end;gap:8px}
+.main-avant>div{animation:mainAvance .30s cubic-bezier(.2,.9,.3,1.2) both}
+@keyframes mainAvance{from{opacity:0;transform:translateY(24px) scale(.72)}to{opacity:1;transform:none}}
+
+/* Les autres reculent pour faire de la place */
+.main-arriere{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;
+  opacity:.40;filter:grayscale(.5);animation:mainRecule .28s ease both}
+@keyframes mainRecule{from{opacity:.9;transform:translateY(8px) scale(1.1)}to{opacity:.40;transform:none}}
+/* Écran de sélection : grille fixe 3×4 — l'agrandissement ferait déborder la carte. */
+.sel-grid .carte-rep.selected{transform:none !important;}
+.sel-grid .ecartee{opacity:0.30;filter:grayscale(0.9);}
 .carte-rep .pts-num{font-family:'Cinzel',serif;line-height:1;font-weight:900;}
 /* Reflet animé qui balaie la carte (léger, espacé, GPU) */
+/* Reflet désactivé partout où les cartes sont nombreuses : 10 à 12 couches
+   animées en même temps saturent le compositeur et l'animation repart à zéro
+   à chaque reconstruction du DOM. */
+.main-grille .carte-shine,
+.main-arriere .carte-shine,
+.main-avant .carte-shine,
+.sel-grid .carte-shine{display:none !important;}
 .carte-shine{position:absolute;top:0;bottom:0;left:0;width:55%;z-index:2;pointer-events:none;border-radius:14px;
   background:linear-gradient(105deg,transparent 0%,rgba(255,255,255,0.05) 38%,rgba(255,255,255,0.35) 50%,rgba(255,255,255,0.05) 62%,transparent 100%);
   transform:translateX(-160%) skewX(-14deg);
@@ -584,11 +626,29 @@ body:has(#tuto-overlay) #guide-fab{ display:none!important; }
 }
 
 /* IA bubble */
+/* Emplacement réservé en permanence pour la bulle de l'IA.
+   Avant, la bulle apparaissait puis disparaissait : tout l'écran descendait
+   puis remontait toutes les quelques secondes. La hauteur est désormais
+   figée, seule l'opacité change. */
+.ia-slot{height:62px;margin:2px 0;overflow:hidden;display:flex;align-items:center;
+  opacity:0;transition:opacity .25s ease;pointer-events:none;}
+.ia-slot>*{flex:1;min-width:0;margin-bottom:0 !important;}
+.ia-slot.plein{opacity:1;pointer-events:auto;}
+/* ── Doigt-guide d'inactivité : après 5 s sans toucher, il se pose sur
+   l'action à faire et tapote jusqu'au prochain toucher. ── */
+#doigt-guide{position:fixed;z-index:9200;font-size:42px;pointer-events:none;
+  filter:drop-shadow(0 4px 10px rgba(0,0,0,0.65));
+  animation:doigtEntre .35s ease both, doigtTape 1.1s .35s ease-in-out infinite;}
+@keyframes doigtEntre{from{opacity:0;transform:translateY(26px) scale(.6)}to{opacity:1;transform:none}}
+@keyframes doigtTape{0%,100%{transform:translateY(0) scale(1)}45%{transform:translateY(-10px) scale(1.06)}60%{transform:translateY(2px) scale(.97)}}
 .ia-bubble{display:flex;align-items:flex-start;gap:10px;animation:slideIn 0.3s both;}
 .ia-avatar{width:40px;height:40px;border-radius:50%;flex-shrink:0;
   display:flex;align-items:center;justify-content:center;font-size:18px;border:2px solid;}
 .ia-text{flex:1;background:rgba(255,255,255,0.07);border-radius:0 12px 12px 12px;
-  padding:10px 14px;}
+  padding:7px 12px;min-width:0;}
+.ia-slot .ia-avatar{width:34px;height:34px;font-size:16px;}
+.ia-slot .ia-text>div:last-child{display:-webkit-box;-webkit-line-clamp:2;
+  -webkit-box-orient:vertical;overflow:hidden;}
 
 /* Dots typing */
 .typing-dot{width:6px;height:6px;border-radius:50%;background:var(--muted);
@@ -1256,6 +1316,18 @@ html.lite .bd-ball{transition:opacity 0.2s ease;}
   var kill=function(){ try{ if(sp&&sp.parentNode) sp.parentNode.removeChild(sp); }catch(_){}} ;
   setTimeout(kill,2750);              // retrait auto après l'animation
   sp.addEventListener("click",kill);  // ou au tap pour passer
+  // ── Carillon d'apparition de la balance ──
+  // Tentative immédiate (Android / ordinateur). Sur iPhone, le son est bloqué
+  // tant qu'aucun geste n'a eu lieu : le carillon part alors au premier toucher,
+  // si le splash est encore visible. sfxSplash ne joue qu'une fois.
+  var chime=function(){ try{ if(typeof AUDIO!=="undefined"&&AUDIO.sfxSplash) AUDIO.sfxSplash(); }catch(_){}} ;
+  setTimeout(chime,450);   // au moment où la balance se pose au centre
+  var chimeTap=function(){
+    if(document.getElementById("splash")) chime();
+    removeEventListener("touchstart",chimeTap); removeEventListener("mousedown",chimeTap);
+  };
+  addEventListener("touchstart",chimeTap,{passive:true});
+  addEventListener("mousedown",chimeTap);
 })();
 </script>
 
@@ -1688,7 +1760,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v95.58";
+const BUILD_TAG="v95.87";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -2676,7 +2748,71 @@ const AUDIO = {
     if(this.bgGain && this.ctx){
       this.bgGain.gain.setTargetAtTime(this.muted?0:0.22, this.ctx.currentTime, 0.3);
     }
+    if(this.menuGain && this.ctx){
+      this.menuGain.gain.setTargetAtTime(this.muted?0:0.11, this.ctx.currentTime, 0.3);
+    }
     return this.muted;
+  },
+
+  // ── Carillon du splash : l'apparition de la balance ─────────────────────
+  // Trois harmoniques qui « se posent » (do–mi–sol montant vers do aigu),
+  // comme les deux plateaux qui trouvent leur point d'équilibre.
+  sfxSplash(){
+    this.init(); if(!this.ctx || this.muted) return;
+    if(this._splashJoue) return;                 // une seule fois par lancement
+    this._splashJoue=true;
+    const t=this.ctx.currentTime+0.05;
+    this._note(523.25, t,      1.4, 0.16, 'sine');        // C5
+    this._note(659.25, t+0.22, 1.3, 0.14, 'sine');        // E5
+    this._note(783.99, t+0.44, 1.4, 0.13, 'sine');        // G5
+    this._note(1046.5, t+0.72, 2.2, 0.10, 'triangle');    // C6 — la balance se pose
+    this._note(130.81, t+0.72, 2.4, 0.10, 'sine');        // C3, assise grave
+  },
+
+  // ── Ambiance du MENU — distincte de la musique de jeu (startBg intact) ──
+  // Kalimba pentatonique, lente et clairsemée : on est chez soi, pas en manche.
+  menuPlaying:false,
+  startMenuBg(){
+    this.init();
+    if(this.menuPlaying || !this.ctx) return;
+    this.menuPlaying=true;
+    const ctx=this.ctx;
+    this.menuGain=ctx.createGain();
+    this.menuGain.gain.value=this.muted?0:0.11;
+    this.menuGain.connect(ctx.destination);
+    // Pentatonique de do : C4 D4 E4 G4 A4 C5 D5 E5
+    const G=[261.63,293.66,329.63,392,440,523.25,587.33,659.25];
+    const pluck=(f,st,vol)=>{
+      const o=ctx.createOscillator(),g=ctx.createGain();
+      o.type='triangle'; o.frequency.value=f;
+      g.gain.setValueAtTime(0,st);
+      g.gain.linearRampToValueAtTime(vol,st+0.015);
+      g.gain.exponentialRampToValueAtTime(0.0001,st+1.6);
+      o.connect(g); g.connect(this.menuGain);
+      const rev=this._reverb(ctx),rg=ctx.createGain(); rg.gain.value=0.35;
+      g.connect(rev); rev.connect(rg); rg.connect(this.menuGain);
+      o.start(st); o.stop(st+1.7);
+    };
+    let t=ctx.currentTime+0.4;
+    const mesure=()=>{
+      if(!this.menuPlaying) return;
+      // 3 à 4 notes clairsemées par mesure de 4 s, avec un léger bourdon une fois sur deux
+      const n=3+Math.floor(Math.random()*2);
+      for(let k=0;k<n;k++){
+        pluck(G[Math.floor(Math.random()*G.length)], t+k*(4/n)+Math.random()*0.25, 0.10+Math.random()*0.05);
+      }
+      if(Math.random()<0.5) pluck(G[0]/2, t+0.1, 0.07);   // C3 doux
+      t+=4;
+      this._menuTimer=setTimeout(mesure,(t-ctx.currentTime-0.6)*1000);
+    };
+    mesure();
+  },
+  stopMenuBg(){
+    this.menuPlaying=false;
+    clearTimeout(this._menuTimer);
+    if(this.menuGain && this.ctx){
+      try{ this.menuGain.gain.linearRampToValueAtTime(0,this.ctx.currentTime+0.9); }catch(e){}
+    }
   },
 };
 
@@ -4824,7 +4960,7 @@ const DUEL = {
       // Cartes J1 (hôte) et J2 (invité)
       allRepJ1:_deal.j1, allRepJ2:_deal.j2,
       allJokJ1:joks.slice(0,2), allJokJ2:joks.slice(2,4),
-      mainRepJ1:[], mainRepJ2:[],
+      mainRepJ1:[..._deal.j1], mainRepJ2:[..._deal.j2],   // Option B : tout est gardé, on écarte
       mainJokJ1:joks.slice(0,2).map(function(j){return Object.assign({},j);}),
       mainJokJ2:joks.slice(2,4).map(function(j){return Object.assign({},j);}),
       espionActif:false, repAdvVues:[], phaseEchange:false,
@@ -5281,7 +5417,7 @@ const DUEL = {
     DUEL._recompensesFaites=false;
     var myMain=DUEL.isHost?gs.mainRepJ1:gs.mainRepJ2;
     var myJoks=DUEL.isHost?gs.mainJokJ1:gs.mainJokJ2;
-    if(myMain.length<10){ showToast("⚠️ Choisissez 10 cartes","info",2000); return; }
+    if(myMain.length!==10){ showToast("⚠️ Il doit rester exactement 10 cartes","info",2000); return; }
     AUDIO.sfxConfirm();
     // Marquer MA sélection comme faite
     if(DUEL.isHost) gs.selJ1Done=true;
@@ -5311,23 +5447,50 @@ const DUEL = {
     });
   },
 
+  // Option B, comme en Solo : on n'ajoute plus, on ÉCARTE.
   toggleSel(id){
     var gs=DUEL.gs; if(!gs) return;
     var pool=DUEL.isHost?gs.allRepJ1:gs.allRepJ2;
     var main=DUEL.isHost?gs.mainRepJ1:gs.mainRepJ2;
+    if(!DUEL._ordreEcart) DUEL._ordreEcart=[];
+    var avant=main.length;
     var idx=main.findIndex(function(c){return c.id===id;});
     if(idx>=0){
-      main.splice(idx,1);
-      if(DUEL._selCountdownInt){ clearInterval(DUEL._selCountdownInt); DUEL._selCountdownInt=null; }
-    } else if(main.length<10){
+      // Écarter — jamais en dessous de 10 cartes gardées.
+      if(main.length>10){
+        main.splice(idx,1);
+        DUEL._ordreEcart.push(id);
+        if(DUEL._selCountdownInt){ clearInterval(DUEL._selCountdownInt); DUEL._selCountdownInt=null; }
+      }
+    } else {
+      // Remettre une carte écartée.
       var carte=pool.find(function(x){return x.id===id;});
-      if(carte){
+      if(carte && main.length<pool.length){
         main.push(carte);
-        // Son + vibration à la 10e carte
-        if(main.length===10) AUDIO.sfx10eme();
-        else AUDIO.sfxClick();
+        DUEL._ordreEcart=DUEL._ordreEcart.filter(function(x){return x!==id;});
       }
     }
+    if(main.length!==avant){
+      if(main.length===10) AUDIO.sfx10eme(); else AUDIO.sfxClick();
+    }
+    render();
+  },
+
+  // Bouton « Retour » de la fenêtre : remet la dernière carte écartée.
+  annulerDernierEcart(){
+    var gs=DUEL.gs; if(!gs) return;
+    var pool=DUEL.isHost?gs.allRepJ1:gs.allRepJ2;
+    var main=DUEL.isHost?gs.mainRepJ1:gs.mainRepJ2;
+    if(!DUEL._ordreEcart) DUEL._ordreEcart=[];
+    var id=DUEL._ordreEcart.pop();
+    if(!id){
+      var reste=pool.find(function(c){ return !main.some(function(x){return x.id===c.id;}); });
+      id=reste?reste.id:null;
+    }
+    if(!id) return;
+    var c=pool.find(function(x){return x.id===id;});
+    if(c && !main.some(function(x){return x.id===c.id;})) main.push(c);
+    AUDIO.sfxClick();
     render();
   },
 
@@ -6787,8 +6950,9 @@ function showCardDealAnimation(cartes, callback){
       +"left:"+(Math.random()*100)+"%;top:"+(Math.random()*100)+"%;"+
       "width:"+sz+";height:"+sz+";"
       +"border-radius:50%;background:#fff;"
-      +"opacity:"+(Math.random()*0.7+0.1)+";"
-      +"animation:lobbyPulse "+(1+Math.random()*2)+"s "+(Math.random())+"s infinite";
+      // Étoiles fixes : 60 pulsations simultanées, c'était la deuxième source
+      // de scintillement de cet écran.
+      +"opacity:"+(Math.random()*0.5+0.1)+";";
     ov.appendChild(star);
   }
 
@@ -6870,7 +7034,9 @@ function showCardDealAnimation(cartes, callback){
         +"--glow-col:rgba(212,175,55,0.5);"
         +"--fly-start:"+dirs[i%dirs.length]+";"
         +"--fly-rot:"+rots[i%rots.length]+"deg;"
-        +"animation:cardFlyIn 0.55s cubic-bezier(.34,1.3,.64,1) both,cardGlow 1.5s "+(0.55+i*0.12)+"s infinite;"
+        // Halo fixe : cardGlow tournait en boucle infinie sur les 10 cartes,
+        // ce qui faisait clignoter tout l'écran en permanence.
+        +"animation:cardFlyIn 0.55s cubic-bezier(.34,1.3,.64,1) both;"
         +"position:relative;overflow:hidden";
       card.innerHTML="<div style='font-size:28px;text-shadow:0 0 10px rgba(212,175,55,0.8)'>🂠</div>";
       grid.appendChild(card);
@@ -6997,39 +7163,34 @@ function renderDuelJeu(app){
     var selMainS=isJ1?gs.mainRepJ1:gs.mainRepJ2;
     var poolS=isJ1?gs.allRepJ1:gs.allRepJ2;
     var selN=selMainS.length;
-    var combosS=[]; poolS.forEach(function(x){ if(combosS.indexOf(x.combo)<0) combosS.push(x.combo); });
-    combosS.sort();
-    var groupesHtml="";
-    combosS.forEach(function(combo){
-      var cartes=poolS.filter(function(x){return x.combo===combo;});
-      var pa=combo.split("+")[0], pb=combo.split("+")[1];
-      var sA=PILIER[pa]||{accent:"#D4AF37",icon:"⭐"}, sB=PILIER[pb]||{accent:"#D4AF37",icon:"⭐"};
-      groupesHtml+='<div style="margin-bottom:12px">'
-        +'<div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;padding:0 2px">'
-        +'<div style="height:1px;flex:1;background:linear-gradient(90deg,transparent,'+sA.accent+'66)"></div>'
-        +'<div style="font-size:10px;font-weight:700;color:'+sA.accent+';letter-spacing:1px;background:'+sA.accent+'18;border:1px solid '+sA.accent+'44;border-radius:20px;padding:2px 8px">'
-        +emblemeMini(pa)+' '+pa+' + '+emblemeMini(pb)+' '+pb+'</div>'
-        +'<div style="height:1px;flex:1;background:linear-gradient(90deg,'+sB.accent+'66,transparent)"></div>'
-        +'</div>'
-        +'<div style="display:flex;flex-direction:row;gap:min(8px,2vw);justify-content:center;flex-wrap:wrap">';
-      cartes.forEach(function(carte){
-        var sel2=selMainS.some(function(s){return s.id===carte.id;});
-        groupesHtml+='<div onclick="DUEL.toggleSel(&quot;'+carte.id+'&quot;)" style="cursor:pointer;flex-shrink:0;touch-action:manipulation;-webkit-user-drag:none;-webkit-touch-callout:none;user-select:none">'
-          +carteRepHTML(carte,{selected:sel2,clickable:true})+'</div>';
-      });
-      groupesHtml+='</div></div>';
+    // Option B, comme en Solo : les 12 cartes sont gardées, on en écarte 2.
+    // Grille de 3 par rangée, plus de bandes séparatrices de combo.
+    var trieesS=poolS.slice().sort(function(a,b){
+      return a.combo<b.combo?-1:a.combo>b.combo?1:b.pts-a.pts;
     });
+    var groupesHtml='<div class="sel-grid" style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;justify-items:center;align-items:center">';
+    trieesS.forEach(function(carte){
+      var garde=selMainS.some(function(s){return s.id===carte.id;});
+      groupesHtml+='<div onclick="DUEL.toggleSel(&quot;'+carte.id+'&quot;)" class="'+(garde?'':'ecartee')+'"'
+        +' style="position:relative;display:flex;cursor:pointer;touch-action:manipulation;-webkit-touch-callout:none;user-select:none">'
+        +carteRepHTML(carte,{selected:garde,clickable:true})
+        +(garde?'':'<span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:9;font-size:34px;font-weight:900;color:#ff6b6b;text-shadow:0 2px 10px rgba(0,0,0,0.9);pointer-events:none">✕</span>')
+        +'</div>';
+    });
+    groupesHtml+='</div>';
     app.innerHTML='<div class="screen" style="padding:0;min-height:100dvh;background:radial-gradient(ellipse at top,#1a0535,#070514)">'
       +'<div style="position:sticky;top:env(safe-area-inset-top,0px);z-index:100;background:rgba(7,5,20,0.95);border-bottom:1px solid rgba(212,175,55,0.2);padding:10px 16px;display:flex;align-items:center;justify-content:space-between">'
-      +'<div style="font-family:Cinzel,serif;font-size:13px;font-weight:700;color:var(--goldL)">⚔️ Sélectionnez vos 10 cartes</div>'
-      +'<div style="font-size:14px;font-weight:900;font-family:Cinzel,serif;color:'+(selN>=10?"#45c97a":"var(--gold)")+'">'+selN+'/10</div>'
+      +'<div style="font-family:Cinzel,serif;font-size:13px;font-weight:700;color:var(--goldL)">🎴 Écarte 2 cartes</div>'
+      +'<div style="font-size:14px;font-weight:900;font-family:Cinzel,serif;color:'+(selN===10?"#45c97a":"var(--gold)")+'">'+selN+'/10</div>'
       +'</div>'
       +'<div style="padding:12px 16px 16px">'+groupesHtml+'<div style="height:90px"></div></div>'
       +'</div>'
       +'<div style="position:fixed;bottom:0;left:0;right:0;z-index:200;padding:10px 16px env(safe-area-inset-bottom,16px);background:linear-gradient(to top,rgba(7,5,20,0.98) 70%,transparent)">'
-      +(selN>=10
+      +(selN===10
         ?''
-        :'<div style="text-align:center;padding:12px;font-size:12px;color:var(--muted);background:rgba(255,255,255,0.04);border-radius:12px;border:1px solid rgba(255,255,255,0.08)">Sélectionnez encore <strong style="color:var(--goldL)">'+(10-selN)+'</strong> carte'+(10-selN>1?"s":"")+'</div>'
+        :'<div style="text-align:center;padding:12px;font-size:12px;color:var(--muted);background:rgba(255,255,255,0.04);border-radius:12px;border:1px solid rgba(255,255,255,0.08)">'
+          +(selN>10?('Écarte encore <strong style="color:var(--goldL)">'+(selN-10)+'</strong> carte'+(selN-10>1?"s":"")):'Remets une carte en jeu')
+          +'</div>'
       )
       +'</div>';
     return;
@@ -7270,13 +7431,22 @@ function renderDuelJeu(app){
           var moiDecid=isJ1?gs.jokDecidJ1:gs.jokDecidJ2;
           var advDecid=isJ1?gs.jokDecidJ2:gs.jokDecidJ1;
           if(mesJoksOff.length>0 && !moiDecid){
+            // Même présentation qu'en Solo : NON à gauche, OUI à droite, cartes compactes.
+            // Le compte à rebours reste affiché : en Duel, c'est lui qui empêche
+            // qu'un joueur inactif fige la partie de son adversaire.
+            var actionOui = (mesJoksOff.length===1)
+              ? "DUEL.jokerFinal('"+mesJoksOff[0].id+"')"
+              : "showToast('👇 Choisis ton joker ci-dessous','info',1400)";
             var box='<div style="background:rgba(45,27,105,0.44);border:1px solid rgba(212,175,55,0.55);border-radius:12px;padding:12px 10px;margin-top:12px;text-align:left">'
-              +'<div style="font-size:13px;color:var(--gold);font-weight:700;margin-bottom:4px;text-align:center">🃏 Veux-tu jouer un joker ?</div>'
-              +'<div style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:10px">⏱ <span id="duel-joker-sec" style="color:var(--goldL);font-weight:900">5</span> s pour décider · sinon résultat normal</div>'
-              +'<button class="btn-ghost" style="width:100%;margin-bottom:10px" onclick="DUEL.jokerFinal(null)">✗ Ne pas utiliser — résultat normal</button>'
+              +'<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px">'
+              +'<button onclick="DUEL.jokerFinal(null)" style="flex:0 0 auto;min-width:58px;min-height:36px;border-radius:11px;cursor:pointer;font-family:\'Cinzel\',serif;font-size:13px;font-weight:900;letter-spacing:1px;border:1px solid rgba(224,85,85,0.55);background:rgba(224,85,85,0.12);color:#f08a8a">NON</button>'
+              +'<div style="flex:1;font-size:13px;color:var(--gold);font-weight:700;text-align:center">🃏 Veux-tu jouer un joker ?</div>'
+              +'<button onclick="'+actionOui+'" style="flex:0 0 auto;min-width:58px;min-height:36px;border-radius:11px;cursor:pointer;font-family:\'Cinzel\',serif;font-size:13px;font-weight:900;letter-spacing:1px;border:1px solid rgba(69,201,122,0.55);background:rgba(69,201,122,0.14);color:#6fe3a0">OUI</button>'
+              +'</div>'
+              +'<div style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:10px">⏱ <span id="duel-joker-sec" style="color:var(--goldL);font-weight:900">5</span> s pour décider</div>'
               +'<div style="display:flex;gap:min(8px,2vw);margin-bottom:2px;justify-content:center;flex-wrap:nowrap">';
             mesJoksOff.forEach(function(jk){
-              box+='<div style="width:var(--card-w);min-height:var(--card-h);display:flex;flex-shrink:0">'+jokerCardHTML(jk,{bonus:(jk.id==="j1"?tot2:tot2*2),onClick:"DUEL.jokerFinal('"+jk.id+"')"})+'</div>';
+              box+='<div style="flex:1;min-width:0;display:flex">'+jokerCardHTML(jk,{bonus:(jk.id==="j1"?tot2:tot2*2),compact:true,onClick:"DUEL.jokerFinal('"+jk.id+"')"})+'</div>';
             });
             box+='</div>'
               +'</div>';
@@ -7349,14 +7519,24 @@ function renderDuelJeu(app){
               +'💡 '+mesJoks.filter(function(x){return x.id==="j1"||x.id==="j2";}).map(function(x){return x.name;}).join(" & ")
               +' disponibles après les réponses</div>';
           }
+          // Les cartes du combo demandé s'avancent, agrandies selon leur nombre.
+          var _kAv=kAvant(cartesValides.length);
           html+='<div style="font-size:11px;color:var(--muted);margin-bottom:2px;text-align:center">Jouez votre meilleure carte !</div>'
-            +'<div style="font-size:9px;color:var(--muted);text-align:center;margin-bottom:8px;font-style:italic">👆 Touche une carte pour la jouer immédiatement · les jokers se jouent d’un simple toucher</div>'
-            +'<div style="--card-w:86px;--card-h:114px;display:flex;flex-wrap:wrap;justify-content:center;gap:7px;padding:4px 0 10px">'
+            +'<div class="main-avant" style="padding:4px 0 10px">'
             +cartesValides.map(function(carte){
-              return '<div onclick="DUEL.jouerCarteById(&quot;'+carte.id+'&quot;)" style="cursor:pointer;flex-shrink:0;touch-action:manipulation;-webkit-user-drag:none;-webkit-touch-callout:none;user-select:none">'
-                +carteMainHTML(carte,{clickable:true,selected:DUEL._repSel===carte.id})+'</div>';
+              return '<div onclick="DUEL.jouerCarteById(&quot;'+carte.id+'&quot;)" style="cursor:pointer;touch-action:manipulation;-webkit-touch-callout:none;user-select:none">'
+                +carteK(carte,{clickable:true,selected:DUEL._repSel===carte.id},_kAv)+'</div>';
             }).join("")
             +'</div>';
+          // Le reste de la main recule : réduit, grisé, sur une seule rangée.
+          var _autresD=maMain.filter(function(c){ return c.combo!==gs.cb; });
+          if(_autresD.length>0){
+            html+='<div style="margin-bottom:8px">'
+              +'<div style="font-size:9px;color:var(--muted);margin-bottom:4px;text-align:center;font-style:italic">Le reste de ta main ('+_autresD.length+')</div>'
+              +'<div class="main-arriere">'
+              +_autresD.map(function(c){ return carteK(c,{disabled:true},0.36); }).join("")
+              +'</div></div>';
+          }
         }
       } else {
         var jokCards2="";
@@ -7601,7 +7781,7 @@ function _parlerGuide(txt, opts){
     u.lang="fr-FR";
     u.rate=(typeof opts.rate==="number")?opts.rate:0.90;
     u.pitch=(typeof opts.pitch==="number")?opts.pitch:1.06;
-    u.volume=1.0;
+    u.volume=(typeof opts.volume==="number")?opts.volume:1.0;
     var pref=opts.masc?_meilleureVoixMasc():_meilleureVoixFr();
     if(pref) u.voice=pref;
     if(typeof opts.onend==="function"){ u.onend=function(){ try{opts.onend();}catch(_){} }; u.onerror=function(){ try{opts.onend();}catch(_){} }; }
@@ -7731,7 +7911,10 @@ function lireDefiJour(){
 // Pensée du jour — lecture (auto une fois/session + bouton). Texte fixe.
 var _penseeLue=false;
 var PENSEE_JOUR_TXT="L'équilibre n'est pas quelque chose que vous trouvez, c'est quelque chose que vous créez.";
-function lirePenseeJour(){ try{ _parlerGuide("Pensée du jour. "+PENSEE_JOUR_TXT); }catch(_){}}
+function lirePenseeJour(){
+  // Voix de confidence : plus lente, un peu plus grave, à mi-volume.
+  try{ _parlerGuide("Pensée du jour. "+PENSEE_JOUR_TXT, {rate:0.78, pitch:0.98, volume:0.55}); }catch(_){}
+}
 // Quelle fenêtre occupe l'écran ? (la plus prioritaire d'abord)
 function _fenetreActive(){
   try{
@@ -7955,6 +8138,36 @@ function selConfirmModalHTML(validerJs, retourJs){
     +'</div></div>';
 }
 let _lastEcran=null,_lastTheme=null;
+// ── Doigt-guide : minuteur d'inactivité ────────────────────────────────
+// Chaque écran marque SA cible avec id="cible-guide" (le meilleur choix,
+// déjà calculé par le jeu). Après 5 s sans aucun toucher, le doigt sort et
+// se pose dessus. Il disparaît au premier contact. Jamais en Duel.
+var _doigtT=null;
+function _doigtCache(){ var d=document.getElementById("doigt-guide"); if(d) d.remove(); }
+function _doigtArme(){
+  clearTimeout(_doigtT); _doigtCache();
+  if(S.ecran!=="jeu" && S.ecran!=="selection") return;
+  if(typeof DUEL!=="undefined" && DUEL.gs) return;
+  _doigtT=setTimeout(_doigtMontre,5000);
+}
+function _doigtMontre(){
+  try{
+    _doigtCache();
+    var c=document.getElementById("cible-guide");
+    if(!c) return;
+    var r=c.getBoundingClientRect();
+    if(r.width===0 || r.bottom<0 || r.top>innerHeight) return; // cible hors écran
+    var d=document.createElement("div");
+    d.id="doigt-guide"; d.textContent="👆";
+    d.style.left=(r.left + r.width/2 - 21)+"px";
+    d.style.top =(r.top  + r.height*0.62)+"px";
+    document.body.appendChild(d);
+  }catch(e){}
+}
+["touchstart","mousedown","keydown"].forEach(function(ev){
+  addEventListener(ev,_doigtArme,{passive:true});
+});
+let _dernierHTML=null;   // dernier rendu réellement posé dans #app
 // Le bouton Guide se fait discret : il n'apparaît qu'après 3 secondes sans toucher.
 // Le moindre contact avec l'écran le fait disparaître aussitôt.
 var _gHideTO=null;
@@ -8045,12 +8258,18 @@ function render(){
   // Pop-up de confirmation de sélection (10 cartes) — construit directement dans le body (position:fixed fiable)
   try{
     var _selV=null,_selR=null;
-    if(S.ecran==="selection" && S.jeu && S.jeu.selTemp && S.jeu.selTemp.length>=10){
-      _selV="var o=document.getElementById('sel-modal-ov');if(o)o.remove();AUDIO.sfxConfirm();G.confirmerSelection()"; _selR="if(S.jeu&&S.jeu.selTemp)S.jeu.selTemp.pop();render()";
+    // Sélection Solo : la fenêtre s'ouvre dès qu'il ne reste QUE 10 cartes (2 écartées).
+    // « Retour » remet la dernière carte écartée — on repasse à 11 et la fenêtre se referme.
+    if(S.ecran==="selection" && S.jeu && S.jeu.selTemp && S.jeu.selTemp.length===10 && !S.jeu.selValidee){
+      _selV="var o=document.getElementById('sel-modal-ov');if(o)o.remove();AUDIO.sfxConfirm();G.confirmerSelection()";
+      _selR="var o=document.getElementById('sel-modal-ov');if(o)o.remove();G.annulerDernierEcart()";
     } else if(S.ecran==="duel_jeu" && typeof DUEL!=="undefined" && DUEL.gs && DUEL.gs.phase==="selection"){
       var _m=DUEL.isHost?DUEL.gs.mainRepJ1:DUEL.gs.mainRepJ2;
       var _done=DUEL.isHost?DUEL.gs.selJ1Done:DUEL.gs.selJ2Done;
-      if(_m && _m.length>=10 && !_done){ _selV="var o=document.getElementById('sel-modal-ov');if(o)o.remove();AUDIO.sfxConfirm();DUEL.confirmerSel()"; _selR="var m=DUEL.isHost?DUEL.gs.mainRepJ1:DUEL.gs.mainRepJ2;if(m)m.pop();render()"; }
+      if(_m && _m.length===10 && !_done){
+        _selV="var o=document.getElementById('sel-modal-ov');if(o)o.remove();AUDIO.sfxConfirm();DUEL.confirmerSel()";
+        _selR="var o=document.getElementById('sel-modal-ov');if(o)o.remove();DUEL.annulerDernierEcart()";
+      }
     }
     var _selEx=document.getElementById("sel-modal-ov");
     if(_selV){
@@ -8072,13 +8291,39 @@ function render(){
   }catch(_sm){ if(window.__logErr) window.__logErr(_sm,"sel-modal"); }
   if(S.theme!==_lastTheme){ setBg(S.theme); _lastTheme=S.theme; }
   const app=document.getElementById("app");
-  app.innerHTML="";
-  app.classList.toggle("no-fade", S.ecran===_lastEcran); // re-rendu du même écran → pas de ré-animation (anti-clignotement)
+  // ── Anti-clignotement ────────────────────────────────────────────────
+  // 1. On ne vide PLUS #app avant de le reconstruire : les 22 fonctions de
+  //    rendu assignent toutes app.innerHTML, donc le vidage était redondant
+  //    et n'offrait qu'une chose au navigateur — une occasion de peindre un
+  //    écran vide entre les deux.
+  // 2. Un re-rendu du même écran remettait le défilement à zéro : la page
+  //    sautait puis « se repositionnait ». On le mémorise et on le restaure.
+  const _memeEcran = (S.ecran===_lastEcran);
+  const _defil = _memeEcran ? (window.scrollY||document.documentElement.scrollTop||0) : 0;
+  app.classList.toggle("no-fade", _memeEcran); // re-rendu du même écran → pas de ré-animation
   const fn={menu:renderMenu,selection:renderSelection,jeu:renderJeu,duel_menu:renderDuelMenu,duel_connecting:renderDuelConnecting,duel_lobby:renderDuelLobby,duel_jeu:renderDuelJeu,duel_resultat:renderDuelResultat,
     resultat:renderResultat,classement:renderClassement,statistiques:renderStats,defis:renderDefis,
     badges:renderBadges,regles:renderRegles,apropos:renderApropos,collection:renderCollection,themes:renderThemes,campagne:renderCampagne,gardien_intro:renderGardienIntro,temple:renderTemple,disciple_intro:renderDiscipleIntro,confidentialite:renderConfidentialite,
     }[S.ecran];
-  try{ if(fn)fn(app); }catch(e){ if(window.__logErr) window.__logErr(e,"render:"+S.ecran); else throw e; }
+  // ── Double tampon ────────────────────────────────────────────────────
+  // L'écran est construit hors document, puis comparé au précédent. Si le
+  // résultat est identique — ce qui arrive très souvent, render() étant
+  // appelé depuis 149 endroits — on ne touche PAS au DOM. Plus de
+  // destruction/reconstruction inutile, donc plus de clignotement.
+  // Vérifié : aucune des 22 fonctions de rendu ne mesure le DOM ni ne
+  // l'interroge de façon synchrone après avoir écrit innerHTML.
+  const _tampon=document.createElement("div");
+  try{ if(fn)fn(_tampon); }catch(e){ if(window.__logErr) window.__logErr(e,"render:"+S.ecran); else throw e; }
+  const _html=_tampon.innerHTML;
+  if(_html!==_dernierHTML){
+    app.innerHTML=_html;
+    _dernierHTML=_html;
+    try{ _doigtArme(); }catch(e){}
+    // Restauration immédiate du défilement, avant toute peinture.
+    if(_memeEcran && _defil>0){
+      try{ window.scrollTo(0,_defil); }catch(_){}
+    }
+  }
   // Transition d'entrée d'écran (fondu + léger glissement) — relancée à chaque rendu
   // Animation d'entrée seulement au vrai changement d'écran (plus à chaque tap → jeu bien plus fluide)
   if(S.ecran!==_lastEcran){
@@ -8092,11 +8337,18 @@ function render(){
       else DUEL._removeChatUI();
     }
   }catch(e){}
-  // Musique d'ambiance : uniquement pendant les manches (écran de jeu). Ni menu, ni sélection, ni résultat.
+  // Musique : ambiance kalimba au MENU, musique de jeu pendant les manches.
+  // La logique de la musique de jeu (startBg/stopBg) est inchangée.
   try{
     if(typeof AUDIO!=="undefined"){
-      if(S.ecran==="jeu"||S.ecran==="duel_jeu"){ if(AUDIO.startBg) AUDIO.startBg(); }
-      else if(AUDIO.stopBg){ AUDIO.stopBg(); }
+      if(S.ecran==="jeu"||S.ecran==="duel_jeu"){
+        if(AUDIO.stopMenuBg) AUDIO.stopMenuBg();
+        if(AUDIO.startBg) AUDIO.startBg();
+      } else {
+        if(AUDIO.stopBg) AUDIO.stopBg();
+        if(S.ecran==="menu"){ if(AUDIO.startMenuBg) AUDIO.startMenuBg(); }
+        else if(AUDIO.stopMenuBg){ AUDIO.stopMenuBg(); }
+      }
     }
   }catch(e){}
   // Sauvegarde automatique de la partie en cours
@@ -8155,12 +8407,13 @@ function pilierCard(p,opts={}){
       +'cursor:'+((disabled||played)?'default':'pointer')+';'
       +'border:1.5px solid '+st.accent+'cc;'
       +(selected?('box-shadow:0 0 0 3px '+st.accent+',0 0 20px '+st.accent+'bb;'):'box-shadow:0 3px 12px rgba(0,0,0,0.55);')
-      +(played?'opacity:0.72;pointer-events:none;':'')
+      +(played?'pointer-events:none;':'')   // la vraie carte pilier reste pleinement visible
       +(disabled?'opacity:0.4;filter:grayscale(0.6);':'')
       +'">'
-      +'<img src="'+CARTE_IMG[p]+'" alt="'+p+'" style="width:100%;height:100%;object-fit:cover;display:block"/>'
+      +'<img src="'+CARTE_IMG[p]+'" alt="'+p+'" decoding="sync" loading="eager" style="width:100%;height:100%;object-fit:cover;display:block"/>'
       +cnt
-      +(played?('<div style="position:absolute;inset:0;background:rgba(0,0,0,0.42);display:flex;align-items:flex-end;justify-content:center;padding-bottom:6px"><span style="font-size:8px;font-weight:700;color:'+st.accent+';letter-spacing:2px;background:rgba(0,0,0,0.55);padding:2px 7px;border-radius:6px">✦ JOUÉ ✦</span></div>'):'')
+      /* Plus aucun libellé par-dessus : la vraie carte pilier s'affiche entière.
+         L'état « joué » est déjà indiqué à côté de la carte par l'interface. */
       +'</div>';
   }
 
@@ -8286,11 +8539,40 @@ const EMBLEME_IMG={
 };
 
 // Petit emblème inline pour les en-têtes de combo (image dessinée, repli emoji)
+// ══ Anti-clignotement ══════════════════════════════════════════════════
+// Chaque render() reconstruit tout le DOM : les <img> en base64 sont recréées
+// et le navigateur doit les redécoder, d'où un trou blanc d'une frame.
+// On garde une copie décodée en permanence dans le document : les <img>
+// suivantes réutilisent le cache de décodage au lieu de repartir de zéro.
+(function(){
+  function precharger(){
+    try{
+      if(document.getElementById("img-precache")) return;
+      var box=document.createElement("div");
+      box.id="img-precache";
+      box.setAttribute("aria-hidden","true");
+      box.style.cssText="position:absolute;left:-9999px;top:0;width:1px;height:1px;overflow:hidden;pointer-events:none";
+      var srcs=[];
+      if(typeof CARTE_IMG!=="undefined")   Object.keys(CARTE_IMG).forEach(function(k){ srcs.push(CARTE_IMG[k]); });
+      if(typeof EMBLEME_IMG!=="undefined") Object.keys(EMBLEME_IMG).forEach(function(k){ srcs.push(EMBLEME_IMG[k]); });
+      srcs.forEach(function(u){
+        var im=new Image();
+        im.decoding="sync"; im.loading="eager"; im.src=u;
+        if(im.decode) im.decode().catch(function(){});
+        box.appendChild(im);
+      });
+      document.body.appendChild(box);
+    }catch(e){}
+  }
+  if(document.body) precharger();
+  else document.addEventListener("DOMContentLoaded",precharger);
+})();
+
 function emblemeMini(p,size){
   size=size||18;
   var st=PILIER[p]||{};
   if(typeof EMBLEME_IMG!=="undefined" && EMBLEME_IMG[p]){
-    return '<img src="'+EMBLEME_IMG[p]+'" alt="" style="width:'+size+'px;height:'+size+'px;border-radius:50%;vertical-align:middle;display:inline-block;margin:0 1px">';
+    return '<img src="'+EMBLEME_IMG[p]+'" alt="" decoding="sync" loading="eager" style="width:'+size+'px;height:'+size+'px;border-radius:50%;vertical-align:middle;display:inline-block;margin:0 1px">';
   }
   return '<span style="font-size:'+size+'px;vertical-align:middle">'+(st.icon||'')+'</span>';
 }
@@ -8350,7 +8632,7 @@ function carteRepHTML(c,opts={}){
     const src=(typeof EMBLEME_IMG!=="undefined"&&EMBLEME_IMG[pil])?EMBLEME_IMG[pil]:null;
     const base=`position:absolute;${pos};width:12px;height:12px;border-radius:50%;z-index:2;pointer-events:none;box-sizing:border-box;border:1px solid rgba(201,162,39,0.85);box-shadow:0 0 0 0.5px rgba(34,32,28,0.18)`;
     return src
-      ? `<img src="${src}" alt="" style="${base}"/>`
+      ? `<img src="${src}" alt="" decoding="sync" loading="eager" style="${base}"/>`
       : `<span style="${base};display:inline-flex;align-items:center;justify-content:center;background:${st.bg};font-size:7px">${PILIER[pil]?PILIER[pil].icon:''}</span>`;
   };
 
@@ -8360,7 +8642,7 @@ function carteRepHTML(c,opts={}){
     const src=(typeof EMBLEME_IMG!=="undefined"&&EMBLEME_IMG[pil])?EMBLEME_IMG[pil]:null;
     const style=`width:${px}px;height:${px}px;border-radius:50%;${anneau};margin-left:${dec}px;position:relative;z-index:${dec?1:2}`;
     return src
-      ? `<img src="${src}" alt="" style="${style}"/>`
+      ? `<img src="${src}" alt="" decoding="sync" loading="eager" style="${style}"/>`
       : `<span style="${style};display:inline-flex;align-items:center;justify-content:center;background:${st.bg};font-size:${px-14}px">${PILIER[pil]?PILIER[pil].icon:''}</span>`;
   };
 
@@ -8387,8 +8669,8 @@ function carteRepHTML(c,opts={}){
     ${coinIndex("top:5px;left:2px",false,false,false)}${coinIndex("bottom:5px;right:2px",true,false,false)}
     <div class="carte-shine"></div>
     ${selected?`<div style="position:absolute;top:0;left:50%;transform:translateX(-50%);
-      background:linear-gradient(135deg,#C9A227,#B8912E);color:#fff;font-size:6px;font-weight:900;
-      padding:3px 12px;border-radius:0 0 9px 9px;letter-spacing:2px;z-index:3">✦ CHOISIE ✦</div>`:""}
+      background:linear-gradient(135deg,#C9A227,#B8912E);color:#fff;font-size:12px;font-weight:900;
+      line-height:1;padding:2px 9px 3px;border-radius:0 0 9px 9px;z-index:3">✓</div>`:""}
 
     <div style="position:relative;z-index:2;width:100%;min-height:var(--card-h)">
 
@@ -8426,6 +8708,35 @@ function _fluidCarte(cols){
   var h = w*4/3;                                 // même ratio d'affichage que l'original (96×128)
   return { w:Math.round(w), h:Math.round(h), sx:+(w/110).toFixed(4), sy:+(h/156).toFixed(4) };
 }
+// Carte de main à échelle libre : k=1 → 110 px de large sur un écran de 390 px.
+// L'échelle est du CSS pur (transform + variable --kv), jamais une mesure JS.
+function carteK(c,opts,k){
+  opts=opts||{};
+  // Proportions exactes de la carte (110 × 156). L'écrasement vertical de 6 %
+  // hérité de carteMainHTML rognait le bas de la carte quand elle était agrandie.
+  const ky=k.toFixed(4);
+  return '<div style="flex-shrink:0;overflow:hidden;border-radius:12px;'
+    +'width:calc(110px * '+k+' * var(--kv));height:calc(156px * '+ky+' * var(--kv))">'
+    +'<div style="--card-w:110px;--card-h:156px;width:110px;height:156px;'
+    +'transform:scale(calc('+k+' * var(--kv)),calc('+ky+' * var(--kv)));transform-origin:top left">'
+    +carteRepHTML(c,opts)
+    +'</div></div>';
+}
+// Combien agrandir les cartes du combo, selon leur nombre.
+function kAvant(n){ return n<=1?1.28:n===2?1.22:n===3?0.95:n===4?0.74:0.62; }
+
+// Joker aplati : plus large que haut. Échelle uniforme, le bas est rogné et fondu.
+function jokerPlat(j,onClick){
+  return '<div style="flex-shrink:0;overflow:hidden;border-radius:10px;cursor:pointer;'
+    +'width:calc(84px * var(--kv));height:calc(50px * var(--kv));'
+    +'-webkit-mask-image:linear-gradient(180deg,#000 76%,transparent 100%);'
+    +'mask-image:linear-gradient(180deg,#000 76%,transparent 100%)">'
+    +'<div style="--card-w:110px;--card-h:156px;width:110px;height:156px;display:flex;'
+    +'transform:scale(calc(0.764 * var(--kv)));transform-origin:top left">'
+    +jokerCardHTML(j,{onClick:onClick||""})
+    +'</div></div>';
+}
+
 function carteMainHTML(c,opts){
   opts=opts||{};
   return '<div style="width:96px;height:128px;overflow:hidden;flex-shrink:0;border-radius:12px">'
@@ -8435,7 +8746,15 @@ function carteMainHTML(c,opts){
 }
 
 function jokerCardHTML(j,opts={}){
-  const{used=false,bonus=0,onClick=""}=opts;
+  const{used=false,bonus=0,onClick="",compact=false}=opts;
+  // compact : padding et icône réduits, séparateur et description retirés.
+  // La carte perd environ la moitié de sa hauteur sans être déformée.
+  const _pad   = compact ? "6px 8px" : "12px 8px";
+  const _gap   = compact ? "3px"     : "6px";
+  const _mtIc  = compact ? "0"       : "4px";
+  const _halo1 = compact ? 34 : 56;
+  const _halo2 = compact ? 24 : 40;
+  const _fsIc  = compact ? 21 : 30;
   const phaseLabel={j1:"Après réponses",j2:"Après réponses",j3:"Avant réponse",j4:"Si aucune carte"}[j.id]||"";
   const phaseCol={j1:"#9b59b6",j2:"#3498db",j3:"#27ae60",j4:"#8e44ad"}[j.id]||j.color;
 
@@ -8451,7 +8770,7 @@ function jokerCardHTML(j,opts={}){
       `inset 0 1px 0 rgba(255,255,255,0.1),
        0 0 24px ${j.color}55,
        0 8px 28px rgba(0,0,0,0.7)`};
-    padding:12px 8px;gap:6px;"
+    padding:${_pad};gap:${_gap};"
     ${used?"":"onclick=\""+onClick+"\""}
   >
     ${!used?hexPat:""}
@@ -8465,40 +8784,50 @@ function jokerCardHTML(j,opts={}){
       <div style="position:absolute;bottom:5px;right:5px;width:12px;height:12px;border-bottom:1.5px solid ${j.color}99;border-right:1.5px solid ${j.color}99;border-radius:0 0 2px 0"></div>`:""}
 
     <!-- Icône avec double halo -->
-    <div style="position:relative;z-index:1;display:flex;align-items:center;justify-content:center;margin-top:4px">
-      ${!used?`<div style="position:absolute;width:56px;height:56px;border-radius:50%;background:radial-gradient(circle,${j.color}44 0%,transparent 70%)"></div>
-      <div style="position:absolute;width:40px;height:40px;border-radius:50%;background:radial-gradient(circle,${j.color}66 0%,transparent 70%);animation:pulse 2s infinite"></div>`:""}
-      <div style="font-size:30px;position:relative;filter:${used?"none":`drop-shadow(0 0 10px ${j.color}) drop-shadow(0 0 24px ${j.color}88)`}">${j.icon}</div>
+    <div style="position:relative;z-index:1;display:flex;align-items:center;justify-content:center;margin-top:${_mtIc}">
+      ${!used?`<div style="position:absolute;width:${_halo1}px;height:${_halo1}px;border-radius:50%;background:radial-gradient(circle,${j.color}44 0%,transparent 70%)"></div>
+      <div style="position:absolute;width:${_halo2}px;height:${_halo2}px;border-radius:50%;background:radial-gradient(circle,${j.color}66 0%,transparent 70%);animation:pulse 2s infinite"></div>`:""}
+      <div style="font-size:${_fsIc}px;position:relative;filter:${used?"none":`drop-shadow(0 0 10px ${j.color}) drop-shadow(0 0 24px ${j.color}88)`}">${j.icon}</div>
     </div>
 
     <!-- Séparateur -->
-    ${!used?`<div style="position:relative;z-index:1;display:flex;align-items:center;gap:3px;width:78%">
+    ${!used&&!compact?`<div style="position:relative;z-index:1;display:flex;align-items:center;gap:3px;width:78%">
       <div style="flex:1;height:1px;background:linear-gradient(90deg,transparent,${j.color}aa)"></div>
       <div style="font-size:6px;color:${j.color}cc">✦</div>
       <div style="flex:1;height:1px;background:linear-gradient(90deg,${j.color}aa,transparent)"></div>
     </div>`:""}
 
-    <!-- Nom -->
-    <div style="position:relative;z-index:1;font-size:10px;font-weight:700;
-      color:${used?"#1e1e30":"#F0D060"};text-align:center;font-family:'Cinzel',serif;
-      letter-spacing:0.5px;text-shadow:${used?"none":`0 0 10px ${j.color}88`}">${j.name}</div>
+    <!-- Nom (compact : nom à gauche, points à droite sur la même ligne) -->
+    ${compact
+      ? `<div style="position:relative;z-index:1;display:flex;align-items:center;justify-content:space-between;
+          gap:8px;width:100%;padding:0 4px">
+          <div style="font-size:10px;font-weight:700;color:${used?"#1e1e30":"#F0D060"};
+            font-family:'Cinzel',serif;letter-spacing:0.5px;
+            text-shadow:${used?"none":`0 0 10px ${j.color}88`}">${j.name}</div>
+          ${bonus>0&&!used?`<div style="flex-shrink:0;font-size:11px;font-weight:700;color:#F0D060;
+            background:rgba(240,208,96,0.12);border:1px solid rgba(240,208,96,0.4);
+            border-radius:8px;padding:3px 10px;box-shadow:0 0 10px rgba(240,208,96,0.2)">→ +${bonus} pts</div>`:""}
+        </div>`
+      : `<div style="position:relative;z-index:1;font-size:10px;font-weight:700;
+          color:${used?"#1e1e30":"#F0D060"};text-align:center;font-family:'Cinzel',serif;
+          letter-spacing:0.5px;text-shadow:${used?"none":`0 0 10px ${j.color}88`}">${j.name}</div>`}
 
-    <!-- Description -->
-    <div style="position:relative;z-index:1;font-size:7.5px;
-      color:${used?"#151525":"rgba(190,180,210,0.8)"};text-align:center;line-height:1.45;padding:0 5px">${j.desc}</div>
+    <!-- Description (masquée en compact) -->
+    ${compact?"":`<div style="position:relative;z-index:1;font-size:7.5px;
+      color:${used?"#151525":"rgba(190,180,210,0.8)"};text-align:center;line-height:1.45;padding:0 5px">${j.desc}</div>`}
 
     <!-- Badge phase -->
-    ${!used?`<div style="position:relative;z-index:1;font-size:7px;color:${phaseCol};
+    ${!used&&!compact?`<div style="position:relative;z-index:1;font-size:7px;color:${phaseCol};
       background:${phaseCol}18;border:1px solid ${phaseCol}44;border-radius:6px;padding:2px 8px;
       letter-spacing:0.5px;font-weight:600">${phaseLabel}</div>`:""}
 
     <!-- Bonus points -->
-    ${bonus>0&&!used?`<div style="position:relative;z-index:1;font-size:12px;font-weight:700;color:#F0D060;
+    ${bonus>0&&!used&&!compact?`<div style="position:relative;z-index:1;font-size:12px;font-weight:700;color:#F0D060;
       background:rgba(240,208,96,0.12);border:1px solid rgba(240,208,96,0.4);
       border-radius:8px;padding:4px 12px;box-shadow:0 0 10px rgba(240,208,96,0.2)">→ +${bonus} pts</div>`:""}
 
     <!-- Bouton d'action visible -->
-    ${!used&&onClick?`<div style="position:relative;z-index:2;margin-top:2px;font-size:8.5px;font-weight:900;color:#12082e;
+    ${!used&&onClick&&!compact?`<div style="position:relative;z-index:2;margin-top:2px;font-size:8.5px;font-weight:900;color:#12082e;
       background:linear-gradient(135deg,${j.color},${j.color}cc);border-radius:8px;padding:4px 14px;
       letter-spacing:1px;font-family:'Cinzel',serif;box-shadow:0 2px 10px ${j.color}aa,inset 0 1px 0 rgba(255,255,255,0.4);text-transform:uppercase">▶ Utiliser</div>`:""}
 
@@ -8534,14 +8863,14 @@ function scoreBarHTML(s1,s2,nom,nomAdv){
   const vicBadge = vic>0 ? ` <span style="color:var(--goldL);font-weight:800;font-size:9px;text-shadow:0 0 8px rgba(240,208,96,0.55)">🏆${vic}</span>` : "";
   // Le fléau penche vers le meneur (max ~11°)
   const ang=Math.max(-11,Math.min(11,-(s1-s2)/14));
-  return`<div class="card" style="padding:6px 12px 7px;position:relative;overflow:hidden">
-    ${serre?`<div style="position:absolute;top:5px;left:50%;transform:translateX(-50%);font-family:'Cinzel',serif;font-size:8px;letter-spacing:1.5px;font-weight:800;color:#0A0711;background:linear-gradient(135deg,var(--goldL),var(--gold));padding:1px 8px;border-radius:20px;box-shadow:0 0 12px rgba(240,208,96,0.55);z-index:2">⚡ SERRÉ</div>`:""}
+  return`<div class="card" style="padding:2px 12px 3px;position:relative;overflow:hidden">
+    ${serre?`<div style="position:absolute;top:1px;left:50%;transform:translateX(-50%);font-family:'Cinzel',serif;font-size:8px;letter-spacing:1.5px;font-weight:800;color:#0A0711;background:linear-gradient(135deg,var(--goldL),var(--gold));padding:1px 8px;border-radius:20px;box-shadow:0 0 12px rgba(240,208,96,0.55);z-index:2">⚡ SERRÉ</div>`:""}
     <div style="display:flex;align-items:center;justify-content:space-between;gap:4px">
       <div style="display:flex;flex-direction:column;align-items:flex-start;min-width:52px">
         <span style="font-size:8px;color:var(--muted);letter-spacing:0.3px;white-space:nowrap">${nom}${vicBadge}${flame}</span>
         <span style="font-family:'Cinzel',serif;font-weight:900;font-size:22px;line-height:1;color:${lead1?"var(--goldL)":"var(--text)"};${lead1?"text-shadow:0 0 14px rgba(240,208,96,0.45)":""}">${s1}</span>
       </div>
-      <svg viewBox="0 0 200 52" style="flex:1;max-width:148px;height:44px" fill="none">
+      <svg viewBox="0 10 200 38" style="flex:1;max-width:148px;height:34px" fill="none">
         <path d="M84 46 h32 l-5 -5 h-22 z" fill="#2a1c44"/>
         <rect x="97" y="15" width="6" height="31" rx="2" fill="var(--gold)"/>
         <circle cx="100" cy="15" r="3.5" fill="var(--goldL)"/>
@@ -8664,26 +8993,25 @@ function comboVedetteHTML(cards, renderCard, instId, opts){
   return pillsBar+scenes;
 }
 function aperçuMain(main,jokers){
-  const combos=[...new Set(main.map(c=>c.combo))];
   if(main.length===0)return`<!--HAND--><div class="card" style="text-align:center;padding:16px"><div style="font-size:28px;margin-bottom:6px">📭</div><div style="color:var(--red);font-weight:700">Plus de cartes disponibles</div></div>`;
-  return`<!--HAND--><div class="card" style="padding:12px">
-    <div style="font-size:10px;color:var(--gold);font-weight:700;margin-bottom:10px;letter-spacing:1px">VOS CARTES (${main.length})</div>
-    ${combos.map(combo=>{
-      const cs=main.filter(c=>c.combo===combo);
-      const[pa,pb]=combo.split("+");
-      const sA=PILIER[pa]||{accent:"#888",icon:"?"},sB=PILIER[pb]||{accent:"#888",icon:"?"};
-      return`<div style="margin-bottom:12px">
-        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;padding:0 2px">
-          <div style="height:1px;flex:1;background:linear-gradient(90deg,transparent,${sA.accent}66)"></div>
-          <div style="font-size:9px;font-weight:700;color:${sA.accent};letter-spacing:1px;background:${sA.accent}18;border:1px solid ${sA.accent}44;border-radius:20px;padding:2px 9px;white-space:nowrap">
-            ${emblemeMini(pa)} ${pa} + ${emblemeMini(pb)} ${pb}
-          </div>
-          <div style="height:1px;flex:1;background:linear-gradient(90deg,${sB.accent}66,transparent)"></div>
-        </div>
-        <div style="--card-w:86px;--card-h:114px;display:flex;flex-wrap:wrap;justify-content:center;gap:min(6px,1.5vw)">${cs.map(c=>carteMainHTML(c,{disabled:true})).join("")}</div>
-      </div>`;
-    }).join("")}
-    ${jokers.length>0?`<div style="margin-top:8px"><div style="font-size:10px;color:var(--gold);font-weight:700;margin-bottom:5px">VOS JOKERS</div><div style="display:flex;gap:7px">${jokers.map(j=>jokerCardHTML(j,{onClick:`G.useJoker('${j.id}')`})).join("")}</div></div>`:""}
+
+  // ── Main au repos : grille de 4 par rangée ─────────────────────────────
+  // Les jokers ne sont plus affichés ici : ils apparaissent au moment où ils
+  // servent (Espion et Échange en phase de réponse, Brakeur et Multiplicateur
+  // après les réponses). La place gagnée revient aux cartes.
+  // 4 colonnes au lieu de 5 : c'est la largeur qui bride la taille, pas la hauteur.
+  const cs=[...main].sort(function(a,b){
+    return a.combo<b.combo?-1:a.combo>b.combo?1:b.pts-a.pts;
+  });
+  const PAR_RANG=4;
+  let rangs="";
+  for(let d=0;d<cs.length;d+=PAR_RANG){
+    const tranche=cs.slice(d,d+PAR_RANG);
+    rangs+=`<div class="rang">${tranche.map(function(c){return carteK(c,{disabled:true},0.75);}).join("")}</div>`;
+  }
+
+  return`<!--HAND--><div class="card" style="padding:8px">
+    <div class="main-grille">${rangs}</div>
   </div>`;
 }
 
@@ -8809,7 +9137,8 @@ const G={
       allRepJ1:_deal.j1,allRepJ2:_deal.j2,
       allJokJ1:j.slice(0,2),allJokJ2:j.slice(2,4),
       mainRepJ1:[],mainRepJ2:[],mainJokJ1:[],mainJokJ2:[],
-      selTemp:[],
+      selTemp:[..._deal.j1],   // Option B : tout est gardé au départ, on écarte
+      selValidee:false,        // passe à true au clic sur Valider (anti-double fenêtre)
       s1:0,s2:0,manche:1,total:12,premier:"j1",
       b1:null,b2:null,cb:null,
       repChoisie:null,repIA:null,
@@ -8875,7 +9204,11 @@ const G={
 
   confirmerSelection(){
     const j=S.jeu;
-    if(j.selTemp.length<10)return;
+    if(j.selTemp.length!==10 || j.selValidee)return;
+    // Verrou : l'écran reste sur « selection » pendant l'animation de distribution.
+    // Sans ce drapeau, le moindre render() dans cet intervalle rouvrait la fenêtre
+    // « Tes 10 cartes sont prêtes », qui apparaissait donc deux fois.
+    j.selValidee=true;
     j.mainRepJ1=[...j.selTemp];
     j.mainJokJ1=[...j.allJokJ1];
     // Lancer animation distribution avant de passer à choixBase
@@ -8905,26 +9238,54 @@ const G={
       if(el) el.textContent=sec;
       if(sec<=0){
         clearInterval(G._selInt); G._selInt=null;
-        if(S.jeu&&S.jeu.selTemp.length>=10){ AUDIO.sfxConfirm(); G.confirmerSelection(); }
+        if(S.jeu&&S.jeu.selTemp.length===10){ AUDIO.sfxConfirm(); G.confirmerSelection(); }
       }
     },1000);
   },
 
+  // Bouton « Retour » de la fenêtre de validation : remet la DERNIÈRE carte écartée.
+  annulerDernierEcart(){
+    const j=S.jeu; if(!j) return;
+    if(!j._ordreEcart) j._ordreEcart=[];
+    let id=j._ordreEcart.pop();
+    if(!id){
+      // Filet : aucune trace d'ordre → on reprend n'importe quelle carte écartée.
+      const restante=j.allRepJ1.find(function(c){
+        return !j.selTemp.some(function(x){return x.id===c.id;});
+      });
+      id=restante?restante.id:null;
+    }
+    if(!id) return;
+    const c=j.allRepJ1.find(x=>x.id===id);
+    if(c && !j.selTemp.some(x=>x.id===c.id)) j.selTemp.push(c);
+    AUDIO.sfxClick();
+    render();
+  },
+
+  // Option B — on n'ajoute plus : on ÉCARTE. Les 12 cartes sont gardées au départ,
+  // le joueur en retire 2. Un second tap remet la carte dans la main.
   toggleSel(id){
     const j=S.jeu;
+    const avant=j.selTemp.length;
+    if(!j._ordreEcart) j._ordreEcart=[];
     const idx=j.selTemp.findIndex(c=>c.id===id);
     if(idx>=0){
-      j.selTemp.splice(idx,1);
-      if(G._selInt){ clearInterval(G._selInt); G._selInt=null; }
-    }
-    else if(j.selTemp.length<10){
-      const c=j.allRepJ1.find(x=>x.id===id);
-      if(c){
-        j.selTemp.push(c);
-        // Son + vibration à la 10e carte
-        if(j.selTemp.length===10) AUDIO.sfx10eme();
-        else AUDIO.sfxClick();
+      // Écarter — jamais en dessous de 10 cartes gardées.
+      if(j.selTemp.length>10){
+        j.selTemp.splice(idx,1);
+        j._ordreEcart.push(id);
+        if(G._selInt){ clearInterval(G._selInt); G._selInt=null; }
       }
+    } else {
+      // Remettre une carte écartée.
+      const c=j.allRepJ1.find(x=>x.id===id);
+      if(c && j.selTemp.length<j.allRepJ1.length){
+        j.selTemp.push(c);
+        j._ordreEcart=j._ordreEcart.filter(function(x){return x!==id;});
+      }
+    }
+    if(j.selTemp.length!==avant){
+      if(j.selTemp.length===10) AUDIO.sfx10eme(); else AUDIO.sfxClick();
     }
     render();
   },
@@ -9175,21 +9536,14 @@ const G={
       G.resoudre(j.repChoisie,j.repIA,null);
       return;
     }
-    // Joker offensif possible → écran de décision, 5 s pour choisir (sinon résultat sans joker)
+    // Joker offensif possible → écran de décision, SANS compte à rebours.
+    // Le joueur prend son temps : il joue un joker, ou appuie sur « Ne pas utiliser ».
+    // Rien ne se résout tout seul — plus aucune pression, plus aucun blocage.
     if(G._apresInt){ clearTimeout(G._apresInt); G._apresInt=null; }
     if(G._jokerInt){ clearInterval(G._jokerInt); G._jokerInt=null; }
     j.phase="apresReponses";
-    j._jokerSec=5;
+    j._jokerSec=null;
     render();
-    G._jokerInt=setInterval(function(){
-      if(!S.jeu || S.jeu.phase!=="apresReponses"){ clearInterval(G._jokerInt); G._jokerInt=null; return; }
-      S.jeu._jokerSec--;
-      var el=document.getElementById("joker-sec"); if(el) el.textContent=Math.max(0,S.jeu._jokerSec);
-      if(S.jeu._jokerSec<=0){
-        clearInterval(G._jokerInt); G._jokerInt=null;
-        if(!TOURNOI.actif) G.resoudre(S.jeu.repChoisie,S.jeu.repIA,null);
-      }
-    },1000);
   },
 
   useJoker(id){
@@ -9873,25 +10227,22 @@ const G={
         G.execRep(null);
         return;
       }
-      // Sinon : le joueur a un joker → on NE passe PAS tout de suite.
-      // Le timer normal démarre pour qu'il puisse jouer son joker (ou passer via le bouton).
+      // Sinon : le joueur a le joker Échange 🔄 → il se déclenche AUTOMATIQUEMENT.
+      // Le joueur n'a plus rien à décider : la carte est piochée pour lui, il n'a qu'à
+      // la confirmer. Plus de blocage possible quand aucune carte n'est jouable.
+      showToast("🔄 Aucune carte valide — ton Échange se joue tout seul","info",1400);
+      setTimeout(function(){
+        if(S.jeu && S.jeu.phase==="afficheBases" && S.jeu.mainJokJ1 && S.jeu.mainJokJ1.some(x=>x.id==="j4")){
+          G.useEchangeLibre();
+        }
+      },1100);
+      // La carte piochée devient jouable dans la main : le joueur n'a plus
+      // qu'à la toucher pour la jouer.
     }
 
-    // ── Timer 20s normal ──
-    j.timerSec=20;
-    G._timerInt=setInterval(()=>{
-      if(!S.jeu||S.jeu.phase!=="afficheBases"){clearInterval(G._timerInt);return;}
-      j.timerSec--;
-      G.updateTimer();
-      if(j.timerSec<=0){
-        clearInterval(G._timerInt);
-        if(!G._timerFired){
-          G._timerFired=true;
-          if(S.jeu?.repChoisie) G.jouerRep();
-          else G.execRep(null);
-        }
-      }
-    },1000);
+    // ── Plus de compte à rebours ──
+    // Le joueur prend son temps pour choisir sa carte. Rien ne se joue tout seul.
+    j.timerSec=0;
   },
   stopTimer(){
     clearInterval(G._timerInt);
@@ -10143,6 +10494,29 @@ function lancerDisciple(i,rang){
     if(_advD>0) S.jeu.s2=_advD;
   }
 }
+// ── Fonds de Campagne ─────────────────────────────────────────────────
+// Une image par PILIER (5 fichiers theme-*.webp à la racine, comme le CNAME),
+// partagée par les 3 Gardiens du pilier. L'Acte ne change pas le décor mais
+// le voile : Acte I lisible, Acte II crépusculaire, Acte III presque nocturne.
+// Si l'image manque (pas encore déployée), le dégradé d'origine prend le relais.
+const THEME_PILIER_IMG={
+  "Santé":"theme-sante.webp",
+  "Amour":"theme-amour.webp",
+  "Argent":"theme-argent.webp",
+  "Spiritualité":"theme-spiritualite.webp",
+  "Équilibre":"theme-equilibre.webp",
+};
+function fondCampagne(g,repli){
+  var img=g&&THEME_PILIER_IMG[g.pilier];
+  if(!img) return "background:"+repli+";";
+  var acte=(g&&g.acte)||1;
+  var voile=acte>=3?0.62:acte===2?0.48:0.34;
+  return "background:"
+    +"linear-gradient(rgba(5,3,12,"+voile+"),rgba(5,3,12,"+(voile+0.16)+")),"
+    +"url('"+img+"') center/cover no-repeat,"
+    +repli+";";
+}
+
 function renderTemple(app){
   var i=(typeof S.templeEnCours==="number")?S.templeEnCours:0;
   var g=CAMPAGNE[i]; if(!g){ S.ecran="campagne"; render(); return; }
@@ -10161,7 +10535,7 @@ function renderTemple(app){
   }).join("");
   var chefAttrs=chefPret?('onclick="introGardien('+i+')" style="cursor:pointer"'):'style="opacity:0.45"';
   app.innerHTML=`
-  <div class="center" style="min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:20px;background:radial-gradient(ellipse at center,${st.bg||'#1a0a35'} 0%,#070514 74%)">
+  <div class="center" style="min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:20px;${fondCampagne(g,"radial-gradient(ellipse at center,"+(st.bg||'#1a0a35')+" 0%,#070514 74%)")}">
     <div class="w100" style="max-width:440px;text-align:center;position:relative">
       <button class="btn-ghost" style="position:absolute;left:0;top:0;width:auto;padding:8px 14px" onclick="S.ecran='campagne';render()">←</button>
       <div style="font-size:11px;color:var(--muted);letter-spacing:3px;margin-bottom:10px;padding-top:6px">LE TEMPLE DE</div>
@@ -10182,7 +10556,7 @@ function renderDiscipleIntro(app){
   var st=PILIER[g.pilier]||{accent:"#D4AF37",bg:"#1a0a35"};
   var menace=S._menaceCourante||"Approche, si tu l'oses.";
   app.innerHTML=`
-  <div class="center" style="min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:22px;background:radial-gradient(ellipse at center,${st.bg||'#1a0a35'} 0%,#070514 72%)">
+  <div class="center" style="min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:22px;${fondCampagne(g,"radial-gradient(ellipse at center,"+(st.bg||'#1a0a35')+" 0%,#070514 72%)")}">
     <div class="w100" style="max-width:440px;text-align:center">
       <div style="font-size:11px;color:var(--muted);letter-spacing:3px;margin-bottom:12px">UN DISCIPLE TE BARRE LA VOIE</div>
       <div style="filter:drop-shadow(0 0 22px ${st.accent}aa);animation:celebFloat 3s ease-in-out infinite">${emblemeMini(g.pilier,70)}</div>
@@ -10202,7 +10576,7 @@ function renderGardienIntro(app){
   var st=PILIER[g.pilier]||{accent:"#D4AF37",bg:"#1a0a35",icon:""};
   var dejaVaincu=i<(S.campagne.progres||0);
   app.innerHTML=`
-  <div class="center" style="min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:22px;background:radial-gradient(ellipse at center,${st.bg||'#1a0a35'} 0%,#070514 72%)">
+  <div class="center" style="min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:22px;${fondCampagne(g,"radial-gradient(ellipse at center,"+(st.bg||'#1a0a35')+" 0%,#070514 72%)")}">
     <div class="w100" style="max-width:440px;text-align:center">
       <div style="font-size:11px;color:var(--muted);letter-spacing:3px;margin-bottom:12px">UN GARDIEN SE DRESSE DEVANT TOI</div>
       <div style="font-size:82px;filter:drop-shadow(0 0 26px ${st.accent}aa);animation:celebFloat 3s ease-in-out infinite">${(g.pilier&&PILIER[g.pilier])?emblemeMini(g.pilier,82):g.icon}</div>
@@ -10419,7 +10793,7 @@ function renderApropos(app){
         <div style="background:linear-gradient(135deg,rgba(45,27,105,0.55),rgba(26,13,61,0.4));border:1px solid rgba(212,175,55,0.35);border-radius:16px;padding:18px;margin-top:16px;text-align:center">
           <div style="font-size:10px;color:var(--gold);letter-spacing:2px;margin-bottom:7px">CRÉÉ AVEC ❤️ PAR</div>
           <div style="font-family:'Cinzel',serif;font-size:21px;font-weight:900;color:var(--goldL)">le couple KHALAM</div>
-          <div style="font-size:12px;color:var(--muted);margin-top:4px">Khadi &amp; Lamine</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:4px;font-style:italic">Deux prénoms, un seul nom — l'histoire complète viendra en son temps…</div>
         </div>
         <div style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.08);border-radius:16px;padding:18px;margin-top:12px">
           <div style="font-size:13px;color:var(--goldL);font-weight:700;font-family:'Cinzel',serif;text-align:center;margin-bottom:10px">La philosophie des 4 Piliers</div>
@@ -11465,11 +11839,11 @@ function renderRegles(app){
       <div style="font-size:13px;color:var(--gold);font-weight:700;font-family:'Cinzel',serif;margin-bottom:10px;margin-top:6px;letter-spacing:1px">🔄 DÉROULEMENT D'UNE PARTIE</div>
       <div class="card" style="margin-bottom:14px">
         ${[
-          {n:"1. Sélection des cartes",i:"🎯",t:"Avant la première manche, choisissez <strong style='color:var(--goldL)'>10 cartes parmi 12</strong>, organisées par Combo. Validez votre sélection quand vous êtes prêt. En Duel, chaque joueur sélectionne ses cartes de son côté."},
+          {n:"1. Sélection des cartes",i:"🎯",t:"Avant la première manche, vos <strong style='color:var(--goldL)'>12 cartes</strong> vous sont données, toutes déjà retenues ✓. <strong style='color:var(--goldL)'>Écartez-en 2</strong> d'un simple toucher (un second toucher les reprend), puis validez. En Duel, chaque joueur prépare sa main de son côté."},
           {n:"2. Animation de distribution",i:"✨",t:"Après la sélection, une animation spectaculaire distribue vos 10 cartes qui volent depuis les 4 coins de l'écran et se retournent pour révéler leurs couleurs."},
           {n:"3. Carte de Base",i:"🎴",t:"Le joueur qui commence choisit un <strong style='color:var(--goldL)'>Pilier de Base</strong>. L'adversaire répond avec un <strong style='color:var(--goldL)'>Pilier différent</strong>. Les deux forment un <strong style='color:var(--goldL)'>Combo</strong>. À chaque manche, la <strong style='color:var(--goldL)'>main alterne</strong> : c'est l'autre joueur qui choisit le Pilier de Base en premier. Les piliers joués s'assombrissent avec leur logo pulsant. <strong style='color:var(--goldL)'>💡 Un coup de pouce t'oriente</strong> : le pilier au <strong style='color:var(--goldL)'>✨ meilleur combo</strong> (à l'attaque) et la <strong style='color:var(--goldL)'>⭐ meilleure réponse</strong> (en défense) sont mis en avant — mais tu restes libre de ton choix."},
-          {n:"4. Carte Réponse",i:"🃏",t:"Chaque joueur joue une <strong style='color:var(--goldL)'>Carte Réponse</strong> du Combo actif. Vous avez <strong style='color:var(--goldL)'>20 secondes</strong>. La carte jouée est <strong style='color:var(--red)'>défaussée définitivement</strong>. Si aucune carte valide → pénalité -5 pts, l'adversaire gagne +5 pts bonus. Les <strong style='color:var(--goldL)'>deux cartes-réponses</strong> jouées s'affichent ensuite côte à côte, avec le pot <strong style='color:var(--goldL)'>GAIN TOTAL</strong>, avant le résultat."},
-          {n:"5. Jokers (optionnel)",i:"⚡",t:"Deux jokers vivent <strong style='color:var(--goldL)'>dans votre main</strong>, à côté de vos cartes : l'<strong style='color:var(--goldL)'>Espion</strong> 👁 (révèle les 3 meilleures cartes adverses) et l'<strong style='color:var(--goldL)'>Échange</strong> 🔄 (remplace une carte). Un simple toucher les déclenche — aucune validation, aucune interruption. Les jokers offensifs (Brakeur, Multiplicateur) se jouent après les Cartes Réponses."},
+          {n:"4. Carte Réponse",i:"🃏",t:"Chaque joueur joue une <strong style='color:var(--goldL)'>Carte Réponse</strong> du Combo actif. <strong style='color:var(--goldL)'>Prenez votre temps</strong> : en Solo, rien ne se joue tout seul — vos cartes valides <strong style='color:var(--goldL)'>s'avancent en grand</strong>, le reste de la main recule. La carte jouée est <strong style='color:var(--red)'>défaussée définitivement</strong>. Si aucune carte valide → pénalité -5 pts, l'adversaire gagne +5 pts bonus. Les <strong style='color:var(--goldL)'>deux cartes-réponses</strong> jouées s'affichent ensuite côte à côte, avec le pot <strong style='color:var(--goldL)'>GAIN TOTAL</strong>, avant le résultat."},
+          {n:"5. Jokers (optionnel)",i:"⚡",t:"Les jokers apparaissent <strong style='color:var(--goldL)'>au moment où ils servent</strong>. Pendant votre réponse : l'<strong style='color:var(--goldL)'>Espion</strong> 👁 (révèle les 3 meilleures cartes adverses) et l'<strong style='color:var(--goldL)'>Échange</strong> 🔄 — et si vous n'avez <strong style='color:var(--goldL)'>aucune carte valide</strong>, l'Échange se joue <strong style='color:var(--goldL)'>tout seul</strong> et pioche pour vous. Après les réponses, la question <strong style='color:var(--goldL)'>« Veux-tu jouer un joker ? »</strong> propose Brakeur 💀 et Multiplicateur ✖️ : répondez <strong style='color:#6fe3a0'>OUI</strong> ou <strong style='color:#f08a8a'>NON</strong>, sans limite de temps."},
           {n:"6. Résultat automatique",i:"🏆",t:"Le résultat s'affiche automatiquement, puis la manche suivante démarre <strong style='color:var(--goldL)'>toute seule</strong> après quelques secondes (le temps de bien voir les deux réponses) — dans <strong style='color:var(--goldL)'>tous les modes</strong>, sans bouton à toucher. Entre certaines manches, un bonus peut surgir : le <strong style='color:var(--goldL)'>Bonus du Sage</strong>, une <strong style='color:var(--goldL)'>Question surprise</strong> ou le <strong style='color:var(--goldL)'>Verdict de la Balance</strong>. <strong style='color:var(--goldL)'>En cas d'égalité de points</strong>, celui qui a posé sa carte <strong style='color:var(--goldL)'>en premier</strong> remporte le pot — sauf si un <strong style='color:#c9b3f0'>Fantôme</strong> est en jeu : sa valeur étant tirée au hasard, l'égalité reste blanche."},
         ].map(s=>`
           <div style="display:flex;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,0.06)">
@@ -11612,12 +11986,12 @@ function renderRegles(app){
           {i:"📈",n:"Statistiques perso",t:"L'écran <strong style='color:var(--goldL)'>Stats</strong> suit vos parties : victoires, défaites, taux de victoire, meilleur score, plus longue série de victoires, et votre pilier préféré."},
           {i:"📳",n:"Sons & vibrations",t:"Effets sonores et retours haptiques (vibrations) aux moments clés — victoire de manche, joker, bonus. Tout respecte le mode muet."},
           {i:"💬",n:"Contact WhatsApp",t:"Le bouton <strong style='color:var(--goldL)'>WhatsApp</strong> ouvre une discussion pré-remplie, pour envoyer vos idées et retours directement au couple KHALAM."},
-          {i:"🎓",n:"Apprentissage guidé",t:"Au premier lancement, un <strong style='color:var(--goldL)'>tutoriel</strong> en quelques étapes présente les règles (revoyable via « 🎓 Revoir le tutoriel »). Et pendant ta toute première partie, de petites astuces <strong style='color:var(--goldL)'>« 👋 Guide »</strong> t'accompagnent au bon moment — chacune une seule fois."},
+          {i:"🎓",n:"Apprentissage guidé",t:"Au premier lancement, un <strong style='color:var(--goldL)'>tutoriel</strong> en quelques étapes présente les règles (revoyable via « 🎓 Revoir le tutoriel »). Et pendant ta toute première partie, de petites astuces <strong style='color:var(--goldL)'>« 👋 Guide »</strong> t'accompagnent au bon moment — chacune une seule fois. Si tu restes <strong style='color:var(--goldL)'>5 secondes sans toucher l'écran</strong>, un doigt <strong style='color:var(--goldL)'>👆</strong> vient te montrer le meilleur geste à faire."},
           {i:"📅",n:"Objectif du jour",t:"Un défi <strong style='color:var(--goldL)'>différent chaque jour</strong>, avec bonus d'XP. Réussis-le plusieurs jours d'affilée pour faire monter ta <strong style='color:#ff6b35'>série 🔥</strong>."},
           {i:"🏆",n:"Trophées",t:"8 badges à débloquer selon tes exploits (séries, jokers gagnants, remontées, IA Expert battue…), consultables dans <strong style='color:var(--goldL)'>🏆 Trophées</strong>."},
           {i:"⚖️",n:"Écran d'accueil animé",t:"Une intro où les 4 piliers convergent vers la balance — l'esprit du jeu dès la première seconde."},
           {i:"🎨",n:"Thèmes débloquables",t:"Personnalisez l'ambiance du jeu avec des thèmes de fond (Nuit Mystique, Aurore Boréale, Cosmos, Coucher de Soleil), à débloquer en montant de niveau, via le menu 🎨 Thèmes."},
-          {i:"🎵",n:"Musique d'ambiance",t:"Une musique douce accompagne vos manches. Elle démarre au début de la partie et s'arrête à la fin (aucune musique dans le menu). Activez ou coupez le son à tout moment avec le bouton 🔊."},
+          {i:"🎵",n:"Musique d'ambiance",t:"Chaque moment a sa musique : une <strong style='color:var(--goldL)'>kalimba douce</strong> vous accueille dans le menu, une mélodie plus rythmée accompagne vos manches. Un carillon salue la balance à l'ouverture. Activez ou coupez le son à tout moment avec le bouton 🔊."},
           {i:"🔊",n:"Lecture à voix haute",t:"Le jeu <strong style='color:var(--goldL)'>parle</strong> : le Sage lit ses conseils ; en Campagne, les <strong style='color:var(--goldL)'>gardiens et leurs disciples</strong> déclament leur nom et leur menace avant chaque combat (voix grave de guerrier, voix féminine pour les gardiennes) ; les <strong style='color:var(--goldL)'>épreuves</strong> et <strong style='color:var(--goldL)'>modificateurs</strong> sont annoncés ; les <strong style='color:var(--goldL)'>jokers</strong>, le <strong style='color:var(--goldL)'>bonus de l'IA</strong> et l'arrivée des <strong style='color:var(--goldL)'>cartes légendaires</strong> sont proclamés d'une voix masculine. Le mode d'emploi se lit aussi via « 🔊 Écouter » (en haut). Coupez ou réactivez la voix d'un bouton 🔊 — aucun fichier à télécharger, elle vient de votre téléphone."}
 ].map(f=>`
           <div style="display:flex;gap:12px;padding:10px 0;border-bottom:1px solid rgba(255,255,255,0.05)">
@@ -11667,9 +12041,7 @@ function renderRegles(app){
         <div style="font-size:24px;margin-bottom:8px">💑</div>
         <div style="font-size:14px;color:var(--goldL);font-family:'Cinzel',serif;font-weight:700;letter-spacing:2px;margin-bottom:10px">Le couple Khalam</div>
         <div style="text-align:left;font-size:12px;color:var(--muted);line-height:1.8;background:rgba(212,175,55,0.06);border:1px solid rgba(212,175,55,0.22);border-radius:14px;padding:14px 16px">
-          Le nom <strong style="color:var(--goldL)">Khalam</strong> est né de l'union de leurs deux prénoms :<br>
-          • <strong style="color:var(--goldL)">Kha</strong>, inspiré de Khadi ;<br>
-          • <strong style="color:var(--goldL)">Lam</strong>, inspiré de Lamine.<br><br>
+          Le nom <strong style="color:var(--goldL)">Khalam</strong> est né de l'union des <strong style="color:var(--goldL)">deux prénoms du couple</strong> qui a créé ce jeu — chacun y a laissé une syllabe, comme on mêle deux voix dans un même chant. Qui sont-ils ? Le mystère fait partie du voyage&nbsp;: leurs visages et leurs noms seront dévoilés le moment venu.<br><br>
           Au-delà de cette fusion symbolique, Khalam évoque également le <em>xalam</em>, un instrument traditionnel d'Afrique de l'Ouest, symbole de sagesse, d'harmonie, de transmission et de richesse culturelle.<br><br>
           À travers ce nom, le couple a souhaité incarner les valeurs qui fondent le jeu Équilibre : l'amour, l'unité, le dialogue, la réflexion et la recherche d'un équilibre durable entre les dimensions essentielles de la vie.
         </div>
@@ -12076,75 +12448,87 @@ try{ verifierPartieEnCours(); }catch(e){ if(window.__logErr) window.__logErr(e,"
 function renderSelection(app){
   const j=S.jeu;
 
-  // Grouper les cartes par combo
-  const combosUniques=[...new Set(j.allRepJ1.map(function(c){return c.combo;}))].sort();
-  let groupesHtml="";
+  // ── Option B — grille fixe 3 × 4, zéro défilement ────────────────────────
+  // Les 12 cartes sont gardées au départ ; le joueur en écarte 2.
+  // Tri par combo puis par valeur décroissante : la lecture reste groupée
+  // sans les bandes séparatrices, qui mangeaient presque autant de hauteur
+  // que les cartes elles-mêmes.
+  const cartes=[...j.allRepJ1].sort(function(a,b){
+    return a.combo<b.combo?-1:a.combo>b.combo?1:b.pts-a.pts;
+  });
+  const n=j.selTemp.length;
+  const aEcarter=n-10;
+  const pret=(n===10 && !j.selValidee);
+  // Cible du doigt-guide : tant qu'il faut écarter, la carte GARDÉE la plus
+  // faible (c'est celle que le Sage écarterait) ; à 10, le bouton Valider.
+  let _cibleSel=null;
+  if(!pret && aEcarter>0){
+    j.selTemp.forEach(function(c){ if(!_cibleSel || (c.pts||0)<(_cibleSel.pts||0)) _cibleSel=c; });
+  }
 
-  combosUniques.forEach(function(combo){
-    const cartesCombo=j.allRepJ1.filter(function(c){return c.combo===combo;});
-    const [p1,p2]=combo.split("+");
-    const st1=PILIER[p1]||{accent:"#D4AF37",icon:"⭐"};
-    const st2=PILIER[p2]||{accent:"#D4AF37",icon:"⭐"};
-
-    // En-tête du combo
-    groupesHtml+=`<div style="margin-bottom:12px">
-      <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;padding:0 2px">
-        <div style="height:1px;flex:1;background:linear-gradient(90deg,transparent,${st1.accent}66)"></div>
-        <div style="font-size:10px;font-weight:700;color:${st1.accent};letter-spacing:1px;
-          background:${st1.accent}18;border:1px solid ${st1.accent}44;
-          border-radius:20px;padding:2px 8px">
-          ${emblemeMini(p1)} ${p1} + ${emblemeMini(p2)} ${p2}
-        </div>
-        <div style="height:1px;flex:1;background:linear-gradient(90deg,${st2.accent}66,transparent)"></div>
-      </div>
-      <div style="display:flex;flex-direction:row;gap:min(8px,2vw);justify-content:center;flex-wrap:wrap">`;
-
-    cartesCombo.forEach(function(carte){
-      const choisi=j.selTemp.find(function(x){return x.id===carte.id;});
-      groupesHtml+=`<div onclick="G.toggleSel('${carte.id}')" draggable="false" style="cursor:pointer;flex-shrink:0;touch-action:manipulation;-webkit-user-drag:none;-webkit-touch-callout:none;user-select:none">
-        ${carteRepHTML(carte,{selected:!!choisi,clickable:true})}
-      </div>`;
-    });
-
-    groupesHtml+=`</div></div>`;
+  let grilleHtml="";
+  cartes.forEach(function(carte){
+    const garde=j.selTemp.some(function(x){return x.id===carte.id;});
+    // La coche ✓ est désormais portée par carteRepHTML : plus rien à remplacer ici.
+    const h=carteRepHTML(carte,{selected:garde,clickable:true});
+    grilleHtml+=`<div onclick="G.toggleSel('${carte.id}')" ${(_cibleSel&&carte.id===_cibleSel.id)?'id="cible-guide"':''} class="${garde?'':'ecartee'}"
+      style="position:relative;display:flex;cursor:pointer;touch-action:manipulation;
+      -webkit-touch-callout:none;user-select:none;-webkit-user-select:none">
+      ${h}
+      ${garde?"":`<span style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+        z-index:9;font-size:34px;font-weight:900;color:#ff6b6b;
+        text-shadow:0 2px 10px rgba(0,0,0,0.9);pointer-events:none">✕</span>`}
+    </div>`;
   });
 
+  const HAUT="52px", BAS="92px";
+  const dispo=`calc(100dvh - ${HAUT} - ${BAS} - env(safe-area-inset-top,0px) - env(safe-area-inset-bottom,0px))`;
+
   app.innerHTML=`
-  <div class="screen fade" style="padding:0;min-height:100dvh;background:radial-gradient(ellipse at top,#1a0535,#070514)">
-    <div style="position:sticky;top:env(safe-area-inset-top,0px);z-index:100;background:rgba(7,5,20,0.95);
-      border-bottom:1px solid rgba(212,175,55,0.2);padding:10px 16px;
-      display:flex;align-items:center;justify-content:space-between;gap:10px">
+  <div class="screen fade" style="padding:0;height:100dvh;overflow:hidden;
+    background:radial-gradient(ellipse at top,#1a0535,#070514)">
+
+    <div style="height:${HAUT};box-sizing:content-box;padding:0 12px;
+      padding-top:env(safe-area-inset-top,0px);
+      display:flex;align-items:center;justify-content:space-between;gap:8px;
+      background:rgba(7,5,20,0.95);border-bottom:1px solid rgba(212,175,55,0.2)">
       <div style="display:flex;align-items:center;gap:10px;min-width:0">
         <button onclick="retourMenuDepuisSelection()" aria-label="Retour au menu"
-          style="flex-shrink:0;min-height:36px;padding:0 12px;border-radius:12px;cursor:pointer;
+          style="flex-shrink:0;min-height:34px;padding:0 11px;border-radius:11px;cursor:pointer;
           border:1px solid rgba(212,175,55,0.45);background:rgba(240,208,96,0.1);
-          color:var(--goldL);font-family:'Cinzel',serif;font-size:12px;font-weight:800;letter-spacing:0.5px;
-          display:flex;align-items:center;gap:6px"><span style="font-size:15px">←</span>Retour</button>
+          color:var(--goldL);font-family:'Cinzel',serif;font-size:12px;font-weight:800;
+          display:flex;align-items:center;gap:5px"><span style="font-size:15px">←</span>Retour</button>
         <div style="font-family:Cinzel,serif;font-size:13px;font-weight:700;color:var(--goldL);
-          white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
-        ⚔️ Sélectionnez vos 10 cartes
+          white-space:nowrap;overflow:hidden;text-overflow:ellipsis">🎴 Écarte 2 cartes</div>
       </div>
-      </div>
-      <div style="font-size:14px;font-weight:900;font-family:Cinzel,serif;flex-shrink:0;
-        color:${j.selTemp.length>=10?"#45c97a":"var(--gold)"}">${j.selTemp.length}/10</div>
+      <div style="font-size:15px;font-weight:900;font-family:Cinzel,serif;flex-shrink:0;
+        color:${pret?"#45c97a":"var(--gold)"}">${n}/10</div>
     </div>
-    <div style="padding:12px 16px 16px">
-      ${groupesHtml}
-      <div style="height:150px"></div>
-    </div>
-  </div>
 
-  <!-- Barre du bas : compteur / validation de secours -->
-  <div style="position:fixed;bottom:0;left:0;right:0;z-index:200;
-    padding:10px 16px env(safe-area-inset-bottom,16px);
-    background:linear-gradient(to top,rgba(7,5,20,0.98) 70%,transparent)">
-    ${j.selTemp.length>=10
-      ?``
-      :`<div style="text-align:center;padding:12px;font-size:12px;color:var(--muted);
-          background:rgba(255,255,255,0.04);border-radius:12px;border:1px solid rgba(255,255,255,0.08)">
-          Sélectionnez encore <strong style="color:var(--goldL)">${10-j.selTemp.length}</strong> carte${10-j.selTemp.length>1?"s":""}
-        </div>`
-    }
+    <div class="sel-grid" style="
+      --card-h:calc((${dispo} - 34px)/4);
+      --card-w:calc(var(--card-h)/1.418);
+      height:${dispo};display:grid;grid-template-columns:repeat(3,var(--card-w));
+      grid-auto-rows:var(--card-h);gap:10px;justify-content:center;align-content:center">
+      ${grilleHtml}
+    </div>
+
+    <div style="height:${BAS};box-sizing:content-box;
+      padding:8px 14px calc(8px + env(safe-area-inset-bottom,0px));
+      display:flex;flex-direction:column;gap:7px;align-items:center;justify-content:center">
+      <div style="font-size:11px;color:var(--muted);text-align:center;letter-spacing:0.3px">
+        ${pret ? "Ta main est prête."
+               : aEcarter>0 ? `Écarte encore <strong style="color:var(--goldL)">${aEcarter}</strong> carte${aEcarter>1?"s":""}`
+                            : "Remets une carte en jeu"}
+      </div>
+      <button ${pret?'id="cible-guide"':''} onclick="${pret?"AUDIO.sfxConfirm();G.confirmerSelection()":""}" ${pret?"":"disabled"}
+        style="width:100%;min-height:48px;border-radius:13px;font-family:'Cinzel',serif;
+        font-size:15px;font-weight:900;letter-spacing:1px;
+        ${pret
+          ? "cursor:pointer;color:#241703;border:1px solid rgba(255,245,210,0.5);background:linear-gradient(135deg,#F6E4A0,#F0D060 30%,#D4AF37 60%,#B8912E);box-shadow:0 6px 20px rgba(212,175,55,0.45)"
+          : "cursor:default;opacity:0.35;color:var(--goldL);border:1px solid rgba(212,175,55,0.35);background:rgba(255,255,255,0.05)"}">
+        ✓ Valider</button>
+    </div>
   </div>`;
 }
 
@@ -12234,7 +12618,6 @@ function renderJeu(app){
     });
     content=`
       ${contexteHTML(j.manche)}
-      ${banniereEvenement(j)}
       ${coachOnboarding("choixBase")}
       <div style="text-align:center;margin-bottom:9px" class="fade">
         <div style="font-family:Cinzel,serif;font-size:14px;font-weight:900;color:var(--goldL);letter-spacing:0.5px;
@@ -12246,7 +12629,7 @@ function renderJeu(app){
           const bloque=nbCom===0;
           const sug=(!bloque && p===_suggForce);
           return`<div style="display:flex;flex-direction:column;align-items:center;gap:4px${bloque?';opacity:0.3;filter:grayscale(0.75)':''}">
-            ${bloque?`<div style="cursor:not-allowed">${pilierCard(p,{size:"sm"})}</div>`:`<div${sug?' style="filter:drop-shadow(0 0 11px rgba(240,208,96,0.8))"':''}>${pilierCard(p,{size:"sm",onClick:`AUDIO.sfxClick();G.choisirBase('${p}')`})}</div>`}
+            ${bloque?`<div style="cursor:not-allowed">${pilierCard(p,{size:"sm"})}</div>`:`<div${sug?' id="cible-guide" style="filter:drop-shadow(0 0 11px rgba(240,208,96,0.8))"':''}>${pilierCard(p,{size:"sm",onClick:`AUDIO.sfxClick();G.choisirBase('${p}')`})}</div>`}
             <div style="font-size:8px;color:${sug?'var(--goldL)':(bloque?'var(--muted)':PILIER[p].accent)};text-align:center;max-width:88px;line-height:1.3;font-style:italic;font-weight:${sug?'700':'400'}">${bloque?'aucune carte':(sug?'✨ meilleur combo':PILIER[p].cit.slice(0,32)+'…')}</div>
           </div>`;
         }).join("")}
@@ -12289,12 +12672,6 @@ function renderJeu(app){
       ${banniereEvenement(j)}
       ${coachOnboarding("iaChoisitBase")}
       <div style="text-align:center;margin-bottom:12px">
-        <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:4px">
-          ${iaPr.icon} <strong style="color:${iaPr.couleur}">${iaPr.nom}</strong> a choisi son pilier
-        </div>
-        <div style="font-size:13px;font-weight:700;color:var(--muted)">
-          🎴 ${S.nom} — Répondez avec un autre pilier
-        </div>
         ${_suggP?`<div style="display:inline-block;margin-top:7px;font-size:12px;font-weight:700;color:var(--goldL);background:rgba(240,208,96,0.12);border:1px solid rgba(240,208,96,0.45);border-radius:20px;padding:4px 14px;box-shadow:0 0 18px rgba(240,208,96,0.25)">⭐ Meilleure réponse : ${emblemeMini(_suggP,15)} ${_suggP}</div>`:""}
       </div>
       <!-- 4 piliers : IA en grand et lumineuse, 3 autres cliquables -->
@@ -12307,7 +12684,7 @@ function renderJeu(app){
           return`<div style="display:flex;flex-direction:column;align-items:center;gap:4px">
             ${isIA
               ? pilierCard(p,{size:"sm",played:true})
-              : `<div${p===_suggP?' style="filter:drop-shadow(0 0 11px rgba(240,208,96,0.75))"':''}>${pilierCard(p,{size:"sm",onClick:`G.j1RepondIA('${p}')`})}</div>`
+              : `<div${p===_suggP?' id="cible-guide" style="filter:drop-shadow(0 0 11px rgba(240,208,96,0.75))"':''}>${pilierCard(p,{size:"sm",onClick:`G.j1RepondIA('${p}')`})}</div>`
             }
             ${isIA
               ? `<div style="font-size:9px;font-weight:900;color:${stP.accent};
@@ -12327,7 +12704,6 @@ function renderJeu(app){
       ${aperçuMain(j.mainRepJ1,j.mainJokJ1)}`;
   }
   else if(j.phase==="afficheBases"){
-    const urgent=j.timerSec<=5,timerCol=urgent?"#e05555":j.timerSec<=10?"#FFA500":"#45c97a";
     const stIA=PILIER[j.b2]||{accent:"#888",icon:"?"};
     const stJ1=PILIER[j.b1]||{accent:"#888",icon:"?"};
     content=`<div class="fade">
@@ -12377,14 +12753,7 @@ function renderJeu(app){
         <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100px,22vw),1fr));gap:min(8px,2vw);justify-items:center">${j.repIAVues.map(c=>carteRepHTML(c,{disabled:true})).join("")}</div>
       </div>`:""}
 
-      <div class="timer-wrap" style="${urgent?"animation:urgence 0.5s infinite":""}">
-        <div style="text-align:center;margin-bottom:8px">
-          <div id="timerNum" class="timer-num" style="font-size:40px;color:${timerCol}">${j.timerSec}</div>
-          <div style="height:4px;border-radius:2px;background:rgba(255,255,255,0.1);overflow:hidden;max-width:180px;margin:2px auto">
-            <div id="timerBar" style="height:100%;width:${j.timerSec/20*100}%;background:${timerCol};border-radius:2px;transition:width 1s linear"></div>
-          </div>
-        </div>
-      </div>
+
 
       ${validesJ1.length>0?`
         <div style="background:${j.phaseEchange?"rgba(74,20,140,0.6)":"rgba(45,27,105,0.55)"};
@@ -12414,13 +12783,16 @@ function renderJeu(app){
             <div style="font-size:12px;color:var(--gold);font-weight:700;margin-bottom:2px;text-align:center">
               ✅ Vos cartes — <strong style="color:var(--goldL)">${j.cb}</strong>
             </div>
-            <div style="font-size:9px;color:var(--muted);text-align:center;margin-bottom:8px;font-style:italic">👆 Touche une carte pour la jouer immédiatement</div>
             ${vIA.length===0?`<div style="font-size:10px;color:#45c97a;text-align:center;margin-bottom:8px;font-weight:700">💡 L'IA n'a pas de carte valide — jouez et gagnez vos points !</div>`:""}
-            <div style="--card-w:86px;--card-h:114px;display:flex;flex-wrap:wrap;justify-content:center;gap:min(7px,1.8vw)">
-              ${validesJ1.map(x=>`<div onclick="G.selRep('${x.id}')" draggable="false" style="cursor:pointer;touch-action:manipulation;-webkit-user-drag:none;-webkit-touch-callout:none;user-select:none">${carteMainHTML(x,{selected:j.repChoisie?.id===x.id,masque:(S.jeu&&((S.jeu.twist==="aveugle"||S.jeu.twist==="ultime")||(S.jeu.modif==="brouillard"&&S.jeu.manche%2===0)))})}</div>`).join("")}
-              ${(!j.phaseEchange && j.mainJokJ1.find(x=>x.id==="j3")) ? `<div style="width:86px;height:114px;display:flex;flex:0 0 auto">${jokerCardHTML(j.mainJokJ1.find(x=>x.id==="j3"),{onClick:"G.useEspion()"})}</div>` : ""}
-              ${(!j.phaseEchange && j.mainJokJ1.find(x=>x.id==="j4")) ? `<div style="width:86px;height:114px;display:flex;flex:0 0 auto">${jokerCardHTML(j.mainJokJ1.find(x=>x.id==="j4"),{onClick:"G.useEchange()"})}</div>` : ""}
+            ${(function(){ var b=null; validesJ1.forEach(function(x){ if(!x.fantome && (!b || (x.pts||0)>(b.pts||0))) b=x; }); j._cibleDoigt=b?b.id:null; return ""; })()}
+            <div class="main-avant">
+              ${validesJ1.map(x=>`<div ${x.id===j._cibleDoigt?'id="cible-guide"':''} onclick="G.selRep('${x.id}')" draggable="false" style="cursor:pointer;touch-action:manipulation;-webkit-user-drag:none;-webkit-touch-callout:none;user-select:none">${carteK(x,{selected:j.repChoisie?.id===x.id,masque:(S.jeu&&((S.jeu.twist==="aveugle"||S.jeu.twist==="ultime")||(S.jeu.modif==="brouillard"&&S.jeu.manche%2===0)))},kAvant(validesJ1.length))}</div>`).join("")}
             </div>
+            ${(!j.phaseEchange && (j.mainJokJ1.find(x=>x.id==="j3")||j.mainJokJ1.find(x=>x.id==="j4"))) ? `
+            <div class="main-jokers" style="margin-top:8px;margin-bottom:0">
+              ${j.mainJokJ1.find(x=>x.id==="j3") ? jokerPlat(j.mainJokJ1.find(x=>x.id==="j3"),"G.useEspion()") : "<div></div>"}
+              ${j.mainJokJ1.find(x=>x.id==="j4") ? jokerPlat(j.mainJokJ1.find(x=>x.id==="j4"),"G.useEchange()") : "<div></div>"}
+            </div>` : ""}
           `}
         </div>
 
@@ -12446,8 +12818,8 @@ function renderJeu(app){
 
       ${autresJ1.length>0&&validesJ1.length>0?`
         <div style="margin-bottom:8px">
-          <div style="font-size:10px;color:var(--muted);margin-bottom:5px">Autres cartes non valides (${autresJ1.length})</div>
-          <div style="display:flex;gap:5px;flex-wrap:wrap">${autresJ1.map(c=>carteMainHTML(c,{disabled:true})).join("")}</div>
+          <div style="font-size:9px;color:var(--muted);margin-bottom:4px;text-align:center;font-style:italic">Le reste de ta main (${autresJ1.length})</div>
+          <div class="main-arriere">${autresJ1.map(c=>carteK(c,{disabled:true},0.36)).join("")}</div>
         </div>`:""}
 
       ${j.mainJokJ1.filter(x=>x.id==="j1"||x.id==="j2").length>0?`
@@ -12458,6 +12830,11 @@ function renderJeu(app){
   }
   else if(j.phase==="apresReponses"){
     const tot=(j.repChoisie?.pts||0)+(j.repIA?.pts||0);
+    // OUI : un seul joker offensif → il part directement. Plusieurs → on invite à choisir.
+    const _offs=j.mainJokJ1.filter(x=>x.id==="j1"||x.id==="j2");
+    const _actionOui=_offs.length===1
+      ? "G.appliquerJoker('"+_offs[0].id+"')"
+      : "showToast('👇 Choisis ton joker ci-dessous','info',1400)";
     const stJ1=PILIER[j.b1]||{accent:"#888"};
     const stJ2=PILIER[j.b2]||{accent:"#888"};
     content=`<div class="fade" style="text-align:center">
@@ -12498,20 +12875,22 @@ function renderJeu(app){
         </div>
       </div>
 
-      <div style="display:flex;justify-content:center;gap:16px;background:rgba(255,255,255,0.06);border-radius:10px;padding:8px 16px;border:1px solid rgba(212,175,55,0.2);margin-bottom:14px">
-        <span style="font-size:14px;color:var(--goldL);font-weight:700">${S.nom} : ${j.repChoisie?.pts||0} pts</span>
-        <span style="color:var(--muted)">vs</span>
-        <span style="font-size:14px;color:var(--muted);font-weight:700">IA : ??? pts</span>
-      </div>
       ${j.mainJokJ1.filter(x=>x.id==="j1"||x.id==="j2").length>0?`
         <div style="background:rgba(45,27,105,0.44);border:1px solid rgba(212,175,55,0.55);border-radius:12px;padding:12px 10px;margin-bottom:10px;text-align:left">
-          <div style="font-size:13px;color:var(--gold);font-weight:700;margin-bottom:4px;text-align:center">🃏 Veux-tu jouer un joker ?</div>
-          <div style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:10px">⏱ <span id="joker-sec" style="color:var(--goldL);font-weight:900">${j._jokerSec!=null?j._jokerSec:5}</span> s pour décider · sinon résultat normal</div>
-          <button class="btn-ghost" style="width:100%;margin-bottom:10px" onclick="G.appliquerJoker(null)">✗ Ne pas utiliser — résultat normal</button>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px">
+            <button onclick="G.appliquerJoker(null)" style="flex:0 0 auto;min-width:58px;min-height:36px;border-radius:11px;cursor:pointer;
+              font-family:'Cinzel',serif;font-size:13px;font-weight:900;letter-spacing:1px;
+              border:1px solid rgba(224,85,85,0.55);background:rgba(224,85,85,0.12);color:#f08a8a">NON</button>
+            <div id="cible-guide" style="flex:1;font-size:13px;color:var(--gold);font-weight:700;text-align:center">🃏 Veux-tu jouer un joker ?</div>
+            <button onclick="${_actionOui}" style="flex:0 0 auto;min-width:58px;min-height:36px;border-radius:11px;cursor:pointer;
+              font-family:'Cinzel',serif;font-size:13px;font-weight:900;letter-spacing:1px;
+              border:1px solid rgba(69,201,122,0.55);background:rgba(69,201,122,0.14);color:#6fe3a0">OUI</button>
+          </div>
+          <div style="font-size:11px;color:var(--muted);text-align:center;margin-bottom:10px">Prends ton temps · le résultat s'affiche quand tu as choisi</div>
           <div style="display:flex;gap:8px;margin-bottom:2px">
             ${j.mainJokJ1.filter(x=>x.id==="j1"||x.id==="j2").map(jk=>`
               <div style="flex:1">
-                ${jokerCardHTML(jk,{bonus:jk.id==="j1"?tot:tot*2,onClick:`G.appliquerJoker('${jk.id}')`})}
+                ${jokerCardHTML(jk,{bonus:jk.id==="j1"?tot:tot*2,compact:true,onClick:`G.appliquerJoker('${jk.id}')`})}
               </div>`).join("")}
           </div>
         </div>`:`<button class="btn-gold" onclick="G.appliquerJoker(null)">Voir le résultat →</button>`}
@@ -12622,7 +13001,24 @@ function renderJeu(app){
       ${scoreBarHTML(j.s1,j.s2,S.nom)}
       ${(j.twist==="jackpot"||j.twist==="ultime")?`<div style="text-align:center;font-size:11px;color:#F39C12;font-weight:800;letter-spacing:1px;margin:2px 0;text-shadow:0 0 10px rgba(243,156,18,0.5)">💰 JACKPOT : ${j.jackpot} pts</div>`:""}
       ${j.modif?`<div style="text-align:center;font-size:11px;font-weight:800;letter-spacing:1px;margin:2px 0;color:#c9a0ff">${MODIFS_SOLO[j.modif].icon} ${MODIFS_SOLO[j.modif].nom.toUpperCase()}${j.modif==="maudit"?" · "+j.modifMaudit+" ½":""}${j.modif==="destin"?(j.manche===j.modifDestinManche?" · ×2 MAINTENANT !":" · manche "+j.modifDestinManche):""}${j.modif==="brouillard"?(j.manche%2===0?" · 🌫️ actif":""):""}</div>`:""}
-      ${j.iaDlg||j.iaTyping?iaBulle(iaPr,j.iaDlg,j.iaTyping):""}
+      ${(function(){
+        // Un seul emplacement pour deux usages qui ne coexistent jamais :
+        // la bulle de l'IA, et les deux lignes d'état du choix de pilier.
+        const bulle=(j.iaDlg||j.iaTyping);
+        const etat=(!bulle && j.phase==="iaChoisitBase");
+        // Troisième usage : la bannière d'événement (VOL DE POINTS, DOUBLE POINTS…)
+        // quand l'emplacement est libre, c'est-à-dire en phase de choix du pilier.
+        const evt=(!bulle && !etat && j.phase==="choixBase") ? banniereEvenement(j) : "";
+        const dedans = bulle
+          ? iaBulle(iaPr,j.iaDlg,j.iaTyping)
+          : etat
+            ? `<div style="text-align:center;width:100%">
+                 <div style="font-size:11px;color:var(--muted);letter-spacing:1px;margin-bottom:3px">${iaPr.icon} <strong style="color:${iaPr.couleur}">${iaPr.nom}</strong> a choisi son pilier</div>
+                 <div style="font-size:13px;font-weight:700;color:var(--muted)">🎴 ${S.nom} — Répondez avec un autre pilier</div>
+               </div>`
+            : evt;
+        return `<div class="ia-slot${(bulle||etat||evt)?" plein":""}">${dedans}</div>`;
+      })()}
       ${_cTop}
     </div>
 
