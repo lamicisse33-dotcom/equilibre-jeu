@@ -995,7 +995,11 @@ body.hab-clair [style*="background:rgba(0,0,0,0.35"]{background:rgba(74,56,22,0.
    ══════════════════════════════════════════════════════════════════════ */
 #sb-decor{
   position:absolute;inset:0;z-index:0;opacity:0;overflow:hidden;
-  background-image:url('assets/decor.webp');
+  /* Repli : si decor.webp n'arrive pas (dossier assets non déployé, réseau
+     coupé), on garde un ciel peint au lieu d'un écran noir. */
+  background-color:#0d0a1c;
+  background-image:url('assets/decor.webp'),
+    radial-gradient(ellipse at 50% 18%,#2b3f6b 0%,#141a35 45%,#0a0714 100%);
   background-size:cover;background-position:50% 42%;
   transform-origin:50% 55%;
 }
@@ -1250,13 +1254,13 @@ body.hab-clair [style*="background:rgba(0,0,0,0.35"]{background:rgba(74,56,22,0.
   background:radial-gradient(ellipse,rgba(255,255,255,0.85),transparent 70%);transform:rotate(-25deg);
 }
 
-.sb-b-eau .sb-texture-rotative{background-image:url('assets/boule_eau.webp');}
+.sb-b-eau .sb-texture-rotative{background-image:url('assets/boule_eau.webp'),radial-gradient(circle at 35% 30%,#2f7fd4 0%,#0d2a4d 100%);}
 .sb-b-eau .sb-boule-glow{background:#3a8fd0;}
-.sb-b-plante .sb-texture-rotative{background-image:url('assets/boule_plante.webp');}
+.sb-b-plante .sb-texture-rotative{background-image:url('assets/boule_plante.webp'),radial-gradient(circle at 35% 30%,#3f9d4a 0%,#123018 100%);}
 .sb-b-plante .sb-boule-glow{background:#5cc23a;}
-.sb-b-feu .sb-texture-rotative{background-image:url('assets/boule_feu.webp');}
+.sb-b-feu .sb-texture-rotative{background-image:url('assets/boule_feu.webp'),radial-gradient(circle at 35% 30%,#e0621c 0%,#4a1405 100%);}
 .sb-b-feu .sb-boule-glow{background:#f0701f;}
-.sb-b-air .sb-texture-rotative{background-image:url('assets/boule_air.webp');}
+.sb-b-air .sb-texture-rotative{background-image:url('assets/boule_air.webp'),radial-gradient(circle at 35% 30%,#c9d4e6 0%,#38445c 100%);}
 .sb-b-air .sb-boule-glow{background:#c8d8ec;}
 
 .sb-boule-glow{position:absolute;inset:-11px;border-radius:50%;opacity:0.72;filter:blur(13px);z-index:-1;}
@@ -2153,7 +2157,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v97.14";
+const BUILD_TAG="v97.18";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -8963,7 +8967,9 @@ function renderDuelJeu(app){
     return;
   }
 
-  var html='<div style="min-height:100dvh;padding:calc(env(safe-area-inset-top,0px) + min(12px,2vw)) min(12px,2vw) calc(env(safe-area-inset-bottom,0px) + min(12px,2vw));display:flex;flex-direction:column;gap:min(10px,1.5vw);max-width:var(--max-w);margin:0 auto;width:100%">'
+  var // Hauteur FIXE et overflow caché, comme en Solo : sans cela la table ne peut
+    // pas occuper la place restante et le rideau n'a nulle part où se poser.
+    html='<div class="equilibre-screen" style="height:100vh;height:calc(100dvh - env(safe-area-inset-top,0px));overflow:hidden;padding:min(12px,2vw) min(12px,2vw) calc(env(safe-area-inset-bottom,0px) + min(12px,2vw));display:flex;flex-direction:column;gap:min(10px,1.5vw);max-width:var(--max-w);margin:0 auto;width:100%">'
     // En-tête (même style que le solo)
     +'<div style="display:flex;justify-content:space-between;align-items:center">'
     +'<div style="font-size:10px;color:'+advCoul+';font-weight:700">'+DUEL.adversaire.icon+' '+advNom.slice(0,9)+' · Duel</div>'
@@ -9115,8 +9121,12 @@ function renderDuelJeu(app){
     }
     html+='<div style="display:grid;grid-template-columns:repeat(4,1fr);gap:min(8px,2vw);margin-bottom:12px">'+piliersHtml+'</div>';
 
-    // Aperçu de mes cartes réponse groupées par combo — identique au Solo
-    html+=aperçuMain(maMain,mesJoks);
+    // Aperçu de mes cartes réponse groupées par combo — identique au Solo,
+    // rideau compris : la table du Duel doit être celle du Solo, au pixel près.
+    html+='<section class="game-table-wrap" style="flex:1;min-height:0;overflow:hidden;width:100%;display:flex;flex-direction:column;margin-top:-16px">'
+      +aperçuMain(maMain,mesJoks)
+      +'<div class="rideau" aria-hidden="true"></div>'
+      +'</section>';
 
   }
 
@@ -9262,10 +9272,7 @@ function renderDuelJeu(app){
           var jokRow="";
           if(jEch) jokRow+='<div style="width:var(--card-w);min-height:var(--card-h);display:flex;flex-shrink:0">'+jokerCardHTML(jEch,{onClick:"DUEL.useJoker('j4')"})+'</div>';
           if(jEsp) jokRow+='<div style="width:var(--card-w);min-height:var(--card-h);display:flex;flex-shrink:0">'+jokerCardHTML(jEsp,{onClick:"DUEL.useJoker('j3')"})+'</div>';
-          if(jokRow){
-            html+='<div style="font-size:10px;color:var(--muted);text-align:center;margin-bottom:6px;letter-spacing:1px">VOS JOKERS</div>'
-              +'<div style="display:flex;flex-direction:row;gap:min(8px,2vw);justify-content:center;flex-wrap:nowrap;margin-bottom:10px">'+jokRow+'</div>';
-          }
+          // (les jokers sont posés APRÈS les cartes, en tuiles plates — cf. Solo)
           if(mesJoks.some(function(x){return x.id==="j1"||x.id==="j2";})){
             html+='<div style="font-size:9px;color:var(--muted);font-style:italic;text-align:center;margin-bottom:8px">'
               +'💡 '+mesJoks.filter(function(x){return x.id==="j1"||x.id==="j2";}).map(function(x){return x.name;}).join(" & ")
@@ -9273,13 +9280,21 @@ function renderDuelJeu(app){
           }
           // Les cartes du combo demandé s'avancent, agrandies selon leur nombre.
           var _kAv=kAvant(cartesValides.length);
-          html+='<div style="font-size:11px;color:var(--muted);margin-bottom:2px;text-align:center">Jouez votre meilleure carte !</div>'
+          html+='<div style="font-size:12px;color:var(--gold);font-weight:700;margin-bottom:2px;text-align:center">'
+            +'✅ Vos cartes — <strong style="color:var(--goldL)">'+(gs.cb||"")+'</strong></div>'
             +'<div class="main-avant" style="padding:4px 0 10px">'
             +cartesValides.map(function(carte){
               return '<div onclick="DUEL.jouerCarteById(&quot;'+carte.id+'&quot;)" style="cursor:pointer;touch-action:manipulation;-webkit-touch-callout:none;user-select:none">'
                 +carteK(carte,{clickable:true,selected:DUEL._repSel===carte.id},_kAv)+'</div>';
             }).join("")
             +'</div>';
+          // Jokers Espion / Échange : tuiles plates sous les cartes, comme en Solo.
+          if(jEsp||jEch){
+            html+='<div class="main-jokers" style="margin-top:8px;margin-bottom:0">'
+              +(jEsp? jokerPlat(jEsp,"DUEL.useJoker('j3')") : "<div></div>")
+              +(jEch? jokerPlat(jEch,"DUEL.useJoker('j4')") : "<div></div>")
+              +'</div>';
+          }
           // Le reste de la main recule : réduit, grisé, sur une seule rangée.
           var _autresD=maMain.filter(function(c){ return c.combo!==gs.cb; });
           if(_autresD.length>0){
@@ -14210,6 +14225,9 @@ function MULTI_CONFIRM_MENU(){
         +'style="width:100%;accent-color:#F0D060;background:transparent">'
       +'<div id="reg-vol-txt" style="font-family:\'Cinzel\',serif;font-size:12px;color:var(--goldL);font-weight:700;margin-top:4px">'+vol+' %</div>'
     +'</div>'
+    +'<button onclick="_testerSon()" style="width:100%;min-height:44px;border-radius:22px;cursor:pointer;margin-bottom:9px;'
+      +'background:rgba(240,208,96,0.10);border:1px solid rgba(240,208,96,0.45);color:var(--goldL);font-size:13px;font-weight:700">'
+      +'🔎 Tester le son</button>'
     +'<button onclick="_regFermer()" style="width:100%;min-height:48px;border-radius:26px;border:none;cursor:pointer;margin-bottom:9px;'
       +'background:linear-gradient(135deg,#f7d9a8,#d98f3d);color:#2b1a05;font-family:\'Cinzel\',serif;font-size:14px;font-weight:900;letter-spacing:1px">'
       +'ENREGISTRER ET FERMER</button>'
@@ -14222,6 +14240,30 @@ function MULTI_CONFIRM_MENU(){
 }
 
 // Bascule d'un réglage + mise à jour immédiate de son libellé.
+// ── Testeur de son : dit ce que l'appareil fait vraiment ───────────────────
+// Sur iPhone, un son inaudible vient presque toujours de l'extérieur du jeu :
+// bouton silencieux sur la tranche, volume média à zéro, ou un réglage coupé
+// ici même. Ce bouton joue un son et affiche l'état réel de la chaîne audio.
+function _testerSon(){
+  try{
+    AUDIO.init();
+    if(AUDIO.ctx && AUDIO.ctx.state==="suspended"){ try{ AUDIO.ctx.resume(); }catch(_){} }
+    var etat=[];
+    etat.push(AUDIO.ctx? ("moteur "+(AUDIO.ctx.state==="running"?"actif":AUDIO.ctx.state)) : "moteur absent");
+    etat.push(AUDIO.muted? "sons COUPÉS" : "sons actifs");
+    etat.push((S.musique===false)? "musique COUPÉE" : "musique active");
+    var v=(typeof S.volume==="number")? Math.round(S.volume*100) : 100;
+    etat.push("volume "+v+"%");
+    try{ AUDIO.sfxClick(); }catch(_){}
+    setTimeout(function(){ try{ AUDIO.sfxBadge&&AUDIO.sfxBadge(); }catch(_){} },220);
+    setTimeout(function(){ try{ AUDIO.sfxWin&&AUDIO.sfxWin(); }catch(_){} },520);
+    var msg=etat.join(" · ");
+    if(AUDIO.muted || S.musique===false || v===0) msg="⚠️ "+msg;
+    else msg="🔊 "+msg+" — si tu n'entends rien, vérifie le bouton silencieux de l'iPhone";
+    showToast(msg,"info",5200);
+  }catch(e){ try{ showToast("Test impossible : "+e.message,"lose",4000); }catch(_){} }
+}
+
 function _regBascule(id){
   try{
     var txt="";
