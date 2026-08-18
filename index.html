@@ -2102,8 +2102,12 @@ window.__logErr=function(e,ctx){
     try{
       if(typeof AUDIO!=="undefined"){
         AUDIO.init();
-        if(AUDIO.ctx && AUDIO.ctx.state==="suspended"){ AUDIO.ctx.resume().catch(function(){}); }
-        // NB : la musique d'ambiance ne démarre plus ici — elle est lancée au vrai début de partie.
+        var _dormait=!!(AUDIO.ctx && AUDIO.ctx.state==="suspended");
+        if(_dormait){ AUDIO.ctx.resume().catch(function(){}); }
+        // Sur iPhone le contexte démarre SUSPENDU : la musique lancée au premier
+        // rendu ne s'entend pas, et rien ne la relançait ensuite. On la remet en
+        // route au premier geste, sur l'écran où l'on se trouve.
+        _relancerMusique(_dormait);
       }
     }catch(e){}
     // Amorcer la voix du Sage une seule fois, en SILENCE TOTAL (muted + volume 0).
@@ -2149,7 +2153,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v97.09";
+const BUILD_TAG="v97.10";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -9208,6 +9212,56 @@ function _guideVeille(){
 })();
 var _ecranVoix=null;
 var _ecranScroll=null;
+// ── Musique : la remettre en marche après un réveil du contexte ────────────
+// Appelée au premier geste et au retour dans l'app. Choisit d'elle-même entre
+// l'ambiance du menu et celle de la partie, et respecte le réglage Musique.
+function _relancerMusique(force){
+  try{
+    if(typeof AUDIO==="undefined") return;
+    if(S.musique===false){ if(AUDIO.stopBg) AUDIO.stopBg(); if(AUDIO.stopMenuBg) AUDIO.stopMenuBg(); return; }
+    var enPartie=(S.ecran==="jeu"||S.ecran==="duel_jeu");
+    // « force » : le contexte revient d'une suspension. Les boucles se
+    // planifient sur l'horloge audio, qui n'avance pas pendant le sommeil :
+    // elles restent figées en croyant tourner. On les repart de zéro.
+    if(force){
+      if(AUDIO.stopBg) AUDIO.stopBg();
+      if(AUDIO.stopMenuBg) AUDIO.stopMenuBg();
+    }
+    if(enPartie){
+      if(AUDIO.stopMenuBg) AUDIO.stopMenuBg();
+      if(!AUDIO.playing && AUDIO.startBg) AUDIO.startBg();
+    } else {
+      if(AUDIO.stopBg) AUDIO.stopBg();
+      if(!AUDIO.menuPlaying && AUDIO.startMenuBg) AUDIO.startMenuBg();
+    }
+  }catch(e){}
+}
+// Retour dans l'application : iOS suspend le contexte en arrière-plan.
+document.addEventListener("visibilitychange",function(){
+  if(document.visibilityState!=="visible") return;
+  try{
+    if(typeof AUDIO!=="undefined" && AUDIO.ctx && AUDIO.ctx.state==="suspended"){
+      AUDIO.ctx.resume().then(function(){ _relancerMusique(true); }).catch(function(){});
+    } else { _relancerMusique(); }
+  }catch(e){}
+});
+
+// ── Un clic audible sur CHAQUE touche ──────────────────────────────────────
+// Écouteur unique en capture : toute touche du jeu réagit, même celles créées
+// après coup. On saute les éléments qui jouent déjà leur propre son.
+document.addEventListener("pointerdown",function(ev){
+  try{
+    var el=ev.target && ev.target.closest && ev.target.closest(
+      'button,[onclick],.mtuile2,.mlame2,.plq-in2,.duel-plaque,.sb-boule,input[type="range"]');
+    if(!el) return;
+    if(el.disabled) return;
+    var att=el.getAttribute && el.getAttribute("onclick");
+    if(att && att.indexOf("sfx")>=0) return;   // le bouton sonne déjà lui-même
+    if(typeof AUDIO!=="undefined" && AUDIO.sfxClick) AUDIO.sfxClick();
+    if(typeof AUDIO!=="undefined" && AUDIO.vibrer) AUDIO.vibrer(8);
+  }catch(e){}
+},true);
+
 function render(){
   // Toute fenêtre qui quitte l'écran coupe la lecture immédiatement.
   // Seule exception : la lecture du mode d'emploi, lancée volontairement par le joueur.

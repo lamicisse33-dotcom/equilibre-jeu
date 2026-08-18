@@ -1,4 +1,4 @@
-# Dépôt GitHub — ÉQUILIBRE v97.09
+# Dépôt GitHub — ÉQUILIBRE v97.10
 
 ## Ce qu'il faut envoyer
 
@@ -37,7 +37,7 @@ en base64 dans la page, elles sont externes.
 ## Vérifications après l'envoi
 
 1. Ouvrir le site, **fermer complètement la PWA**, rouvrir.
-2. Contrôler `v97.09` au pied du menu — c'est le seul juge.
+2. Contrôler `v97.10` au pied du menu — c'est le seul juge.
 3. Lancer une partie : au premier bonus, le Sage doit apparaître avec son décor
    et ses quatre boules. Si le fond est noir, le dossier `assets/` manque.
 4. Passer en mode avion et rouvrir : le jeu doit se lancer hors ligne.
@@ -46,8 +46,8 @@ en base64 dans la page, elles sont externes.
 
 ## Versions
 
-- `BUILD_TAG = "v97.09"` dans `index.html`
-- `VERSION = "equilibre-v97-09"` dans `sw.js`
+- `BUILD_TAG = "v97.10"` dans `index.html`
+- `VERSION = "equilibre-v97-10"` dans `sw.js`
 
 Les deux ont été bumpés ensemble.
 
@@ -65,6 +65,11 @@ Les deux ont été bumpés ensemble.
   300 cauris pour un simple voile sombre. Dégradés peints à la place.
 - Menu, écran de Duel et bas de menu habillés depuis tes planches
 - Mode d'emploi débarrassé de ses redites
+- **Musique réparée** : sur iPhone le contexte audio démarre endormi, la musique
+  était lancée dans le vide et rien ne la relançait. Elle repart au premier
+  toucher et au retour dans l'app, menu comme partie.
+- **Ambiance du menu** (kalimba) désormais audible, distincte de la musique de partie
+- **Chaque touche répond** : clic et vibration brève sur tous les boutons
 
 ---
 
