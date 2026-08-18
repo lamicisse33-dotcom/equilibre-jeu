@@ -12,7 +12,7 @@
    - HTML : réseau d'abord (tes mises à jour s'appliquent en ligne), repli cache hors-ligne.
    - Icônes/manifeste : cache d'abord.
    Pense à changer VERSION quand tu déploies une nouvelle version du jeu. */
-const VERSION = "equilibre-v95-87";
+const VERSION = "equilibre-v97-09";
 const SHELL = [
   "./",
   "./index.html",
@@ -20,11 +20,17 @@ const SHELL = [
   "./icon-192.png",
   "./icon-512.png",
   "./apple-touch-icon.png",
-  "./theme-sante.webp",
-  "./theme-amour.webp",
-  "./theme-argent.webp",
-  "./theme-spiritualite.webp",
-  "./theme-equilibre.webp"
+  // Les cinq décors theme-*.webp ne sont pas déployés : retirés du cache,
+  // ils faisaient échouer l'installation du service worker (addAll est
+  // tout ou rien — un seul 404 et AUCUN fichier n'était mis en cache).
+  // Assets du Bonus du Sage (sinon le bonus s'affiche vide hors ligne)
+  "./assets/canne.webp",
+  "./assets/decor.webp",
+  "./assets/boule_eau.webp",
+  "./assets/boule_plante.webp",
+  "./assets/boule_feu.webp",
+  "./assets/boule_air.webp",
+  "./assets/voix_sage.mp3"
 ];
 
 self.addEventListener("message", function(e){
