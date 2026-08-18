@@ -2157,7 +2157,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v97.18";
+const BUILD_TAG="v97.19";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -14227,7 +14227,7 @@ function MULTI_CONFIRM_MENU(){
     +'</div>'
     +'<button onclick="_testerSon()" style="width:100%;min-height:44px;border-radius:22px;cursor:pointer;margin-bottom:9px;'
       +'background:rgba(240,208,96,0.10);border:1px solid rgba(240,208,96,0.45);color:var(--goldL);font-size:13px;font-weight:700">'
-      +'🔎 Tester le son</button>'
+      +'🔎 Tester le son et les images</button>'
     +'<button onclick="_regFermer()" style="width:100%;min-height:48px;border-radius:26px;border:none;cursor:pointer;margin-bottom:9px;'
       +'background:linear-gradient(135deg,#f7d9a8,#d98f3d);color:#2b1a05;font-family:\'Cinzel\',serif;font-size:14px;font-weight:900;letter-spacing:1px">'
       +'ENREGISTRER ET FERMER</button>'
@@ -14261,6 +14261,20 @@ function _testerSon(){
     if(AUDIO.muted || S.musique===false || v===0) msg="⚠️ "+msg;
     else msg="🔊 "+msg+" — si tu n'entends rien, vérifie le bouton silencieux de l'iPhone";
     showToast(msg,"info",5200);
+    // Deuxième volet : les images du Bonus du Sage sont-elles bien en ligne ?
+    // C'est la seule façon de savoir depuis le téléphone si le dossier assets/
+    // a bien été déposé à côté d'index.html.
+    try{
+      var t0=Date.now();
+      var img=new Image();
+      img.onload=function(){
+        showToast("🖼️ Images du Sage : TROUVÉES ("+img.naturalWidth+"×"+img.naturalHeight+", "+(Date.now()-t0)+" ms)","win",5000);
+      };
+      img.onerror=function(){
+        showToast("❌ assets/decor.webp INTROUVABLE — le dossier assets/ n'est pas en ligne à côté d'index.html","lose",7000);
+      };
+      img.src="assets/decor.webp?v="+Date.now();
+    }catch(_){}
   }catch(e){ try{ showToast("Test impossible : "+e.message,"lose",4000); }catch(_){} }
 }
 

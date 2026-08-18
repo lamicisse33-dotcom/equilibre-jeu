@@ -1,4 +1,4 @@
-# Dépôt GitHub — ÉQUILIBRE v97.18
+# Dépôt GitHub — ÉQUILIBRE v97.19
 
 ## Ce qu'il faut envoyer
 
@@ -37,7 +37,7 @@ en base64 dans la page, elles sont externes.
 ## Vérifications après l'envoi
 
 1. Ouvrir le site, **fermer complètement la PWA**, rouvrir.
-2. Contrôler `v97.18` au pied du menu — c'est le seul juge.
+2. Contrôler `v97.19` au pied du menu — c'est le seul juge.
 3. Lancer une partie : au premier bonus, le Sage doit apparaître avec son décor
    et ses quatre boules. Si le fond est noir, le dossier `assets/` manque.
 4. Passer en mode avion et rouvrir : le jeu doit se lancer hors ligne.
@@ -46,8 +46,8 @@ en base64 dans la page, elles sont externes.
 
 ## Versions
 
-- `BUILD_TAG = "v97.18"` dans `index.html`
-- `VERSION = "equilibre-v97-18"` dans `sw.js`
+- `BUILD_TAG = "v97.19"` dans `index.html`
+- `VERSION = "equilibre-v97-19"` dans `sw.js`
 
 Les deux ont été bumpés ensemble.
 
