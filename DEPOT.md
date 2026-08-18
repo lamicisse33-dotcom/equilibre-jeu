@@ -1,4 +1,4 @@
-# Dépôt GitHub — ÉQUILIBRE v97.10
+# Dépôt GitHub — ÉQUILIBRE v97.14
 
 ## Ce qu'il faut envoyer
 
@@ -37,7 +37,7 @@ en base64 dans la page, elles sont externes.
 ## Vérifications après l'envoi
 
 1. Ouvrir le site, **fermer complètement la PWA**, rouvrir.
-2. Contrôler `v97.10` au pied du menu — c'est le seul juge.
+2. Contrôler `v97.14` au pied du menu — c'est le seul juge.
 3. Lancer une partie : au premier bonus, le Sage doit apparaître avec son décor
    et ses quatre boules. Si le fond est noir, le dossier `assets/` manque.
 4. Passer en mode avion et rouvrir : le jeu doit se lancer hors ligne.
@@ -46,8 +46,8 @@ en base64 dans la page, elles sont externes.
 
 ## Versions
 
-- `BUILD_TAG = "v97.10"` dans `index.html`
-- `VERSION = "equilibre-v97-10"` dans `sw.js`
+- `BUILD_TAG = "v97.14"` dans `index.html`
+- `VERSION = "equilibre-v97-14"` dans `sw.js`
 
 Les deux ont été bumpés ensemble.
 
@@ -70,6 +70,12 @@ Les deux ont été bumpés ensemble.
   toucher et au retour dans l'app, menu comme partie.
 - **Ambiance du menu** (kalimba) désormais audible, distincte de la musique de partie
 - **Chaque touche répond** : clic et vibration brève sur tous les boutons
+- **Cartes légendaires** : Suprême et Fantôme n'apparaissent plus qu'une partie
+  sur trois (solo). En Duel, elles restent à chaque partie.
+- **Bonus Question** : banc porté de 40 à 184 questions, et mémoire durable —
+  aucune ne revient tant que les 184 n'ont pas été posées
+- **Taille des cartes stable** : quand la place manque, c'est le rideau qui cède,
+  plus jamais les cartes
 
 ---
 

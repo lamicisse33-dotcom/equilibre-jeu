@@ -2153,7 +2153,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v97.10";
+const BUILD_TAG="v97.14";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -2546,6 +2546,8 @@ function sauvegarder(){
       modeLeger:S.modeLeger,
       voixGuide:S.voixGuide,
       musique:S.musique,
+      questionsVues:S.questionsVues,
+      cptParties:S.cptParties,
       vibrations:S.vibrations,
       volume:S.volume,
       sonCoupe:S.sonCoupe,
@@ -2664,6 +2666,8 @@ function charger(){
     if(d.diff)       S.diff=d.diff;
     if(typeof d.modeLeger==="boolean") S.modeLeger=d.modeLeger;
     if(typeof d.musique==="boolean") S.musique=d.musique;
+    if(Array.isArray(d.questionsVues)) S.questionsVues=d.questionsVues;
+    if(typeof d.cptParties==="number") S.cptParties=d.cptParties;
     if(typeof d.vibrations==="boolean") S.vibrations=d.vibrations;
     if(typeof d.volume==="number") S.volume=d.volume;
     if(typeof d.sonCoupe==="boolean"){ S.sonCoupe=d.sonCoupe; try{ AUDIO.muted=d.sonCoupe; }catch(_){} }
@@ -3538,7 +3542,735 @@ const BONUS_QUESTIONS = [
     {t:"Donner crée un cycle d'abondance — la valeur créée revient amplifiée et multipliée",pts:100},
     {t:"Donner améliore son image publique et sa réputation dans la société",pts:50},
     {t:"Donner permet de réduire légalement sa charge fiscale chaque année",pts:20},
-    {t:"Donner est une obligation morale sans lien direct avec la prospérité personnelle",pts:0}]}
+    {t:"Donner est une obligation morale sans lien direct avec la prospérité personnelle",pts:0}]},
+  // ── SPIRITUALITÉ (banc élargi) ─────────────────────────────────
+  {q:"Qu'est-ce qui distingue la sagesse de la simple intelligence ?",pilier:"Spiritualité",rep:[
+    {t:"Savoir quand se taire et quand agir",pts:100},
+    {t:"Retenir beaucoup de connaissances",pts:50},
+    {t:"Résoudre vite les problèmes complexes",pts:20},
+    {t:"Avoir toujours raison dans un débat",pts:0}]},
+  {q:"Selon les traditions, que révèle vraiment la solitude choisie ?",pilier:"Spiritualité",rep:[
+    {t:"Ce que l'on est quand personne ne regarde",pts:100},
+    {t:"Un besoin de fuir les autres",pts:50},
+    {t:"Une preuve de force de caractère",pts:20},
+    {t:"Le signe d'une vie mal remplie",pts:0}]},
+  {q:"Quel est le premier pas vers la paix intérieure ?",pilier:"Spiritualité",rep:[
+    {t:"Accepter ce qu'on ne peut pas changer",pts:100},
+    {t:"Éliminer toutes les sources de stress",pts:50},
+    {t:"Réussir tout ce qu'on entreprend",pts:20},
+    {t:"Convaincre les autres d'avoir tort",pts:0}]},
+  {q:"Que transmet réellement un aîné à un plus jeune ?",pilier:"Spiritualité",rep:[
+    {t:"Une manière de traverser les épreuves",pts:100},
+    {t:"La liste de ses réussites",pts:50},
+    {t:"Ses biens et son patrimoine",pts:20},
+    {t:"Ses opinions sur le monde",pts:0}]},
+  {q:"Pourquoi le silence a-t-il une place dans toutes les traditions ?",pilier:"Spiritualité",rep:[
+    {t:"Il laisse entendre ce que le bruit couvre",pts:100},
+    {t:"Il évite de dire des bêtises",pts:50},
+    {t:"Il impressionne l'auditoire",pts:20},
+    {t:"Il marque la fin d'une discussion",pts:0}]},
+  {q:"Qu'est-ce que l'humilité véritable ?",pilier:"Spiritualité",rep:[
+    {t:"Se connaître avec justesse, sans se rabaisser",pts:100},
+    {t:"Se déprécier devant les autres",pts:50},
+    {t:"Refuser tous les compliments",pts:20},
+    {t:"Ne jamais parler de soi",pts:0}]},
+  {q:"Que signifie « être présent » à quelqu'un ?",pilier:"Spiritualité",rep:[
+    {t:"Écouter sans préparer sa réponse",pts:100},
+    {t:"Rester physiquement à ses côtés",pts:50},
+    {t:"Lui donner des conseils utiles",pts:20},
+    {t:"Résoudre son problème à sa place",pts:0}]},
+  {q:"Qu'apporte la gratitude à celui qui la pratique ?",pilier:"Spiritualité",rep:[
+    {t:"Elle change le regard sur ce qu'on a déjà",pts:100},
+    {t:"Elle attire la chance",pts:50},
+    {t:"Elle rend les autres redevables",pts:20},
+    {t:"Elle fait oublier les difficultés",pts:0}]},
+  {q:"Quelle est la racine la plus fréquente de la colère ?",pilier:"Spiritualité",rep:[
+    {t:"Une blessure ou une peur non dite",pts:100},
+    {t:"Un manque d'éducation",pts:50},
+    {t:"La faute de la personne en face",pts:20},
+    {t:"Un excès de fatigue",pts:0}]},
+  {q:"Que veut dire « lâcher prise » ?",pilier:"Spiritualité",rep:[
+    {t:"Cesser de lutter contre ce qui est déjà arrivé",pts:100},
+    {t:"Abandonner ses objectifs",pts:50},
+    {t:"Ne plus se soucier de rien",pts:20},
+    {t:"Laisser les autres décider",pts:0}]},
+  {q:"Pourquoi les rites ont-ils traversé les siècles ?",pilier:"Spiritualité",rep:[
+    {t:"Ils donnent une forme aux passages de la vie",pts:100},
+    {t:"Ils occupent le temps libre",pts:50},
+    {t:"Ils rassemblent les familles",pts:20},
+    {t:"Ils rappellent les ancêtres",pts:0}]},
+  {q:"Qu'est-ce qui nourrit le plus l'âme selon les sages ?",pilier:"Spiritualité",rep:[
+    {t:"Donner sans attendre de retour",pts:100},
+    {t:"Recevoir de la reconnaissance",pts:50},
+    {t:"Atteindre ses objectifs",pts:20},
+    {t:"Comprendre le sens de la vie",pts:0}]},
+  {q:"Que révèle la manière dont on traite un inconnu ?",pilier:"Spiritualité",rep:[
+    {t:"Ce que l'on est vraiment",pts:100},
+    {t:"Notre éducation",pts:50},
+    {t:"Notre humeur du jour",pts:20},
+    {t:"Notre position sociale",pts:0}]},
+  {q:"Comment reconnaît-on une décision juste ?",pilier:"Spiritualité",rep:[
+    {t:"Elle tient encore debout le lendemain matin",pts:100},
+    {t:"Elle plaît à l'entourage",pts:50},
+    {t:"Elle est prise rapidement",pts:20},
+    {t:"Elle rapporte quelque chose",pts:0}]},
+  {q:"Qu'est-ce que le courage, au fond ?",pilier:"Spiritualité",rep:[
+    {t:"Avancer malgré la peur",pts:100},
+    {t:"Ne rien craindre",pts:50},
+    {t:"Défier plus fort que soi",pts:20},
+    {t:"Cacher ses faiblesses",pts:0}]},
+  {q:"Que nous apprend une erreur assumée ?",pilier:"Spiritualité",rep:[
+    {t:"Plus qu'une réussite facile",pts:100},
+    {t:"Qu'il faut être prudent",pts:50},
+    {t:"À ne pas recommencer",pts:20},
+    {t:"Que personne n'est parfait",pts:0}]},
+  {q:"Pourquoi la patience est-elle si rare ?",pilier:"Spiritualité",rep:[
+    {t:"Elle demande de renoncer au contrôle immédiat",pts:100},
+    {t:"Le monde va trop vite",pts:50},
+    {t:"Elle passe pour de la faiblesse",pts:20},
+    {t:"Elle n'est plus enseignée",pts:0}]},
+  {q:"Qu'est-ce qui distingue la foi de la certitude ?",pilier:"Spiritualité",rep:[
+    {t:"Elle avance sans preuve mais pas sans raison",pts:100},
+    {t:"Elle refuse le doute",pts:50},
+    {t:"Elle repose sur la tradition",pts:20},
+    {t:"Elle ne se discute pas",pts:0}]},
+  {q:"Que signifie honorer ses ancêtres ?",pilier:"Spiritualité",rep:[
+    {t:"Faire vivre ce qu'ils ont semé",pts:100},
+    {t:"Répéter leurs gestes à l'identique",pts:50},
+    {t:"Parler d'eux avec respect",pts:20},
+    {t:"Conserver leurs objets",pts:0}]},
+  {q:"Quelle est la plus grande liberté selon les anciens ?",pilier:"Spiritualité",rep:[
+    {t:"Ne plus dépendre du regard des autres",pts:100},
+    {t:"Aller où l'on veut",pts:50},
+    {t:"Choisir son métier",pts:20},
+    {t:"Dire ce que l'on pense",pts:0}]},
+  {q:"Qu'apporte le fait de méditer régulièrement ?",pilier:"Spiritualité",rep:[
+    {t:"Voir ses pensées sans se confondre avec elles",pts:100},
+    {t:"Vider complètement son esprit",pts:50},
+    {t:"Se détendre après une journée",pts:20},
+    {t:"Améliorer sa concentration",pts:0}]},
+  {q:"Pourquoi dit-on que donner enrichit ?",pilier:"Spiritualité",rep:[
+    {t:"Cela crée un lien qui dépasse l'objet donné",pts:100},
+    {t:"Cela revient toujours d'une manière ou d'une autre",pts:50},
+    {t:"Cela procure une bonne image",pts:20},
+    {t:"Cela allège de ce qu'on possède",pts:0}]},
+  {q:"Que faire d'une épreuve que l'on ne comprend pas ?",pilier:"Spiritualité",rep:[
+    {t:"La traverser d'abord, la comprendre plus tard",pts:100},
+    {t:"Chercher son sens immédiatement",pts:50},
+    {t:"L'oublier au plus vite",pts:20},
+    {t:"Trouver un responsable",pts:0}]},
+  {q:"Qu'est-ce qui rend une parole vraie ?",pilier:"Spiritualité",rep:[
+    {t:"Elle engage celui qui la prononce",pts:100},
+    {t:"Elle est prononcée avec assurance",pts:50},
+    {t:"Elle correspond aux faits",pts:20},
+    {t:"Elle est partagée par beaucoup",pts:0}]},
+  // ── AMOUR (banc élargi) ─────────────────────────────────
+  {q:"Qu'est-ce qui fait durer un lien plus que la passion ?",pilier:"Amour",rep:[
+    {t:"La confiance reconstruite chaque jour",pts:100},
+    {t:"L'attirance qui se renouvelle",pts:50},
+    {t:"Les projets menés ensemble",pts:20},
+    {t:"Le temps passé côte à côte",pts:0}]},
+  {q:"Que dit d'une relation la façon de se disputer ?",pilier:"Amour",rep:[
+    {t:"Presque tout : on se protège ou on se blesse",pts:100},
+    {t:"Le tempérament de chacun",pts:50},
+    {t:"Le niveau de fatigue",pts:20},
+    {t:"La gravité du sujet",pts:0}]},
+  {q:"Quel est le plus beau cadeau à offrir à un proche ?",pilier:"Amour",rep:[
+    {t:"Du temps sans contrepartie",pts:100},
+    {t:"Un objet longtemps désiré",pts:50},
+    {t:"Un conseil qui l'aide",pts:20},
+    {t:"Une surprise mémorable",pts:0}]},
+  {q:"Qu'attend d'abord quelqu'un qui souffre ?",pilier:"Amour",rep:[
+    {t:"Être entendu, pas réparé",pts:100},
+    {t:"Des solutions concrètes",pts:50},
+    {t:"Qu'on lui change les idées",pts:20},
+    {t:"Qu'on relativise sa peine",pts:0}]},
+  {q:"Que révèle la jalousie dans un couple ?",pilier:"Amour",rep:[
+    {t:"Une peur de perdre plus qu'un manque de confiance",pts:100},
+    {t:"Un amour très fort",pts:50},
+    {t:"Un comportement à surveiller",pts:20},
+    {t:"Un tempérament possessif",pts:0}]},
+  {q:"Comment reconnaît-on une amitié solide ?",pilier:"Amour",rep:[
+    {t:"Elle supporte le désaccord",pts:100},
+    {t:"Elle traverse les années",pts:50},
+    {t:"Elle se voit souvent",pts:20},
+    {t:"Elle rend service au bon moment",pts:0}]},
+  {q:"Qu'est-ce qui blesse le plus dans une brouille ?",pilier:"Amour",rep:[
+    {t:"Le silence qui suit",pts:100},
+    {t:"Les mots prononcés",pts:50},
+    {t:"Le sujet du désaccord",pts:20},
+    {t:"L'absence d'excuses",pts:0}]},
+  {q:"Que signifie aimer quelqu'un tel qu'il est ?",pilier:"Amour",rep:[
+    {t:"Renoncer à le corriger",pts:100},
+    {t:"Accepter ses défauts en silence",pts:50},
+    {t:"Ne rien lui demander",pts:20},
+    {t:"Fermer les yeux sur tout",pts:0}]},
+  {q:"Quelle est la première condition d'un pardon sincère ?",pilier:"Amour",rep:[
+    {t:"Que la blessure soit d'abord reconnue",pts:100},
+    {t:"Que le temps ait passé",pts:50},
+    {t:"Que la faute soit réparée",pts:20},
+    {t:"Que l'autre s'excuse",pts:0}]},
+  {q:"Qu'est-ce qui nourrit un couple au quotidien ?",pilier:"Amour",rep:[
+    {t:"Les petites attentions répétées",pts:100},
+    {t:"Les grands moments partagés",pts:50},
+    {t:"Les projets communs",pts:20},
+    {t:"Les discussions profondes",pts:0}]},
+  {q:"Pourquoi certaines familles se déchirent-elles pour un héritage ?",pilier:"Amour",rep:[
+    {t:"Ce n'est jamais l'argent, c'est la place de chacun",pts:100},
+    {t:"L'argent révèle les caractères",pts:50},
+    {t:"Les règles ne sont pas claires",pts:20},
+    {t:"La douleur du deuil s'exprime mal",pts:0}]},
+  {q:"Que faire quand un proche s'éloigne sans explication ?",pilier:"Amour",rep:[
+    {t:"Laisser la porte ouverte sans forcer",pts:100},
+    {t:"Exiger une explication",pts:50},
+    {t:"Prendre ses distances aussi",pts:20},
+    {t:"Passer par un intermédiaire",pts:0}]},
+  {q:"Qu'est-ce qui manque le plus aux enfants aujourd'hui ?",pilier:"Amour",rep:[
+    {t:"Une attention pleine, sans écran",pts:100},
+    {t:"Plus de temps avec leurs parents",pts:50},
+    {t:"Des règles plus fermes",pts:20},
+    {t:"Des activités enrichissantes",pts:0}]},
+  {q:"Comment se transmet la tendresse dans une famille ?",pilier:"Amour",rep:[
+    {t:"Par les gestes ordinaires plus que par les mots",pts:100},
+    {t:"Par ce qu'on dit à voix haute",pts:50},
+    {t:"Par les fêtes et les réunions",pts:20},
+    {t:"Par ce qu'on offre",pts:0}]},
+  {q:"Qu'apporte le fait de s'excuser en premier ?",pilier:"Amour",rep:[
+    {t:"La liberté de ne plus attendre l'autre",pts:100},
+    {t:"Une victoire morale",pts:50},
+    {t:"La fin du conflit",pts:20},
+    {t:"La reconnaissance de l'autre",pts:0}]},
+  {q:"Que révèle la façon dont on parle de son ex ?",pilier:"Amour",rep:[
+    {t:"Ce qu'on a réussi à digérer",pts:100},
+    {t:"La qualité de la relation passée",pts:50},
+    {t:"La loyauté de chacun",pts:20},
+    {t:"La raison de la rupture",pts:0}]},
+  {q:"Qu'est-ce qui use le plus un couple sur la durée ?",pilier:"Amour",rep:[
+    {t:"Les non-dits accumulés",pts:100},
+    {t:"Les disputes fréquentes",pts:50},
+    {t:"La routine du quotidien",pts:20},
+    {t:"Les différences de caractère",pts:0}]},
+  {q:"Comment aider quelqu'un qui refuse toute aide ?",pilier:"Amour",rep:[
+    {t:"Rester disponible sans insister",pts:100},
+    {t:"Insister jusqu'à ce qu'il cède",pts:50},
+    {t:"Passer par un proche",pts:20},
+    {t:"Attendre qu'il touche le fond",pts:0}]},
+  {q:"Que signifie être fidèle, au-delà du corps ?",pilier:"Amour",rep:[
+    {t:"Tenir la parole donnée, même seul",pts:100},
+    {t:"Ne pas regarder ailleurs",pts:50},
+    {t:"Tout partager avec l'autre",pts:20},
+    {t:"Résister aux tentations",pts:0}]},
+  {q:"Qu'est-ce qui rend une réconciliation durable ?",pilier:"Amour",rep:[
+    {t:"Comprendre ce qui a vraiment blessé",pts:100},
+    {t:"Décider de tourner la page",pts:50},
+    {t:"Ne plus en reparler",pts:20},
+    {t:"Faire un geste fort",pts:0}]},
+  {q:"Pourquoi dit-on qu'on choisit ses amis mais pas sa famille ?",pilier:"Amour",rep:[
+    {t:"Avec la famille, le lien survit au désaccord",pts:100},
+    {t:"La famille est imposée",pts:50},
+    {t:"On ne se ressemble pas forcément",pts:20},
+    {t:"Les amis se méritent",pts:0}]},
+  {q:"Que faire d'une amitié devenue à sens unique ?",pilier:"Amour",rep:[
+    {t:"Dire ce qu'on ressent avant de partir",pts:100},
+    {t:"S'éloigner discrètement",pts:50},
+    {t:"Continuer par habitude",pts:20},
+    {t:"Attendre un geste de l'autre",pts:0}]},
+  {q:"Qu'est-ce que la loyauté dans un lien ?",pilier:"Amour",rep:[
+    {t:"Défendre l'absent comme s'il était là",pts:100},
+    {t:"Ne jamais contredire l'autre",pts:50},
+    {t:"Garder tous ses secrets",pts:20},
+    {t:"Prendre son parti en toutes circonstances",pts:0}]},
+  {q:"Quel est le signe qu'un lien est vraiment guéri ?",pilier:"Amour",rep:[
+    {t:"On peut en parler sans que ça pique",pts:100},
+    {t:"On n'y pense plus",pts:50},
+    {t:"On a repris les habitudes",pts:20},
+    {t:"On a pardonné une fois pour toutes",pts:0}]},
+  // ── SANTÉ (banc élargi) ─────────────────────────────────
+  {q:"Qu'est-ce qui use le plus le corps sur le long terme ?",pilier:"Santé",rep:[
+    {t:"Le stress chronique mal évacué",pts:100},
+    {t:"Le manque d'exercice",pts:50},
+    {t:"Une alimentation déséquilibrée",pts:20},
+    {t:"Les excès occasionnels",pts:0}]},
+  {q:"Quel est le meilleur signe d'un sommeil réparateur ?",pilier:"Santé",rep:[
+    {t:"Se réveiller avant le réveil, reposé",pts:100},
+    {t:"Dormir huit heures",pts:50},
+    {t:"S'endormir en quelques minutes",pts:20},
+    {t:"Ne pas rêver",pts:0}]},
+  {q:"Que faire quand la fatigue persiste malgré le repos ?",pilier:"Santé",rep:[
+    {t:"Chercher ce qui pèse, pas seulement dormir plus",pts:100},
+    {t:"Dormir davantage",pts:50},
+    {t:"Prendre des vitamines",pts:20},
+    {t:"Réduire ses activités",pts:0}]},
+  {q:"Quelle habitude protège le mieux le cœur ?",pilier:"Santé",rep:[
+    {t:"Marcher chaque jour sans y penser",pts:100},
+    {t:"Faire du sport intensif le week-end",pts:50},
+    {t:"Surveiller son alimentation",pts:20},
+    {t:"Éviter toute source de stress",pts:0}]},
+  {q:"Pourquoi le corps réclame-t-il du mouvement ?",pilier:"Santé",rep:[
+    {t:"Il est fait pour ça, pas pour être assis",pts:100},
+    {t:"Pour brûler les calories",pts:50},
+    {t:"Pour rester mince",pts:20},
+    {t:"Pour évacuer les tensions",pts:0}]},
+  {q:"Qu'est-ce qui accélère le plus la guérison ?",pilier:"Santé",rep:[
+    {t:"Le repos accepté sans culpabilité",pts:100},
+    {t:"Les traitements suivis à la lettre",pts:50},
+    {t:"L'optimisme",pts:20},
+    {t:"Le soutien de l'entourage",pts:0}]},
+  {q:"Quel est le premier réflexe face à une douleur qui dure ?",pilier:"Santé",rep:[
+    {t:"Consulter avant qu'elle s'installe",pts:100},
+    {t:"Attendre qu'elle passe",pts:50},
+    {t:"Chercher sur internet",pts:20},
+    {t:"Prendre un antidouleur",pts:0}]},
+  {q:"Que dit la respiration de notre état intérieur ?",pilier:"Santé",rep:[
+    {t:"Elle trahit l'angoisse avant la conscience",pts:100},
+    {t:"Elle suit l'effort physique",pts:50},
+    {t:"Elle dépend de la posture",pts:20},
+    {t:"Elle varie avec l'âge",pts:0}]},
+  {q:"Qu'est-ce qui manque le plus dans l'assiette moderne ?",pilier:"Santé",rep:[
+    {t:"Des aliments simples, peu transformés",pts:100},
+    {t:"Des protéines",pts:50},
+    {t:"Des vitamines",pts:20},
+    {t:"Des fibres",pts:0}]},
+  {q:"Pourquoi boire de l'eau régulièrement compte-t-il tant ?",pilier:"Santé",rep:[
+    {t:"Tout le corps travaille avec elle",pts:100},
+    {t:"Cela évite la soif",pts:50},
+    {t:"Cela aide à maigrir",pts:20},
+    {t:"Cela nettoie l'organisme",pts:0}]},
+  {q:"Que faire d'une blessure ancienne qui gêne encore ?",pilier:"Santé",rep:[
+    {t:"La faire évaluer plutôt que la contourner",pts:100},
+    {t:"Éviter les mouvements qui font mal",pts:50},
+    {t:"S'habituer à vivre avec",pts:20},
+    {t:"Renforcer autour",pts:0}]},
+  {q:"Quel est l'effet le plus sous-estimé du grand air ?",pilier:"Santé",rep:[
+    {t:"Il remet les idées en place autant que le corps",pts:100},
+    {t:"Il oxygène le sang",pts:50},
+    {t:"Il fatigue sainement",pts:20},
+    {t:"Il change du quotidien",pts:0}]},
+  {q:"Comment reconnaît-on un vrai repos ?",pilier:"Santé",rep:[
+    {t:"On y pense à autre chose sans effort",pts:100},
+    {t:"On ne fait rien",pts:50},
+    {t:"On dort",pts:20},
+    {t:"On se coupe du monde",pts:0}]},
+  {q:"Qu'est-ce qui aide le plus à tenir une bonne habitude ?",pilier:"Santé",rep:[
+    {t:"La rendre si petite qu'on ne peut pas la rater",pts:100},
+    {t:"La motivation du départ",pts:50},
+    {t:"Un objectif ambitieux",pts:20},
+    {t:"Le regard des autres",pts:0}]},
+  {q:"Pourquoi les repas partagés font-ils du bien ?",pilier:"Santé",rep:[
+    {t:"On mange plus lentement et on se sent relié",pts:100},
+    {t:"La nourriture est meilleure",pts:50},
+    {t:"Cela crée des souvenirs",pts:20},
+    {t:"On mange plus équilibré",pts:0}]},
+  {q:"Que révèle un appétit qui change brusquement ?",pilier:"Santé",rep:[
+    {t:"Souvent l'état intérieur avant le corps",pts:100},
+    {t:"Un problème digestif",pts:50},
+    {t:"Un changement de saison",pts:20},
+    {t:"Une fatigue passagère",pts:0}]},
+  {q:"Quel est le meilleur moment pour commencer à prendre soin de soi ?",pilier:"Santé",rep:[
+    {t:"Aujourd'hui, même modestement",pts:100},
+    {t:"Après les fêtes",pts:50},
+    {t:"Quand on aura le temps",pts:20},
+    {t:"Dès le premier signe d'alerte",pts:0}]},
+  {q:"Qu'est-ce qui protège le mieux la mémoire avec l'âge ?",pilier:"Santé",rep:[
+    {t:"Apprendre du nouveau régulièrement",pts:100},
+    {t:"Faire des mots croisés",pts:50},
+    {t:"Bien dormir",pts:20},
+    {t:"Manger du poisson",pts:0}]},
+  {q:"Pourquoi s'étirer après l'effort ?",pilier:"Santé",rep:[
+    {t:"Pour rendre au corps ce que l'effort a raccourci",pts:100},
+    {t:"Pour éviter les courbatures",pts:50},
+    {t:"Pour se détendre",pts:20},
+    {t:"Pour gagner en souplesse",pts:0}]},
+  {q:"Que faire quand on manque de motivation pour bouger ?",pilier:"Santé",rep:[
+    {t:"Sortir cinq minutes, sans objectif",pts:100},
+    {t:"Attendre l'envie",pts:50},
+    {t:"Se fixer un défi",pts:20},
+    {t:"Trouver un partenaire",pts:0}]},
+  {q:"Qu'est-ce que la santé, au fond ?",pilier:"Santé",rep:[
+    {t:"Pouvoir faire ce qui compte pour soi",pts:100},
+    {t:"L'absence de maladie",pts:50},
+    {t:"Un corps en forme",pts:20},
+    {t:"De bons résultats d'analyses",pts:0}]},
+  {q:"Pourquoi le silence repose-t-il autant que le sommeil ?",pilier:"Santé",rep:[
+    {t:"L'attention aussi se fatigue",pts:100},
+    {t:"Il calme le rythme cardiaque",pts:50},
+    {t:"Il évite les distractions",pts:20},
+    {t:"Il favorise la réflexion",pts:0}]},
+  {q:"Quel est l'ennemi discret d'une bonne posture ?",pilier:"Santé",rep:[
+    {t:"Rester immobile trop longtemps",pts:100},
+    {t:"Le poids des sacs",pts:50},
+    {t:"Un mauvais matelas",pts:20},
+    {t:"La faiblesse musculaire",pts:0}]},
+  {q:"Que gagne-t-on à ralentir volontairement ?",pilier:"Santé",rep:[
+    {t:"On sent ce qu'on ne sentait plus",pts:100},
+    {t:"On fait moins d'erreurs",pts:50},
+    {t:"On se fatigue moins",pts:20},
+    {t:"On profite davantage",pts:0}]},
+  // ── ARGENT (banc élargi) ─────────────────────────────────
+  {q:"Quelle est la première règle d'une gestion saine ?",pilier:"Argent",rep:[
+    {t:"Dépenser moins que ce qu'on gagne",pts:100},
+    {t:"Investir tôt",pts:50},
+    {t:"Diversifier ses sources",pts:20},
+    {t:"Négocier ses achats",pts:0}]},
+  {q:"Qu'est-ce qui distingue une dépense d'un investissement ?",pilier:"Argent",rep:[
+    {t:"Ce qu'il en reste dans six mois",pts:100},
+    {t:"Le montant engagé",pts:50},
+    {t:"Le plaisir immédiat",pts:20},
+    {t:"La nécessité du besoin",pts:0}]},
+  {q:"Pourquoi l'épargne régulière bat-elle le gros coup ?",pilier:"Argent",rep:[
+    {t:"Le temps travaille pour celui qui commence tôt",pts:100},
+    {t:"Elle est plus sûre",pts:50},
+    {t:"Elle demande moins d'efforts",pts:20},
+    {t:"Elle évite les risques",pts:0}]},
+  {q:"Que faire face à une occasion « à ne pas manquer » ?",pilier:"Argent",rep:[
+    {t:"Attendre une nuit avant de décider",pts:100},
+    {t:"Vérifier auprès d'un proche",pts:50},
+    {t:"Saisir si le prix est bon",pts:20},
+    {t:"Comparer avec d'autres offres",pts:0}]},
+  {q:"Qu'est-ce qui ruine le plus souvent une petite entreprise ?",pilier:"Argent",rep:[
+    {t:"La trésorerie, pas le manque de clients",pts:100},
+    {t:"Une mauvaise idée de départ",pts:50},
+    {t:"La concurrence",pts:20},
+    {t:"Le manque de moyens",pts:0}]},
+  {q:"Quelle est la vraie richesse selon les anciens ?",pilier:"Argent",rep:[
+    {t:"Ne pas avoir besoin de plus",pts:100},
+    {t:"Posséder beaucoup",pts:50},
+    {t:"Gagner régulièrement",pts:20},
+    {t:"Ne rien devoir à personne",pts:0}]},
+  {q:"Pourquoi prêter de l'argent à un proche est-il délicat ?",pilier:"Argent",rep:[
+    {t:"Cela transforme le lien en dette",pts:100},
+    {t:"On risque de ne pas être remboursé",pts:50},
+    {t:"Cela crée des jaloux",pts:20},
+    {t:"Cela devient une habitude",pts:0}]},
+  {q:"Que dit la façon de dépenser sur quelqu'un ?",pilier:"Argent",rep:[
+    {t:"Ce qui compte vraiment pour lui",pts:100},
+    {t:"Son niveau de revenu",pts:50},
+    {t:"Son éducation",pts:20},
+    {t:"Sa générosité",pts:0}]},
+  {q:"Quel est le meilleur moment pour parler d'argent en famille ?",pilier:"Argent",rep:[
+    {t:"Avant que le besoin ne se présente",pts:100},
+    {t:"Quand la situation est bonne",pts:50},
+    {t:"Lors des réunions de famille",pts:20},
+    {t:"Quand un problème survient",pts:0}]},
+  {q:"Qu'est-ce qu'un budget réussi ?",pilier:"Argent",rep:[
+    {t:"Celui qu'on tient sans y penser",pts:100},
+    {t:"Celui qui prévoit tout",pts:50},
+    {t:"Celui qui dégage le plus d'épargne",pts:20},
+    {t:"Celui qui est écrit précisément",pts:0}]},
+  {q:"Pourquoi la dette pèse-t-elle plus que son montant ?",pilier:"Argent",rep:[
+    {t:"Elle occupe l'esprit en permanence",pts:100},
+    {t:"Les intérêts s'accumulent",pts:50},
+    {t:"Elle limite les choix",pts:20},
+    {t:"Elle inquiète l'entourage",pts:0}]},
+  {q:"Que faire d'une rentrée d'argent inattendue ?",pilier:"Argent",rep:[
+    {t:"En mettre la moitié de côté avant d'y toucher",pts:100},
+    {t:"La dépenser pour se faire plaisir",pts:50},
+    {t:"La placer entièrement",pts:20},
+    {t:"Rembourser ce qu'on doit",pts:0}]},
+  {q:"Qu'est-ce qui crée la prospérité d'un commerce de quartier ?",pilier:"Argent",rep:[
+    {t:"La confiance des habitués",pts:100},
+    {t:"Les prix bas",pts:50},
+    {t:"L'emplacement",pts:20},
+    {t:"La qualité des produits",pts:0}]},
+  {q:"Pourquoi transmettre un métier vaut-il mieux qu'un capital ?",pilier:"Argent",rep:[
+    {t:"Le savoir-faire ne se dépense pas",pts:100},
+    {t:"Il rapporte plus longtemps",pts:50},
+    {t:"Il évite les disputes",pts:20},
+    {t:"Il donne une place dans la société",pts:0}]},
+  {q:"Quelle erreur revient le plus souvent avec un premier salaire ?",pilier:"Argent",rep:[
+    {t:"Ajuster son train de vie à l'euro près",pts:100},
+    {t:"Ne pas épargner",pts:50},
+    {t:"Dépenser en sorties",pts:20},
+    {t:"Acheter à crédit",pts:0}]},
+  {q:"Qu'est-ce qui protège le mieux d'un coup dur financier ?",pilier:"Argent",rep:[
+    {t:"Quelques mois de dépenses de côté",pts:100},
+    {t:"Une assurance",pts:50},
+    {t:"Un bon salaire",pts:20},
+    {t:"Une famille solidaire",pts:0}]},
+  {q:"Que signifie « l'argent est un serviteur, pas un maître » ?",pilier:"Argent",rep:[
+    {t:"Il doit servir un projet, pas le remplacer",pts:100},
+    {t:"Il faut le contrôler strictement",pts:50},
+    {t:"Il ne fait pas le bonheur",pts:20},
+    {t:"Il faut savoir le dépenser",pts:0}]},
+  {q:"Pourquoi négocier fait-il partie du respect ?",pilier:"Argent",rep:[
+    {t:"Chacun défend sa valeur en connaissance de cause",pts:100},
+    {t:"Cela fait baisser le prix",pts:50},
+    {t:"C'est un usage établi",pts:20},
+    {t:"Cela évite de se faire avoir",pts:0}]},
+  {q:"Qu'est-ce qui fait la valeur d'un travail ?",pilier:"Argent",rep:[
+    {t:"Le problème qu'il résout pour quelqu'un",pts:100},
+    {t:"Le temps qu'il demande",pts:50},
+    {t:"La difficulté de l'exécuter",pts:20},
+    {t:"La rareté de la compétence",pts:0}]},
+  {q:"Que faire quand on n'arrive plus à épargner ?",pilier:"Argent",rep:[
+    {t:"Regarder les petites dépenses répétées",pts:100},
+    {t:"Chercher un revenu supplémentaire",pts:50},
+    {t:"Réduire les gros postes",pts:20},
+    {t:"Attendre une meilleure période",pts:0}]},
+  {q:"Pourquoi les riches parlent-ils peu d'argent ?",pilier:"Argent",rep:[
+    {t:"Ils parlent de ce qu'ils construisent",pts:100},
+    {t:"Par discrétion",pts:50},
+    {t:"Pour éviter les envieux",pts:20},
+    {t:"Cela ne se fait pas",pts:0}]},
+  {q:"Qu'est-ce qu'une bonne affaire ?",pilier:"Argent",rep:[
+    {t:"Celle dont on est content un an après",pts:100},
+    {t:"Celle qu'on paie moins cher",pts:50},
+    {t:"Celle qu'on trouve avant les autres",pts:20},
+    {t:"Celle qui se revend bien",pts:0}]},
+  {q:"Que révèle la manière de tenir ses comptes ?",pilier:"Argent",rep:[
+    {t:"Le rapport qu'on entretient avec l'avenir",pts:100},
+    {t:"La rigueur de la personne",pts:50},
+    {t:"Le niveau d'éducation",pts:20},
+    {t:"L'importance donnée à l'argent",pts:0}]},
+  {q:"Pourquoi l'entraide financière tient-elle dans certaines communautés ?",pilier:"Argent",rep:[
+    {t:"Chacun sait qu'il sera aidé à son tour",pts:100},
+    {t:"Les liens familiaux sont forts",pts:50},
+    {t:"La tradition l'impose",pts:20},
+    {t:"Les banques sont absentes",pts:0}]},
+  // ── SPIRITUALITÉ (vague 2) ────────────────────────────────────
+  {q:"Que faut-il pour qu'une promesse tienne dans le temps ?",pilier:"Spiritualité",rep:[
+    {t:"Qu'elle coûte quelque chose à celui qui la fait",pts:100},
+    {t:"Qu'elle soit dite devant témoins",pts:50},
+    {t:"Qu'elle soit écrite",pts:20},
+    {t:"Qu'elle soit répétée souvent",pts:0}]},
+  {q:"Qu'est-ce qui pousse un homme à se relever après une chute ?",pilier:"Spiritualité",rep:[
+    {t:"Une raison plus grande que lui-même",pts:100},
+    {t:"La honte du regard des autres",pts:50},
+    {t:"L'orgueil blessé",pts:20},
+    {t:"Le besoin d'argent",pts:0}]},
+  {q:"Que signifie le mot « respect » dans les traditions africaines ?",pilier:"Spiritualité",rep:[
+    {t:"Reconnaître la place de chacun dans l'ordre du monde",pts:100},
+    {t:"Obéir aux plus âgés",pts:50},
+    {t:"Parler à voix basse devant un aîné",pts:20},
+    {t:"Ne jamais contredire",pts:0}]},
+  {q:"Pourquoi raconte-t-on des contes aux enfants ?",pilier:"Spiritualité",rep:[
+    {t:"Pour leur donner des repères avant les explications",pts:100},
+    {t:"Pour les endormir",pts:50},
+    {t:"Pour occuper les soirées",pts:20},
+    {t:"Pour transmettre l'histoire du village",pts:0}]},
+  {q:"Qu'est-ce qui reste d'une personne après sa mort ?",pilier:"Spiritualité",rep:[
+    {t:"Ce qu'elle a éveillé chez les autres",pts:100},
+    {t:"Son nom",pts:50},
+    {t:"Ses biens",pts:20},
+    {t:"Ses écrits et ses photos",pts:0}]},
+  {q:"Comment reconnaît-on un homme de parole ?",pilier:"Spiritualité",rep:[
+    {t:"Il refuse de promettre ce qu'il ne peut pas tenir",pts:100},
+    {t:"Il tient toutes ses promesses",pts:50},
+    {t:"Il parle peu",pts:20},
+    {t:"Il s'engage facilement",pts:0}]},
+  {q:"Que gagne-t-on à pardonner à quelqu'un qui ne le demande pas ?",pilier:"Spiritualité",rep:[
+    {t:"On cesse de lui donner du pouvoir sur soi",pts:100},
+    {t:"On se sent supérieur",pts:50},
+    {t:"On garde sa dignité",pts:20},
+    {t:"On évite un conflit",pts:0}]},
+  {q:"Qu'est-ce qui rend une vie réussie selon les sages ?",pilier:"Spiritualité",rep:[
+    {t:"Avoir été fidèle à ce qu'on croyait juste",pts:100},
+    {t:"Avoir atteint ses objectifs",pts:50},
+    {t:"Avoir été heureux",pts:20},
+    {t:"Avoir laissé une trace",pts:0}]},
+  {q:"Pourquoi l'orgueil est-il considéré comme un piège ?",pilier:"Spiritualité",rep:[
+    {t:"Il empêche d'apprendre de plus petit que soi",pts:100},
+    {t:"Il éloigne les amis",pts:50},
+    {t:"Il mène à la chute",pts:20},
+    {t:"Il rend aveugle aux dangers",pts:0}]},
+  {q:"Que faire quand on ne sait pas quoi décider ?",pilier:"Spiritualité",rep:[
+    {t:"Attendre que le calme revienne avant de choisir",pts:100},
+    {t:"Demander l'avis d'un proche",pts:50},
+    {t:"Choisir au hasard",pts:20},
+    {t:"Suivre son premier instinct",pts:0}]},
+  {q:"Qu'est-ce que la dignité ?",pilier:"Spiritualité",rep:[
+    {t:"Ce qui reste quand on a tout perdu",pts:100},
+    {t:"Le respect qu'on inspire",pts:50},
+    {t:"Une tenue irréprochable",pts:20},
+    {t:"La fierté de son rang",pts:0}]},
+  {q:"Que dit un homme de lui-même par sa façon de remercier ?",pilier:"Spiritualité",rep:[
+    {t:"S'il a vu l'effort derrière le geste",pts:100},
+    {t:"S'il est bien élevé",pts:50},
+    {t:"S'il est généreux",pts:20},
+    {t:"S'il est sincère",pts:0}]},
+  // ── AMOUR (vague 2) ────────────────────────────────────
+  {q:"Que faut-il pour qu'un couple traverse une crise grave ?",pilier:"Amour",rep:[
+    {t:"Que chacun accepte d'y avoir sa part",pts:100},
+    {t:"Que le temps fasse son œuvre",pts:50},
+    {t:"Qu'on en parle beaucoup",pts:20},
+    {t:"Qu'on trouve un coupable",pts:0}]},
+  {q:"Qu'est-ce qui manque à un enfant qui a tout matériellement ?",pilier:"Amour",rep:[
+    {t:"Qu'on s'intéresse à ce qu'il vit, pas à ce qu'il fait",pts:100},
+    {t:"De la discipline",pts:50},
+    {t:"Des limites claires",pts:20},
+    {t:"Du temps avec ses parents",pts:0}]},
+  {q:"Pourquoi certains amis d'enfance restent-ils toute la vie ?",pilier:"Amour",rep:[
+    {t:"Ils ont connu qui on était avant les masques",pts:100},
+    {t:"Ils habitent la même ville",pts:50},
+    {t:"Ils partagent des souvenirs",pts:20},
+    {t:"Ils se ressemblent",pts:0}]},
+  {q:"Qu'est-ce qui abîme le plus la confiance ?",pilier:"Amour",rep:[
+    {t:"Découvrir qu'on ne savait pas tout",pts:100},
+    {t:"Une trahison ouverte",pts:50},
+    {t:"Des mensonges répétés",pts:20},
+    {t:"Une promesse non tenue",pts:0}]},
+  {q:"Que dire à quelqu'un qui vient de perdre un proche ?",pilier:"Amour",rep:[
+    {t:"Peu de mots, et rester",pts:100},
+    {t:"Qu'il était quelqu'un de bien",pts:50},
+    {t:"Que le temps aidera",pts:20},
+    {t:"Qu'il faut être fort",pts:0}]},
+  {q:"Comment savoir si on aime encore ?",pilier:"Amour",rep:[
+    {t:"On a envie de raconter sa journée à cette personne",pts:100},
+    {t:"On ressent de l'attirance",pts:50},
+    {t:"On souffre de son absence",pts:20},
+    {t:"On fait des projets",pts:0}]},
+  {q:"Qu'est-ce qui unit une famille au-delà du sang ?",pilier:"Amour",rep:[
+    {t:"Ce qu'on a traversé ensemble",pts:100},
+    {t:"Les repas partagés",pts:50},
+    {t:"Les valeurs communes",pts:20},
+    {t:"Le nom qu'on porte",pts:0}]},
+  {q:"Pourquoi est-il si difficile de dire « j'ai besoin de toi » ?",pilier:"Amour",rep:[
+    {t:"Cela met à découvert",pts:100},
+    {t:"Cela dérange l'autre",pts:50},
+    {t:"Cela paraît faible",pts:20},
+    {t:"On craint un refus",pts:0}]},
+  {q:"Que révèle quelqu'un qui parle mal des absents ?",pilier:"Amour",rep:[
+    {t:"Ce qu'il dira de vous une fois parti",pts:100},
+    {t:"Son manque de loyauté",pts:50},
+    {t:"Son besoin d'attention",pts:20},
+    {t:"Sa franchise",pts:0}]},
+  {q:"Qu'est-ce qui rend un compliment précieux ?",pilier:"Amour",rep:[
+    {t:"Qu'il vise ce qu'on a vraiment fait",pts:100},
+    {t:"Qu'il vienne de quelqu'un d'important",pts:50},
+    {t:"Qu'il soit dit devant d'autres",pts:20},
+    {t:"Qu'il soit rare",pts:0}]},
+  {q:"Que faire quand deux proches vous demandent de choisir un camp ?",pilier:"Amour",rep:[
+    {t:"Refuser de choisir, sans se cacher",pts:100},
+    {t:"Prendre le parti du plus proche",pts:50},
+    {t:"Rester neutre en silence",pts:20},
+    {t:"Écouter les deux versions",pts:0}]},
+  {q:"Pourquoi une rupture bien vécue laisse-t-elle moins de traces ?",pilier:"Amour",rep:[
+    {t:"Ce qui a été dit n'a plus à être deviné",pts:100},
+    {t:"On souffre moins",pts:50},
+    {t:"On reste en bons termes",pts:20},
+    {t:"On comprend les raisons",pts:0}]},
+  // ── SANTÉ (vague 2) ────────────────────────────────────
+  {q:"Quel est le signe le plus fiable qu'on en fait trop ?",pilier:"Santé",rep:[
+    {t:"On n'a plus envie de ce qu'on aimait",pts:100},
+    {t:"On dort mal",pts:50},
+    {t:"On est irritable",pts:20},
+    {t:"On tombe souvent malade",pts:0}]},
+  {q:"Pourquoi le corps réclame-t-il du soleil ?",pilier:"Santé",rep:[
+    {t:"Il règle l'horloge qui commande tout le reste",pts:100},
+    {t:"Il fabrique de la vitamine D",pts:50},
+    {t:"Il donne bonne mine",pts:20},
+    {t:"Il remonte le moral",pts:0}]},
+  {q:"Que faire d'une douleur qui revient toujours au même endroit ?",pilier:"Santé",rep:[
+    {t:"Chercher la cause ailleurs que là où ça fait mal",pts:100},
+    {t:"La soulager régulièrement",pts:50},
+    {t:"Éviter de solliciter la zone",pts:20},
+    {t:"Attendre qu'elle disparaisse",pts:0}]},
+  {q:"Qu'est-ce qui fatigue le plus dans une journée de travail ?",pilier:"Santé",rep:[
+    {t:"Passer d'une tâche à l'autre sans finir",pts:100},
+    {t:"Le nombre d'heures",pts:50},
+    {t:"La pression des délais",pts:20},
+    {t:"Les déplacements",pts:0}]},
+  {q:"Pourquoi manger lentement change-t-il tout ?",pilier:"Santé",rep:[
+    {t:"Le corps a le temps de dire qu'il a assez",pts:100},
+    {t:"On savoure davantage",pts:50},
+    {t:"La digestion est meilleure",pts:20},
+    {t:"On mange moins",pts:0}]},
+  {q:"Quel est le meilleur exercice pour quelqu'un qui n'en fait jamais ?",pilier:"Santé",rep:[
+    {t:"Celui qu'il fera encore dans six mois",pts:100},
+    {t:"La marche rapide",pts:50},
+    {t:"La natation",pts:20},
+    {t:"Le renforcement musculaire",pts:0}]},
+  {q:"Que révèle un réveil difficile chaque matin ?",pilier:"Santé",rep:[
+    {t:"Le coucher, pas le lever",pts:100},
+    {t:"Un manque de sommeil",pts:50},
+    {t:"Une fatigue accumulée",pts:20},
+    {t:"Un manque de motivation",pts:0}]},
+  {q:"Pourquoi la solitude prolongée pèse-t-elle sur la santé ?",pilier:"Santé",rep:[
+    {t:"Le corps la lit comme un danger permanent",pts:100},
+    {t:"Elle rend triste",pts:50},
+    {t:"Elle pousse aux mauvaises habitudes",pts:20},
+    {t:"Elle prive de soutien",pts:0}]},
+  {q:"Qu'est-ce qui aide vraiment à arrêter une habitude nocive ?",pilier:"Santé",rep:[
+    {t:"Remplacer le geste, pas seulement l'interdire",pts:100},
+    {t:"La volonté",pts:50},
+    {t:"Se fixer une date",pts:20},
+    {t:"Éviter les tentations",pts:0}]},
+  {q:"Que gagne-t-on à faire une chose à la fois ?",pilier:"Santé",rep:[
+    {t:"On la fait mieux et on s'épuise moins",pts:100},
+    {t:"On va plus vite",pts:50},
+    {t:"On oublie moins",pts:20},
+    {t:"On se concentre mieux",pts:0}]},
+  {q:"Pourquoi les personnes âgées actives vieillissent-elles mieux ?",pilier:"Santé",rep:[
+    {t:"Elles restent utiles à quelqu'un",pts:100},
+    {t:"Elles bougent davantage",pts:50},
+    {t:"Elles mangent mieux",pts:20},
+    {t:"Elles voient plus de monde",pts:0}]},
+  {q:"Qu'est-ce qui protège le dos au quotidien ?",pilier:"Santé",rep:[
+    {t:"Changer de position souvent",pts:100},
+    {t:"Une bonne chaise",pts:50},
+    {t:"Des abdominaux solides",pts:20},
+    {t:"Éviter de porter lourd",pts:0}]},
+  // ── ARGENT (vague 2) ────────────────────────────────────
+  {q:"Pourquoi certains gagnent bien et n'ont jamais rien ?",pilier:"Argent",rep:[
+    {t:"Chaque hausse de revenu est absorbée par le train de vie",pts:100},
+    {t:"Ils dépensent sans compter",pts:50},
+    {t:"Ils aident trop autour d'eux",pts:20},
+    {t:"Ils n'épargnent pas",pts:0}]},
+  {q:"Qu'est-ce qui fait la différence entre deux commerçants voisins ?",pilier:"Argent",rep:[
+    {t:"La régularité, jour après jour",pts:100},
+    {t:"La chance",pts:50},
+    {t:"Les prix pratiqués",pts:20},
+    {t:"Le choix des produits",pts:0}]},
+  {q:"Que faire avant d'emprunter pour un projet ?",pilier:"Argent",rep:[
+    {t:"Vérifier qu'on tiendrait si tout allait mal",pts:100},
+    {t:"Comparer les taux",pts:50},
+    {t:"Calculer le rendement attendu",pts:20},
+    {t:"Prendre l'avis d'un banquier",pts:0}]},
+  {q:"Pourquoi vaut-il mieux commencer petit ?",pilier:"Argent",rep:[
+    {t:"On apprend avec des erreurs qu'on peut payer",pts:100},
+    {t:"Cela demande moins de capital",pts:50},
+    {t:"On prend moins de risques",pts:20},
+    {t:"On peut arrêter facilement",pts:0}]},
+  {q:"Qu'est-ce qu'on achète vraiment avec de l'épargne ?",pilier:"Argent",rep:[
+    {t:"Le droit de dire non",pts:100},
+    {t:"La sécurité",pts:50},
+    {t:"Des projets futurs",pts:20},
+    {t:"La tranquillité d'esprit",pts:0}]},
+  {q:"Que révèle quelqu'un qui ne paie jamais sa part ?",pilier:"Argent",rep:[
+    {t:"Sa façon de voir les autres",pts:100},
+    {t:"Un manque de moyens",pts:50},
+    {t:"De la distraction",pts:20},
+    {t:"De la radinerie",pts:0}]},
+  {q:"Pourquoi les affaires en famille tournent-elles mal ?",pilier:"Argent",rep:[
+    {t:"Les rôles ne sont jamais écrits",pts:100},
+    {t:"On se fait trop confiance",pts:50},
+    {t:"L'affectif brouille les décisions",pts:20},
+    {t:"On n'ose pas se dire les choses",pts:0}]},
+  {q:"Qu'est-ce qui compte le plus dans un métier qu'on lance ?",pilier:"Argent",rep:[
+    {t:"Les premiers clients satisfaits",pts:100},
+    {t:"Un bon local",pts:50},
+    {t:"Une belle enseigne",pts:20},
+    {t:"Un capital suffisant",pts:0}]},
+  {q:"Que faire quand tout le monde vous demande de l'aide ?",pilier:"Argent",rep:[
+    {t:"Fixer ce qu'on peut donner, et s'y tenir",pts:100},
+    {t:"Aider ceux qui en ont le plus besoin",pts:50},
+    {t:"Refuser poliment",pts:20},
+    {t:"Aider chacun un peu",pts:0}]},
+  {q:"Pourquoi noter ses dépenses change-t-il les comportements ?",pilier:"Argent",rep:[
+    {t:"Ce qu'on regarde change tout seul",pts:100},
+    {t:"Cela culpabilise",pts:50},
+    {t:"Cela permet de faire des comptes",pts:20},
+    {t:"Cela montre les excès",pts:0}]},
+  {q:"Qu'est-ce qu'un bon associé ?",pilier:"Argent",rep:[
+    {t:"Quelqu'un dont les défauts complètent les vôtres",pts:100},
+    {t:"Un ami de confiance",pts:50},
+    {t:"Quelqu'un qui apporte des fonds",pts:20},
+    {t:"Quelqu'un du même métier",pts:0}]},
+  {q:"Pourquoi le prix le plus bas coûte-t-il souvent le plus cher ?",pilier:"Argent",rep:[
+    {t:"On paie deux fois : à l'achat puis au remplacement",pts:100},
+    {t:"La qualité est moindre",pts:50},
+    {t:"Il n'y a pas de garantie",pts:20},
+    {t:"Le service est mauvais",pts:0}]},
 ];
 
 // Mélanger les réponses d'une question
@@ -3634,7 +4366,7 @@ function carteFantome(cb){ return {id:"fan_"+cb, combo:cb, name:"Fantôme", pts:
 function validesAvecSpeciales(j){
   if(!j||!j.cb) return [];
   var base=j.mainRepJ1.filter(function(c){return c.combo===j.cb;});
-  if(j.manche>=6){
+  if(j.legendaires && j.manche>=6){
     if(!j.supremeUse && !j._supremeMasque) base=base.concat([carteSupreme(j.cb)]);
     if(!j.fantomeUse && !j._fantomeMasque) base=base.concat([carteFantome(j.cb)]);
   }
@@ -5471,17 +6203,28 @@ const BONUS = {
   launch(){
     if(BONUS.answered) return;
     // Historique des questions : S.jeu en Solo ; magasin de secours en Duel (S.jeu peut être nul)
-    var histStore=(typeof S!=="undefined"&&S.jeu)?S.jeu:(BONUS._histDuel||(BONUS._histDuel={}));
-    if(!histStore.bonusHistory) histStore.bonusHistory=[];
-    const disponibles = BONUS_QUESTIONS.filter(q=>!histStore.bonusHistory.includes(q.q));
-    // Si toutes posées, repartir de zéro
-    const pool = disponibles.length>0 ? disponibles : BONUS_QUESTIONS;
+    // Mémoire DURABLE : une question déjà posée ne revient qu'une fois le banc
+    // entier épuisé. Auparavant l'historique vivait dans S.jeu, donc il se
+    // vidait à chaque partie et les mêmes questions revenaient sans cesse.
+    if(!Array.isArray(S.questionsVues)) S.questionsVues=[];
+    var vues=S.questionsVues;
+    var disponibles = BONUS_QUESTIONS.filter(q=>vues.indexOf(q.q)<0);
+    if(disponibles.length===0){
+      // Banc épuisé : on repart, en écartant seulement les dernières posées
+      // pour qu'aucune ne tombe deux fois de suite.
+      var recentes=vues.slice(-8);
+      S.questionsVues=[]; vues=S.questionsVues;
+      disponibles=BONUS_QUESTIONS.filter(q=>recentes.indexOf(q.q)<0);
+      if(disponibles.length===0) disponibles=BONUS_QUESTIONS.slice();
+    }
+    const pool = disponibles;
     // Choisir aléatoirement en équilibrant les piliers non encore posés
     const piliersNonPoses=[...new Set(pool.map(q=>q.pilier))];
     const pilierChoisi=pick(piliersNonPoses);
     const questionsDuPilier=pool.filter(q=>q.pilier===pilierChoisi);
     const q = shuffleRep(pick(questionsDuPilier));
-    histStore.bonusHistory.push(q.q);
+    vues.push(q.q);
+    try{ sauvegarder(); }catch(_){}
     BONUS.current = q;
     BONUS.answered = false;
 
@@ -9448,6 +10191,8 @@ function ajusterMain(){
   if(!g) return;
   g.style.transformOrigin="50% 0";
   g.style.transform="";
+  var _rid=document.querySelector(".rideau");
+  if(_rid) _rid.style.height="";   // on repart de la hauteur CSS à chaque fois
   var cs=getComputedStyle(t);
   var dispo=t.clientHeight-parseFloat(cs.paddingTop)-parseFloat(cs.paddingBottom);
   g.style.marginTop="";
@@ -9459,6 +10204,22 @@ function ajusterMain(){
   // sous le bord haut de la table, que la main compte 12, 10 ou 6 cartes.
   // Un retrait proportionnel faisait "monter" les cartes au fil des manches.
   var HAUT_FIXE=14;
+  // Quand la place manque — écran court, ou manche chargée (pilier maudit,
+  // épreuve sur deux lignes, bandeau de réponse) — on prend d'abord sur le
+  // RIDEAU, jamais sur les cartes : leur taille doit rester la même d'une
+  // manche à l'autre. La grille n'est réduite qu'en tout dernier recours.
+  var manque=haut+HAUT_FIXE-dispo;
+  if(manque>0){
+    var rid=document.querySelector(".rideau");
+    if(rid){
+      var hr=rid.getBoundingClientRect().height;
+      var pris=Math.min(manque, Math.max(0, hr-26));   // plancher du rideau : 26px
+      if(pris>0){
+        rid.style.height=Math.round(hr-pris)+"px";
+        dispo+=pris; manque-=pris;
+      }
+    }
+  }
   if(haut>dispo){
     var f=Math.max(0.55,dispo/haut);
     g.style.transform="scale("+f.toFixed(4)+")";
@@ -10365,6 +11126,18 @@ function showJokerOverlay(joker, ptsReveal, who, callback){
 // ════════════════════════════════════════════════
 // LOGIQUE JEU
 // ════════════════════════════════════════════════
+// ── Rythme des cartes légendaires : une partie sur trois ──────────────────
+// Le compteur est sauvegardé : il survit à la fermeture de l'app. La 3e, la 6e,
+// la 9e partie… portent la Suprême et le Fantôme, les autres non.
+function _partieALegendaires(){
+  try{
+    S.cptParties=(S.cptParties||0)+1;
+    var oui=(S.cptParties % 3 === 0);
+    try{ sauvegarder(); }catch(_){}
+    return oui;
+  }catch(e){ return false; }
+}
+
 const G={
   startJeu(survie=false, keepVies=false){
     S._lastCampagne=null;
@@ -10386,6 +11159,10 @@ const G={
       selTemp:[..._deal.j1],   // Option B : tout est gardé au départ, on écarte
       selValidee:false,        // passe à true au clic sur Valider (anti-double fenêtre)
       s1:0,s2:0,manche:1,total:12,premier:"j1",
+      // Cartes légendaires : une partie sur TROIS seulement. Un compteur durable
+      // décide à l'avance, pour que la Suprême et le Fantôme redeviennent un
+      // événement rare au lieu d'apparaître à chaque partie.
+      legendaires:_partieALegendaires(),
       b1:null,b2:null,cb:null,
       repChoisie:null,repIA:null,
       supremeUse:false,fantomeUse:false,supremeUseIA:false,fantomeUseIA:false,
@@ -10702,7 +11479,7 @@ const G={
       }
     }
     // ── Cartes spéciales de l'IA (dès la manche 6, une de chaque par partie) ──
-    if(j.manche>=6 && S.diff!=="Débutant"){
+    if(j.legendaires && j.manche>=6 && S.diff!=="Débutant"){
       var _pJ=cJ1?cJ1.pts:-1;
       var _bestIA=cIA?cIA.pts:-1;
       if(!j.supremeUseIA && _pJ>=0 && _bestIA<=_pJ && 50>_pJ){
@@ -11228,7 +12005,7 @@ const G={
     const prochain=j.premier==="j1"?"ia":"j1";
     j.premier=prochain;j.manche++;
     // Révélation cinématique des cartes spéciales à l'entrée de la manche 6 (une fois par partie)
-    if(j.manche===6 && !j._specialesRevelees){ j._specialesRevelees=true; setTimeout(function(){ animerCartesSpeciales(); }, 350); }
+    if(j.legendaires && j.manche===6 && !j._specialesRevelees){ j._specialesRevelees=true; setTimeout(function(){ animerCartesSpeciales(); }, 350); }
     // Modificateur SOLO : annonce de la Manche du Destin à son arrivée
     if(j.modif==="destin" && j.manche===j.modifDestinManche){ setTimeout(function(){ showToast("🎲 MANCHE DU DESTIN — elle vaut DOUBLE !","badge",3500,true); },300); }
     j.b1=null;j.b2=null;j.cb=null;
