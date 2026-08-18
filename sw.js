@@ -12,7 +12,7 @@
    - HTML : réseau d'abord (tes mises à jour s'appliquent en ligne), repli cache hors-ligne.
    - Icônes/manifeste : cache d'abord.
    Pense à changer VERSION quand tu déploies une nouvelle version du jeu. */
-const VERSION = "equilibre-v97-19";
+const VERSION = "equilibre-v97-20";
 const SHELL = [
   "./",
   "./index.html",
@@ -23,14 +23,8 @@ const SHELL = [
   // Les cinq décors theme-*.webp ne sont pas déployés : retirés du cache,
   // ils faisaient échouer l'installation du service worker (addAll est
   // tout ou rien — un seul 404 et AUCUN fichier n'était mis en cache).
-  // Assets du Bonus du Sage (sinon le bonus s'affiche vide hors ligne)
-  "./assets/canne.webp",
-  "./assets/decor.webp",
-  "./assets/boule_eau.webp",
-  "./assets/boule_plante.webp",
-  "./assets/boule_feu.webp",
-  "./assets/boule_air.webp",
-  "./assets/voix_sage.mp3"
+  // Les images du Bonus du Sage sont désormais EMBARQUÉES dans index.html :
+  // plus de dossier assets/ à déployer, donc plus rien à mettre en cache ici.
 ];
 
 self.addEventListener("message", function(e){
