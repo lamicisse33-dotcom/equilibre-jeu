@@ -2179,7 +2179,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v97.29";
+const BUILD_TAG="v97.30";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -11363,7 +11363,7 @@ const G={
     if(S._ascLancement){
       S.jeu.ascension=true; S.jeu.estSolo=false; S.jeu.total=7;
       var _ap=S.ascPalier||1;
-      var _hand=Math.max(0,(_ap-8))*8; if(_hand>0) S.jeu.s2=_hand;   // l'IA prend de l'avance au-delà du palier 8
+      S.jeu.s2=0;   // départ à zéro, quel que soit le palier
       if(_ap>=4){                                                     // un modificateur par palier dès le palier 4
         var _amid=MODIFS_IDS[Math.floor(Math.random()*MODIFS_IDS.length)];
         S.jeu.modif=_amid;
@@ -12520,9 +12520,9 @@ function lancerGardien(i){
     S.survieActif=false;
     G.startJeu(false);
     if(S.jeu){
-      var _actC=Math.floor(i/5);            // 0=Acte I, 1=Acte II, 2=Acte III
-      var _advC=_actC*16 + 14;               // avance de l'IA (chef), croissante selon l'acte
-      S.jeu.s2=(S.jeu.s2||0)+_advC;
+      // Les deux camps partent de zéro : la difficulté vient du niveau de jeu
+      // de l'IA, plus d'une avance offerte au départ.
+      S.jeu.s2=0;
     }
     // Annonce de l'épreuve (twist) — lue à voix haute
     var _tw=CAMPAGNE[i].twist, _msgTw={
@@ -12742,9 +12742,7 @@ function lancerDisciple(i,rang){
   G.startJeu(false);
   if(S.jeu){
     S.jeu.total=10;                          // combat de disciple
-    var _actD=Math.floor(i/5);               // 0=Acte I, 1=Acte II, 2=Acte III
-    var _advD=_actD*10 + rang*3 + 5;          // l'IA prend de l'avance selon l'acte et le rang
-    if(_advD>0) S.jeu.s2=_advD;
+    S.jeu.s2=0;                              // départ à zéro pour les deux camps
   }
 }
 // ── Fonds de Campagne ─────────────────────────────────────────────────
