@@ -2200,7 +2200,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v97.33";
+const BUILD_TAG="v97.34";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -12796,15 +12796,18 @@ function renderTemple(app){
     var done=r<vaincus, cur=r===vaincus;
     var etat=done?"✅":cur?"⚔️":"🔒";
     var bord=cur?st.accent:done?"#45c97a":"rgba(255,255,255,0.12)";
-    var attrs=cur?('onclick="introDisciple('+i+','+r+')" style="cursor:pointer"'):('style="opacity:'+(done?"0.7":"0.4")+'"');
-    return '<div '+attrs+' style="border:2px solid '+bord+';border-radius:14px;padding:12px;margin-bottom:10px;background:rgba(10,6,20,0.5);display:flex;align-items:center;gap:12px">'
+    // Un seul attribut style : deux style= sur la même balise et le navigateur ignore le second.
+    var attrs=cur?('onclick="introDisciple('+i+','+r+')" '):'';
+    var perso=cur?'cursor:pointer;':('opacity:'+(done?"0.7":"0.4")+';');
+    return '<div '+attrs+'style="'+perso+'border:2px solid '+bord+';border-radius:14px;padding:12px;margin-bottom:10px;background:rgba(10,6,20,0.5);display:flex;align-items:center;gap:12px">'
       +'<div style="font-size:24px">'+etat+'</div>'
       +'<div style="flex:1;text-align:left"><div style="font-family:Cinzel,serif;font-weight:900;font-size:14px;color:'+(done||cur?"var(--goldL)":"var(--muted)")+'">Disciple '+ROMAINS[r]+'</div>'
       +'<div style="font-size:10px;color:var(--muted)">'+(done?"Vaincu":cur?"À affronter · 10 manches":"Verrouillé")+'</div></div></div>';
   }).join("");
-  var chefAttrs=chefPret?('onclick="introGardien('+i+')" style="cursor:pointer"'):'style="opacity:0.45"';
+  var chefAttrs=chefPret?('onclick="introGardien('+i+')" '):'';
+  var chefPerso=chefPret?'cursor:pointer;':'opacity:0.45;';
   app.innerHTML=`
-  <div class="center" style="min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:20px;${fondCampagne(g,"radial-gradient(ellipse at center,"+(st.bg||'#1a0a35')+" 0%,#070514 74%)")}">
+  <div class="center dec-g${i+1}" style="min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:20px;${fondCampagne(g,"radial-gradient(ellipse at center,"+(st.bg||'#1a0a35')+" 0%,#070514 74%)")}">
     <div class="w100" style="max-width:440px;text-align:center;position:relative">
       <button class="btn-ghost" style="position:absolute;left:0;top:0;width:auto;padding:8px 14px" onclick="S.ecran='campagne';render()">←</button>
       <div style="font-size:11px;color:var(--muted);letter-spacing:3px;margin-bottom:10px;padding-top:6px">LE TEMPLE DE</div>
@@ -12812,7 +12815,7 @@ function renderTemple(app){
       <div style="font-family:'Cinzel',serif;font-size:22px;font-weight:900;color:var(--goldL);margin-bottom:4px">${g.nom}</div>
       <div style="font-size:11px;color:${st.accent};letter-spacing:1px;margin-bottom:18px">Vaincs les 4 disciples, puis le chef · ${vaincus}/4</div>
       ${disc}
-      <div ${chefAttrs} style="border:2px solid ${chefPret?'#F0D060':'rgba(255,255,255,0.12)'};border-radius:14px;padding:14px;margin-top:8px;background:linear-gradient(135deg,${st.bg||'#1a0a35'},rgba(10,6,20,0.6));display:flex;align-items:center;gap:12px;${chefPret?'box-shadow:0 0 20px '+st.accent+'66':''}">
+      <div ${chefAttrs}style="${chefPerso}border:2px solid ${chefPret?'#F0D060':'rgba(255,255,255,0.12)'};border-radius:14px;padding:14px;margin-top:8px;background:linear-gradient(135deg,${st.bg||'#1a0a35'},rgba(10,6,20,0.6));display:flex;align-items:center;gap:12px;${chefPret?'box-shadow:0 0 20px '+st.accent+'66':''}">
         <div style="font-size:30px">${chefPret?'👑':'🔒'}</div>
         <div style="flex:1;text-align:left"><div style="font-family:Cinzel,serif;font-weight:900;font-size:14px;color:${chefPret?'var(--goldL)':'var(--muted)'}">${g.nom} — le Chef</div>
         <div style="font-size:10px;color:var(--muted)">${chefPret?'Le chef est prêt · 10 manches':'Vaincs les 4 disciples avant'}</div></div></div>
