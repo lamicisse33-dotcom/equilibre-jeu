@@ -1,4 +1,4 @@
-# Dépôt GitHub — ÉQUILIBRE v97.24
+# Dépôt GitHub — ÉQUILIBRE v97.29
 
 ## Ce qu'il faut envoyer
 
@@ -18,7 +18,7 @@ créé, tu peux le laisser : il ne sert plus, mais il ne gêne pas.
 ## Vérification après l'envoi
 
 1. Ouvrir le site, **fermer complètement la PWA**, rouvrir.
-2. Contrôler **v97.24** au pied du menu.
+2. Contrôler **v97.29** au pied du menu.
 3. Lancer une partie jusqu'au premier bonus : le Sage doit apparaître sur son
    paysage aux quatre éléments, avec ses quatre orbes texturées.
 4. Mode avion puis réouverture : le jeu doit se lancer hors ligne.
@@ -27,8 +27,8 @@ créé, tu peux le laisser : il ne sert plus, mais il ne gêne pas.
 
 ## Versions
 
-- `BUILD_TAG = "v97.24"` dans `index.html`
-- `VERSION = "equilibre-v97-24"` dans `sw.js`
+- `BUILD_TAG = "v97.29"` dans `index.html`
+- `VERSION = "equilibre-v97-29"` dans `sw.js`
 
 ---
 
@@ -41,6 +41,16 @@ Une seule fois — ensuite la progression se conserve normalement.
 Préviens tes testeurs : ils devront ressaisir leur pseudo.
 
 ---
+
+## Audit du 19/08 — ce qui a été mesuré
+
+- 20 écrans rendus, partie complète jouée : **aucune erreur JS**
+- Menu : **245 ms → 10 ms** par rendu (planches passées en CSS)
+- Réseau : **1 seule requête locale**, plus aucun 404 (4 fantômes supprimés)
+- Jeu fonctionnel **sans réseau externe** (polices Google absentes → repli serif)
+- Aucun identifiant HTML en double, aucun minuteur laissé en fond
+- Sauvegarde : 1 Ko
+- Son mesuré en sortie : clic 0,24 · carte 0,28 · musique menu 0,015 · jeu 0,066
 
 ## Restant ouvert
 
