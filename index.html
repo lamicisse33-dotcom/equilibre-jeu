@@ -534,7 +534,7 @@ body.hab-clair [style*="background:rgba(0,0,0,0.35"]{background:rgba(74,56,22,0.
   border:1px solid rgba(212,175,55,0.35);}
 
 /* Toast */
-#toast{position:fixed;bottom:20px;left:0;right:0;margin:0 auto;width:max-content;z-index:999;
+#toast{position:fixed;bottom:20px;left:0;right:0;margin:0 auto;width:max-content;z-index:100000;
   background:var(--dark);border-radius:12px;padding:11px 22px;
   font-size:14px;font-weight:700;max-width:88vw;text-align:center;
   pointer-events:none;display:none;animation:popIn 0.3s both;
@@ -2157,7 +2157,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v97.20";
+const BUILD_TAG="v97.23";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -2651,8 +2651,27 @@ function genQR(text, container){
   container.appendChild(img);
 }
 
+// Remise à zéro générale des profils de test.
+// Change de valeur = tous les téléphones repartent de zéro au prochain
+// lancement (pseudo, XP, rang, scores, cauris, parties en cours). Ne pas
+// modifier ensuite, sinon les joueurs perdraient leur progression.
+const RESET_TAG="2026-08-19-reset-testeurs";
+function _remiseAZeroSiNecessaire(){
+  try{
+    if(localStorage.getItem("equilibre_reset")===RESET_TAG) return false;
+    ["equilibre_save","equilibre_partie_solo","equilibre_duel",
+     "equilibre_tuto_vu","equilibre_coach_vus","equilibre_onboarding_fait",
+     "equilibre_install_vu"].forEach(function(k){
+      try{ localStorage.removeItem(k); }catch(_){}
+    });
+    localStorage.setItem("equilibre_reset",RESET_TAG);
+    return true;
+  }catch(e){ return false; }
+}
+
 function charger(){
   try{
+    _remiseAZeroSiNecessaire();
     const d=JSON.parse(localStorage.getItem("equilibre_save")||"{}");
     if(d.xp)         S.xp=d.xp;
     if(d.badgesTotal)S.badgesTotal=d.badgesTotal;
@@ -2748,10 +2767,32 @@ const AUDIO = {
       if(!this.masterGain){
         this.masterGain=this.ctx.createGain();
         this.masterGain.gain.value=(typeof S!=="undefined"&&typeof S.volume==="number")?S.volume:1;
-        this.masterGain.connect(AUDIO.out()||AUDIO.ctx.destination);
+        // ATTENTION : la sortie du gain maître va DIRECTEMENT au haut-parleur.
+        // Elle ne doit jamais passer par out() — le gain se brancherait sur
+        // lui-même et plus aucun son ne sortirait (seul un MP3 s'entendrait).
+        this.masterGain.connect(this.ctx.destination);
+        this._versElementAudio();
       }
       return this.masterGain;
     }catch(e){ return this.ctx?this.ctx.destination:null; }
+  },
+  // Sortie de secours pour iPhone : tout passe AUSSI par un élément <audio>.
+  // Le son WebAudio emprunte la voie « ambiance », coupée par l'interrupteur
+  // silencieux ; un <audio> emprunte la voie « lecture », qui l'ignore.
+  _versElementAudio(){
+    try{
+      if(this._sortieEl || !this.ctx || !this.ctx.createMediaStreamDestination) return;
+      var dest=this.ctx.createMediaStreamDestination();
+      this.masterGain.connect(dest);
+      var el=document.createElement("audio");
+      el.autoplay=true; el.playsInline=true; el.setAttribute("playsinline","");
+      el.srcObject=dest.stream; el.style.display="none";
+      document.body.appendChild(el);
+      var jouer=function(){ try{ var p=el.play(); if(p&&p.catch) p.catch(function(){}); }catch(_){} };
+      jouer();
+      document.addEventListener("pointerdown",jouer,{passive:true});
+      this._sortieEl=el;
+    }catch(e){}
   },
   setVolume(v){
     try{
@@ -13058,8 +13099,8 @@ function renderMenu(app){
             <div class="mhead-nom">
               ${(S.nom||"Joueur").toUpperCase()}
             </div>
-            <div style="font-size:12px;color:#D8CDE8;margin-top:2px">${niv.icon||"⭐"} ${niv.label||"Novice"} · ${S.xp} XP</div>
-            <div style="font-size:13px;color:var(--goldL);letter-spacing:1px;margin-top:3px;font-family:'Cinzel',serif;font-weight:700;display:flex;align-items:center;gap:5px">${rangEmblemeHTML(getRang(),17)}<span>${getRang().nom}</span></div>
+            <div style="font-size:12px;color:#D8CDE8;margin-top:2px">${niv.icon||"⭐"} <span style="color:#9C93AD">Niveau</span> ${niv.label||"Novice"} · ${S.xp} XP</div>
+            <div style="font-size:13px;color:var(--goldL);letter-spacing:1px;margin-top:3px;font-family:'Cinzel',serif;font-weight:700;display:flex;align-items:center;gap:5px">${rangEmblemeHTML(getRang(),17)}<span style="color:#9C93AD;font-weight:400;font-size:11px">Campagne</span><span>${getRang().nom}</span></div>
           </div>
         </div>
         <div style="text-align:right;flex-shrink:0;text-shadow:0 2px 6px #000">
@@ -14254,6 +14295,32 @@ function _testerSon(){
     etat.push((S.musique===false)? "musique COUPÉE" : "musique active");
     var v=(typeof S.volume==="number")? Math.round(S.volume*100) : 100;
     etat.push("volume "+v+"%");
+    // Mesure du son RÉELLEMENT produit, sur l'appareil : un analyseur est
+    // branché sur la sortie et relève l'amplitude pendant que les sons jouent.
+    // Amplitude > 0 mais rien dans le haut-parleur = problème d'appareil
+    // (interrupteur silencieux, volume média) et non de code.
+    try{
+      var g=AUDIO.out();
+      if(g && AUDIO.ctx && AUDIO.ctx.createAnalyser){
+        // Branché APRÈS le gain maître : on mesure ce qui sort vraiment,
+        // volume général compris.
+        var an=AUDIO.ctx.createAnalyser(); an.fftSize=2048;
+        var apres=AUDIO.ctx.createGain(); apres.gain.value=1;
+        g.connect(apres); apres.connect(an);
+        var buf=new Float32Array(an.fftSize), crete=0, t=0;
+        var releve=setInterval(function(){
+          an.getFloatTimeDomainData(buf);
+          for(var k=0;k<buf.length;k++){ var v=Math.abs(buf[k]); if(v>crete) crete=v; }
+          if(++t>28){
+            clearInterval(releve);
+            try{ g.disconnect(apres); apres.disconnect(an); }catch(_){}
+            var pc=Math.round(crete*100);
+            if(crete>0.005) showToast("📈 Son produit : "+pc+"% — si tu n'entends rien, c'est l'iPhone (interrupteur silencieux ou volume média)","win",6500);
+            else showToast("❌ Aucun son produit ("+pc+"%) — le problème vient du jeu, préviens-moi","lose",6500);
+          }
+        },25);
+      }
+    }catch(_){}
     try{ AUDIO.sfxClick(); }catch(_){}
     setTimeout(function(){ try{ AUDIO.sfxBadge&&AUDIO.sfxBadge(); }catch(_){} },220);
     setTimeout(function(){ try{ AUDIO.sfxWin&&AUDIO.sfxWin(); }catch(_){} },520);
