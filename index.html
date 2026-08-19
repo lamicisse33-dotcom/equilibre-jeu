@@ -2157,7 +2157,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v97.23";
+const BUILD_TAG="v97.24";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -2409,14 +2409,14 @@ function acheterHabillage(id){
   if(MODE_TEST){
     // Version test : tout se porte librement, rien n'est débité.
     if(S.habAchetes.indexOf(id)<0) S.habAchetes.push(id);
-    AUDIO.sfxClick(); S.habillage=id;
+    AUDIO.sfxClickUnique(); S.habillage=id;
     appliquerHabillage(); sauvegarder(); render(); return;
   }
   if(S.habAchetes.indexOf(id)<0){
     if((S.cauris||0)<h.prix){ showToast("🐚 Il te manque "+(h.prix-(S.cauris||0))+" cauris — joue pour en gagner !","info",2400); return; }
     S.cauris-=h.prix; S.habAchetes.push(id);
     AUDIO.sfxBadge(); showToast("🎉 « "+h.nom+" » est à toi !","win",2200);
-  } else { AUDIO.sfxClick(); }
+  } else { AUDIO.sfxClickUnique(); }
   S.habillage=id;
   appliquerHabillage(); sauvegarder(); render();
 }
@@ -3005,6 +3005,15 @@ const AUDIO = {
   // ── EFFETS SONORES ──
 
   // Vibration haptique (respecte le mode muet)
+  _dernierClic:0,
+  // Garde-fou anti double clic : certaines touches jouent leur son elles-mêmes
+  // ET passent par l'écouteur global. Deux sons à 20 ms d'intervalle = un seul.
+  sfxClickUnique(){
+    var t=Date.now();
+    if(t-this._dernierClic<130) return;
+    this._dernierClic=t;
+    try{ this.sfxClick(); }catch(e){}
+  },
   vibrer(pattern){ try{ if(this.muted) return; if(typeof S!=="undefined" && S.vibrations===false) return; if(navigator.vibrate) navigator.vibrate(pattern); }catch(e){} },
 
   // Clic pilier / sélection
@@ -3338,35 +3347,71 @@ const AUDIO = {
     this.menuPlaying=true;
     const ctx=this.ctx;
     this.menuGain=ctx.createGain();
-    this.menuGain.gain.value=this.muted?0:0.11;
+    this.menuGain.gain.value=this.muted?0:0.13;
     this.menuGain.connect(AUDIO.out()||ctx.destination);
-    // Pentatonique de do : C4 D4 E4 G4 A4 C5 D5 E5
-    const G=[261.63,293.66,329.63,392,440,523.25,587.33,659.25];
-    const pluck=(f,st,vol)=>{
-      const o=ctx.createOscillator(),g=ctx.createGain();
-      o.type='triangle'; o.frequency.value=f;
+
+    // ── Ambiance du MENU : kalimba enjouée, pentatonique majeure de Do ──
+    // L'ancienne version tirait des notes au hasard : joli mais sans direction,
+    // donc ennuyeux. Ici une vraie phrase de 8 temps qui revient, une basse qui
+    // marque la pulsation et un shaker léger : ça avance, ça respire.
+    const N={C4:261.63,D4:293.66,E4:329.63,G4:392.00,A4:440.00,
+             C5:523.25,D5:587.33,E5:659.25,G5:783.99,A5:880.00};
+    // Deux phrases alternées (a, b) — mêmes appuis, fin différente.
+    const PHRASE_A=[["G4",0],["C5",0.5],["E5",1],["D5",1.5],["C5",2],["A4",2.75],["G4",3.25]];
+    const PHRASE_B=[["E5",0],["D5",0.5],["C5",1],["G4",1.5],["A4",2],["C5",2.5],["D5",3],["E5",3.5]];
+    const BASSE=["C4","C4","G4","A4"];   // marche harmonique simple et gaie
+
+    const pluck=(f,st,vol,duree)=>{
+      const o=ctx.createOscillator(), o2=ctx.createOscillator(), g=ctx.createGain();
+      o.type="triangle";  o.frequency.value=f;
+      o2.type="sine";     o2.frequency.value=f*2.01;   // harmonique = éclat de kalimba
+      const g2=ctx.createGain(); g2.gain.value=0.28; o2.connect(g2); g2.connect(g);
       g.gain.setValueAtTime(0,st);
-      g.gain.linearRampToValueAtTime(vol,st+0.015);
-      g.gain.exponentialRampToValueAtTime(0.0001,st+1.6);
+      g.gain.linearRampToValueAtTime(vol,st+0.008);
+      g.gain.exponentialRampToValueAtTime(0.0001,st+duree);
       o.connect(g); g.connect(this.menuGain);
-      const rev=this._reverb(ctx),rg=ctx.createGain(); rg.gain.value=0.35;
+      const rev=this._reverb(ctx), rg=ctx.createGain(); rg.gain.value=0.30;
       g.connect(rev); rev.connect(rg); rg.connect(this.menuGain);
-      o.start(st); o.stop(st+1.7);
+      o.start(st); o2.start(st); o.stop(st+duree+0.1); o2.stop(st+duree+0.1);
     };
-    let t=ctx.currentTime+0.4;
-    const mesure=()=>{
+    const basse=(f,st,vol)=>{
+      const o=ctx.createOscillator(), g=ctx.createGain();
+      o.type="sine"; o.frequency.value=f/2;
+      g.gain.setValueAtTime(0,st);
+      g.gain.linearRampToValueAtTime(vol,st+0.03);
+      g.gain.exponentialRampToValueAtTime(0.0001,st+1.1);
+      o.connect(g); g.connect(this.menuGain);
+      o.start(st); o.stop(st+1.2);
+    };
+    const shaker=(st,vol)=>{
+      const n=ctx.createBufferSource(), b=ctx.createBuffer(1,1200,ctx.sampleRate);
+      const d=b.getChannelData(0);
+      for(let k=0;k<d.length;k++) d[k]=(Math.random()*2-1)*(1-k/d.length);
+      n.buffer=b;
+      const f=ctx.createBiquadFilter(); f.type="highpass"; f.frequency.value=6000;
+      const g=ctx.createGain(); g.gain.value=vol;
+      n.connect(f); f.connect(g); g.connect(this.menuGain);
+      n.start(st);
+    };
+
+    let t=ctx.currentTime+0.3, mesureNo=0;
+    const TEMPS=0.42;                       // ~143 à la noire : allant, pas pressé
+    const boucle=()=>{
       if(!this.menuPlaying) return;
-      // 3 à 4 notes clairsemées par mesure de 4 s, avec un léger bourdon une fois sur deux
-      const n=3+Math.floor(Math.random()*2);
-      for(let k=0;k<n;k++){
-        pluck(G[Math.floor(Math.random()*G.length)], t+k*(4/n)+Math.random()*0.25, 0.10+Math.random()*0.05);
-      }
-      if(Math.random()<0.5) pluck(G[0]/2, t+0.1, 0.07);   // C3 doux
-      t+=4;
-      this._menuTimer=setTimeout(mesure,(t-ctx.currentTime-0.6)*1000);
+      const ph=(mesureNo%2===0)?PHRASE_A:PHRASE_B;
+      ph.forEach(function(x){
+        pluck(N[x[0]], t+x[1]*TEMPS, 0.105+Math.random()*0.03, 1.5);
+      });
+      basse(N[BASSE[mesureNo%BASSE.length]], t, 0.075);
+      for(let k=0;k<4;k++) shaker(t+k*TEMPS, k%2===0?0.020:0.011);
+      // Une note haute en écho une mesure sur trois : la petite touche gaie.
+      if(mesureNo%3===2) pluck(N.A5, t+3.5*TEMPS, 0.07, 2.0);
+      t+=4*TEMPS; mesureNo++;
+      this._menuTimer=setTimeout(boucle,(t-ctx.currentTime-0.25)*1000);
     };
-    mesure();
+    boucle();
   },
+
   stopMenuBg(){
     this.menuPlaying=false;
     clearTimeout(this._menuTimer);
@@ -5901,7 +5946,7 @@ const BONUS_DESTIN = {
       try{ if(AUDIO.sfxBoule) AUDIO.sfxBoule(); if(AUDIO.vibrer) AUDIO.vibrer(20); }catch(e){}
     } else {
       if(el) el.classList.remove("placed");
-      try{ if(AUDIO.sfxClick) AUDIO.sfxClick(); }catch(e){}
+      try{ if(AUDIO.sfxClick) AUDIO.sfxClickUnique(); }catch(e){}
     }
     this._render();
     if(this._leftTotal()===this.W){
@@ -7259,7 +7304,7 @@ const DUEL = {
       }
     }
     if(main.length!==avant){
-      if(main.length===10) AUDIO.sfx10eme(); else AUDIO.sfxClick();
+      if(main.length===10) AUDIO.sfx10eme(); else AUDIO.sfxClickUnique();
     }
     render();
   },
@@ -7278,7 +7323,7 @@ const DUEL = {
     if(!id) return;
     var c=pool.find(function(x){return x.id===id;});
     if(c && !main.some(function(x){return x.id===c.id;})) main.push(c);
-    AUDIO.sfxClick();
+    AUDIO.sfxClickUnique();
     render();
   },
 
@@ -7297,7 +7342,7 @@ const DUEL = {
       if(jAttaquant) return; // l'attaquant ne peut pas aussi répondre
     }
     if(!PILIER[pilier]) return;
-    AUDIO.sfxClick();
+    AUDIO.sfxClickUnique();
     if(gs.phase==="choixBase"){
       gs.b1=pilier; gs.phase="choixBase2";
       gs.attaquant=DUEL.isHost?"host":"guest"; // mémoriser qui a attaqué
@@ -7387,7 +7432,7 @@ const DUEL = {
       if(oui)oui.textContent="\uD83D\uDC7B TENTER LE FANTÔME";
     }
     ov.classList.add("active");
-    try{ if(typeof AUDIO!=="undefined" && AUDIO.sfxClick) AUDIO.sfxClick(); }catch(e){}
+    try{ if(typeof AUDIO!=="undefined" && AUDIO.sfxClick) AUDIO.sfxClickUnique(); }catch(e){}
   },
   _jouerSpeciale(){
     var id=DUEL._pendingSpecial; DUEL._pendingSpecial=null;
@@ -7691,7 +7736,7 @@ Object.assign(DUEL, {
     DUEL._chatMsgs.push({mine:true,text:text});
     if(DUEL._chatMsgs.length>60) DUEL._chatMsgs.shift();
     DUEL._send({type:"chat",text:text});
-    if(AUDIO.sfxClick) AUDIO.sfxClick();
+    if(AUDIO.sfxClick) AUDIO.sfxClickUnique();
     DUEL._renderChatMsgs(true);
   },
 
@@ -8846,7 +8891,7 @@ function showCardDealAnimation(cartes, callback){
       // Retournement spectaculaire
       setTimeout(function(){
         // Effet son (tick)
-        try{AUDIO.sfxClick();}catch(e){}
+        try{AUDIO.sfxClickUnique();}catch(e){}
 
         card.style.animation="cardFlip 0.4s ease both";
         setTimeout(function(){
@@ -9150,7 +9195,7 @@ function renderDuelJeu(app){
         var _clic=DUEL.myTurn;
         var _sug=(p===_suggPd);
         piliersHtml+='<div style="display:flex;flex-direction:column;align-items:center;gap:4px'+(_clic?'':';opacity:0.45')+'">'
-          +'<div '+(_clic?'onclick="AUDIO.sfxClick();DUEL.choisirBase(\''+p+'\')" style="cursor:pointer'+(_sug?'':'')+'"':'style="cursor:default"')+'>'
+          +'<div '+(_clic?'onclick="AUDIO.sfxClickUnique();DUEL.choisirBase(\''+p+'\')" style="cursor:pointer'+(_sug?'':'')+'"':'style="cursor:default"')+'>'
           +pilierCard(p,{size:'sm'})
           +'</div>'
           +'<div style="font-size:8px;color:'+(_sug?'var(--goldL)':st.accent)+';font-weight:700">'+(_sug?'✨ ':'')+nbValide+' carte'+(nbValide!==1?'s':'')+'</div>'
@@ -10056,7 +10101,7 @@ document.addEventListener("pointerdown",function(ev){
     if(el.disabled) return;
     var att=el.getAttribute && el.getAttribute("onclick");
     if(att && att.indexOf("sfx")>=0) return;   // le bouton sonne déjà lui-même
-    if(typeof AUDIO!=="undefined" && AUDIO.sfxClick) AUDIO.sfxClick();
+    if(typeof AUDIO!=="undefined" && AUDIO.sfxClick) AUDIO.sfxClickUnique();
     if(typeof AUDIO!=="undefined" && AUDIO.vibrer) AUDIO.vibrer(8);
   }catch(e){}
 },true);
@@ -10923,7 +10968,7 @@ function _cvSel(instId, el){
     var scenes=document.querySelectorAll('.cv-scene[data-cv="'+instId+'"]');
     for(var j=0;j<scenes.length;j++) scenes[j].style.display=(scenes[j].getAttribute('data-combo')===combo)?'block':'none';
     try{ el.scrollIntoView({block:'nearest',inline:'center'}); }catch(_){}
-    if(AUDIO&&AUDIO.sfxClick) AUDIO.sfxClick();
+    if(AUDIO&&AUDIO.sfxClick) AUDIO.sfxClickUnique();
   }catch(e){}
 }
 // cards: liste de cartes ; renderCard(carte)->HTML ; instId: identifiant unique de l'instance.
@@ -11350,7 +11395,7 @@ const G={
     if(!id) return;
     const c=j.allRepJ1.find(x=>x.id===id);
     if(c && !j.selTemp.some(x=>x.id===c.id)) j.selTemp.push(c);
-    AUDIO.sfxClick();
+    AUDIO.sfxClickUnique();
     render();
   },
 
@@ -11377,7 +11422,7 @@ const G={
       }
     }
     if(j.selTemp.length!==avant){
-      if(j.selTemp.length===10) AUDIO.sfx10eme(); else AUDIO.sfxClick();
+      if(j.selTemp.length===10) AUDIO.sfx10eme(); else AUDIO.sfxClickUnique();
     }
     render();
   },
@@ -11477,7 +11522,7 @@ const G={
       if(oui) oui.textContent="👻 TENTER LE FANTÔME";
     }
     ov.classList.add("active");
-    try{ if(typeof AUDIO!=="undefined" && AUDIO.sfxClick) AUDIO.sfxClick(); }catch(e){}
+    try{ if(typeof AUDIO!=="undefined" && AUDIO.sfxClick) AUDIO.sfxClickUnique(); }catch(e){}
   },
   _jouerSpeciale(){
     if(typeof DUEL!=="undefined" && DUEL._pendingSpecial){ DUEL._jouerSpeciale(); return; }
@@ -11508,7 +11553,7 @@ const G={
 
   passerTour(){
     G.stopTimer();
-    AUDIO.sfxClick();
+    AUDIO.sfxClickUnique();
     G.execRep(null);
   },
 
@@ -14349,7 +14394,7 @@ function _regBascule(id){
     else if(id==="reg-effets"){ S.modeLeger=!S.modeLeger; txt=S.modeLeger?"RÉDUITS":"COMPLETS"; }
     var b=document.getElementById(id);
     if(b){ var v=b.querySelector(".reg-val"); if(v) v.textContent=txt; }
-    try{ AUDIO.sfxClick(); }catch(_){}
+    try{ AUDIO.sfxClickUnique(); }catch(_){}
     sauvegarder();
   }catch(e){}
 }
@@ -14856,7 +14901,7 @@ function renderJeu(app){
           const bloque=nbCom===0;
           const sug=(!bloque && p===_suggForce);
           return`<div style="display:flex;flex-direction:column;align-items:center;gap:4px${bloque?';opacity:0.3;filter:grayscale(0.75)':''}">
-            ${bloque?`<div style="cursor:not-allowed">${pilierCard(p,{size:"sm"})}</div>`:`<div${sug?' id="cible-guide"':''}>${pilierCard(p,{size:"sm",onClick:`AUDIO.sfxClick();G.choisirBase('${p}')`})}</div>`}
+            ${bloque?`<div style="cursor:not-allowed">${pilierCard(p,{size:"sm"})}</div>`:`<div${sug?' id="cible-guide"':''}>${pilierCard(p,{size:"sm",onClick:`AUDIO.sfxClickUnique();G.choisirBase('${p}')`})}</div>`}
             <div style="position:relative;z-index:2;font-size:7.5px;color:${sug?'var(--goldL)':(bloque?'var(--muted)':PILIER[p].accent)};text-align:center;max-width:92px;line-height:1.4;font-style:italic;font-family:'Crimson Text',Georgia,serif;font-weight:${sug?'700':'400'}">${bloque?'aucune carte':(sug?'✨ meilleur combo':'')}</div>
           </div>`;
         }).join("")}

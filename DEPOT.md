@@ -1,4 +1,4 @@
-# Dépôt GitHub — ÉQUILIBRE v97.23
+# Dépôt GitHub — ÉQUILIBRE v97.24
 
 ## Ce qu'il faut envoyer
 
@@ -18,7 +18,7 @@ créé, tu peux le laisser : il ne sert plus, mais il ne gêne pas.
 ## Vérification après l'envoi
 
 1. Ouvrir le site, **fermer complètement la PWA**, rouvrir.
-2. Contrôler **v97.23** au pied du menu.
+2. Contrôler **v97.24** au pied du menu.
 3. Lancer une partie jusqu'au premier bonus : le Sage doit apparaître sur son
    paysage aux quatre éléments, avec ses quatre orbes texturées.
 4. Mode avion puis réouverture : le jeu doit se lancer hors ligne.
@@ -27,8 +27,8 @@ créé, tu peux le laisser : il ne sert plus, mais il ne gêne pas.
 
 ## Versions
 
-- `BUILD_TAG = "v97.23"` dans `index.html`
-- `VERSION = "equilibre-v97-23"` dans `sw.js`
+- `BUILD_TAG = "v97.24"` dans `index.html`
+- `VERSION = "equilibre-v97-24"` dans `sw.js`
 
 ---
 
