@@ -2200,7 +2200,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v97.34";
+const BUILD_TAG="v97.36";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -4598,7 +4598,7 @@ function animerCartesSpeciales(_essai){
       if(S.voixGuide && typeof _parlerGuide==="function"){
         setTimeout(function(){
           if(_revealClos) return;
-          _voixLancee = _parlerGuide("Les cartes légendaires se révèlent. La Suprême... et le Fantôme !",
+          _voixLancee = _parlerGuide("Les cartes légendaires se révèlent.",
             {masc:true, onend:function(){
               var reste=Math.max(0, _minFin-Date.now());
               setTimeout(_fermerReveal, reste+400);     // on laisse respirer après la phrase
@@ -13194,6 +13194,11 @@ function renderMenu(app){
     <!-- ══ HEADER — Profil joueur ══ -->
     <div class="pl-entete2" style="margin:6px 10px 0;padding:0;
       aspect-ratio:1262/458;position:relative;border-top:1px solid rgba(232,200,119,0.55)">
+      <button onclick="_ouvrirReglages(false)" aria-label="Réglages" title="Réglages"
+        style="position:absolute;top:6%;right:3%;z-index:4;width:38px;height:38px;border-radius:50%;
+        border:1px solid rgba(240,208,96,0.55);background:rgba(8,5,18,0.62);color:var(--goldL);
+        font-size:17px;line-height:1;cursor:pointer;display:flex;align-items:center;justify-content:center;
+        box-shadow:0 2px 10px rgba(0,0,0,0.7);-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)">⚙️</button>
       <div style="position:absolute;left:26%;top:8%;right:8%;text-shadow:0 2px 7px rgba(0,0,0,0.95)">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px">
           <div>
@@ -14336,9 +14341,13 @@ function MULTI_VALIDER_NOM(cb){
   S.nom=nom; sauvegarder(); cb();
 }
 
-function MULTI_CONFIRM_MENU(){
-  // ── Menu de partie : réglages + sortie ────────────────────────────────
-  // Chaque ligne pilote un réglage RÉEL du moteur ; rien de décoratif.
+function MULTI_CONFIRM_MENU(){ _ouvrirReglages(true); }
+
+// Panneau de réglages unique, partagé par le menu et la partie.
+//   enPartie=true  → bouton « Quitter la partie » (appelé depuis le jeu)
+//   enPartie=false → champ pseudo, pas de sortie (appelé depuis le menu)
+function _ouvrirReglages(enPartie){
+  // ── Réglages : chaque ligne pilote un réglage RÉEL du moteur ──────────
   var lig=function(id,icone,nom,valeur){
     return '<button id="'+id+'" onclick="_regBascule(\''+id+'\')" style="width:100%;display:flex;align-items:center;gap:12px;'
       +'background:rgba(255,255,255,0.04);border:1px solid rgba(212,175,55,0.25);border-radius:14px;'
@@ -14356,6 +14365,17 @@ function MULTI_CONFIRM_MENU(){
     +'box-shadow:0 0 40px rgba(240,208,96,0.18);padding:22px 18px 18px;max-width:360px;width:100%;max-height:92vh;overflow:auto">'
     +'<div style="text-align:center;font-size:9px;letter-spacing:3px;color:var(--muted);font-family:\'Cinzel\',serif">PERSONNALISE TON EXPÉRIENCE</div>'
     +'<div style="text-align:center;font-family:\'Cinzel\',serif;font-size:22px;font-weight:900;color:var(--goldL);margin:4px 0 16px">⚙️ RÉGLAGES</div>'
+    +(enPartie?'':
+      '<div style="background:rgba(255,255,255,0.04);border:1px solid rgba(212,175,55,0.25);border-radius:14px;padding:13px 14px;margin-bottom:9px">'
+      +'<div style="font-family:\'Crimson Text\',Georgia,serif;font-style:italic;font-size:14px;color:#e8e0f2;margin-bottom:9px">Ton pseudo</div>'
+      +'<div style="display:flex;gap:8px">'
+        +'<input id="reg-nom" type="text" maxlength="14" value="'+String(S.nom||"").replace(/"/g,"&quot;")+'" placeholder="Ton prénom" '
+          +'style="flex:1;min-width:0;padding:10px 12px;border-radius:12px;border:1px solid rgba(212,175,55,0.35);'
+          +'background:rgba(0,0,0,0.35);color:var(--goldL);font-family:\'Cinzel\',serif;font-size:14px">'
+        +'<button onclick="_regNom()" style="flex-shrink:0;padding:0 16px;border-radius:12px;cursor:pointer;'
+          +'background:rgba(240,208,96,0.12);border:1px solid rgba(240,208,96,0.45);color:var(--goldL);'
+          +'font-family:\'Cinzel\',serif;font-size:12px;font-weight:900">OK</button>'
+      +'</div></div>')
     +lig("reg-son","🔊","Sons du jeu", AUDIO.muted?"COUPÉS":"ACTIVÉS")
     +lig("reg-musique","🎵","Musique d\'ambiance", (S.musique===false)?"COUPÉE":"ACTIVÉE")
     +lig("reg-voix","🗣️","Voix du guide", S.voixGuide?"ACTIVÉE":"COUPÉE")
@@ -14373,10 +14393,12 @@ function MULTI_CONFIRM_MENU(){
     +'<button onclick="_regFermer()" style="width:100%;min-height:48px;border-radius:26px;border:none;cursor:pointer;margin-bottom:9px;'
       +'background:linear-gradient(135deg,#f7d9a8,#d98f3d);color:#2b1a05;font-family:\'Cinzel\',serif;font-size:14px;font-weight:900;letter-spacing:1px">'
       +'ENREGISTRER ET FERMER</button>'
-    +'<button onclick="MULTI_DO_MENU()" style="width:100%;min-height:44px;border-radius:22px;cursor:pointer;'
+    +(enPartie?
+      ('<button onclick="MULTI_DO_MENU()" style="width:100%;min-height:44px;border-radius:22px;cursor:pointer;'
       +'background:rgba(224,85,85,0.12);border:1px solid rgba(224,85,85,0.5);color:#f08a8a;font-size:13px;font-weight:700">'
       +'🏠 Quitter la partie</button>'
-    +'<div style="font-size:10px;color:var(--muted);text-align:center;margin-top:7px">La partie en cours sera perdue.</div>'
+      +'<div style="font-size:10px;color:var(--muted);text-align:center;margin-top:7px">La partie en cours sera perdue.</div>')
+      :'')
   +'</div>';
   document.body.appendChild(overlay);
 }
@@ -14464,7 +14486,23 @@ function _regVolume(v){
   }catch(e){}
 }
 
+function _regNom(){
+  var inp=document.getElementById("reg-nom");
+  var v=inp?inp.value.trim():"";
+  if(v.length<2){ showToast("⚠️ Prénom trop court (2 lettres min)","info",2000); return false; }
+  S.nom=v;
+  try{ sauvegarder(); }catch(_){}
+  try{ AUDIO.sfxClickUnique(); }catch(_){}
+  showToast("✅ Pseudo enregistré : "+v,"win",2000);
+  return true;
+}
+
 function _regFermer(){
+  // Le pseudo saisi sans passer par OK est tout de même conservé.
+  try{
+    var inp=document.getElementById("reg-nom");
+    if(inp){ var v=inp.value.trim(); if(v.length>=2) S.nom=v; }
+  }catch(e){}
   try{ sauvegarder(); }catch(e){}
   var ov=document.getElementById("confirm-menu-overlay");
   if(ov) ov.remove();
