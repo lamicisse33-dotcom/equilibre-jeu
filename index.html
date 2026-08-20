@@ -396,6 +396,8 @@ body.hab-clair [style*="background:rgba(0,0,0,0.35"]{background:rgba(74,56,22,0.
    Le gap horizontal est posé en style inline par aperçuMain() (il dépend du
    nombre de cartes du rang), donc PAS de !important ici sinon il gagnerait. */
 .main-table .rang{margin-bottom:calc(0.2px * var(--kv));}
+/* Loupe de table : la carte touchée se présente en grand sous la main. */
+@keyframes zoomTableIn{from{opacity:0;transform:translateY(14px) scale(0.94)}to{opacity:1;transform:none}}
 .main-table .rang:nth-child(2){margin-bottom:calc(0.1px * var(--kv));}
 .main-table .rang:last-child{margin-bottom:0;}
 /* Chaque carte est COUCHÉE : écrasement vertical léger (2D — la bascule 3D
@@ -2209,7 +2211,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v97.45";
+const BUILD_TAG="v97.48";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -11378,6 +11380,43 @@ function comboVedetteHTML(cards, renderCard, instId, opts){
 // P est exprimé en multiples de la hauteur de carte, pour que le trapèze garde
 // le même rapport quelle que soit la taille d'écran.
 var TRAPEZE_A=20, TRAPEZE_P=9.8;
+// ── Loupe de table : une touche soulève la carte et la présente en grand
+//    dans l'espace vide sous la main ; une seconde touche la repose.
+//    Purement de lecture — la carte n'est ni jouée ni déplacée.
+var _MAIN_VUE=[], _ZOOM_IDX=null;
+function zoomCarteTable(i){
+  var table=document.querySelector(".main-table"); if(!table) return;
+  var anc=document.getElementById("zoom-table");
+  // Deuxième touche sur la même carte → elle retourne à sa place
+  if(anc && _ZOOM_IDX===i){ _fermerZoomTable(); return; }
+  if(anc) anc.remove();
+  var c=_MAIN_VUE[i]; if(!c) return;
+  _ZOOM_IDX=i;
+  try{ AUDIO.sfxClickUnique(); }catch(_){}
+  // La carte d'origine s'efface le temps du zoom : elle est "soulevée".
+  var piles=table.querySelectorAll(".table-card");
+  if(piles[i]) piles[i].style.opacity="0.25";
+
+  var z=document.createElement("div");
+  z.id="zoom-table";
+  z.onclick=function(){ _fermerZoomTable(); };
+  z.style.cssText="position:absolute;inset:0;z-index:6;cursor:pointer;"
+    +"display:flex;flex-direction:column;align-items:center;justify-content:center;gap:9px;"
+    +"background:rgba(4,3,10,0.88);-webkit-backdrop-filter:blur(2px);backdrop-filter:blur(2px);"
+    +"animation:zoomTableIn 0.22s ease both";
+  // 1,55× : lisible sans jamais déborder du cadre, même à 428×771.
+  z.innerHTML='<div style="filter:drop-shadow(0 14px 34px rgba(0,0,0,0.95))">'
+    +carteK(c,{},1.55,156)+'</div>'
+    +'<div style="font-size:9px;color:var(--muted);letter-spacing:1.5px">TOUCHE POUR REPOSER</div>';
+  table.appendChild(z);
+}
+function _fermerZoomTable(){
+  var z=document.getElementById("zoom-table"); if(z) z.remove();
+  var table=document.querySelector(".main-table");
+  if(table) table.querySelectorAll(".table-card").forEach(function(p){ p.style.opacity=""; });
+  _ZOOM_IDX=null;
+}
+
 function aperçuMain(main,jokers){
   if(main.length===0)return`<!--HAND--><div class="card" style="text-align:center;padding:16px"><div style="font-size:28px;margin-bottom:6px">📭</div><div style="color:var(--red);font-weight:700">Plus de cartes disponibles</div></div>`;
 
@@ -11439,10 +11478,13 @@ function aperçuMain(main,jokers){
       // perspective(P) + rotateX(A) produit exactement ce trapèze. Mettre
       // TRAPEZE_A à 0 revient au rendu précédent, sans aucune 3D.
       var _p3d=TRAPEZE_A>0?' perspective('+Math.round(TRAPEZE_P*_hR)+'px) rotateX('+TRAPEZE_A+'deg)':'';
-      return '<div class="pile table-card" style="transform:rotate('+(_rot[i]||0).toFixed(2)+'deg) skewX('+(sk*180/Math.PI).toFixed(2)+'deg)'+_p3d+'">'
+      return '<div class="pile table-card" onclick="zoomCarteTable('+(d+i)+')" style="cursor:pointer;transform:rotate('+(_rot[i]||0).toFixed(2)+'deg) skewX('+(sk*180/Math.PI).toFixed(2)+'deg)'+_p3d+'">'
         +carteK(c,{couche:true},_kR,_hR)+'</div>';
     }).join("")}</div>`;
   }
+
+  // Les cartes visibles, dans l'ordre affiché : zoomCarteTable() y pioche.
+  _MAIN_VUE=cs;
 
   return`<!--HAND--><div class="mt-or" style="margin-left:-4px;margin-right:-4px"><div class="main-table game-table">
     <div class="main-grille cards-grid">${rangs}</div>
@@ -12335,14 +12377,25 @@ const G={
       // Manche à bonus : on ANNULE l'avance auto tout de suite (sinon l'enchaînement automatique
       // pourrait sauter le bonus). Le bonus (ou _tenterBonus) relancera la manche suivante ensuite.
       if(G._apresInt){ clearTimeout(G._apresInt); G._apresInt=null; }
-      // FILET DE SÉCURITÉ DUR : si après 7 s la manche est TOUJOURS au résultat et qu'aucun bonus
-      // n'occupe l'écran, on force l'enchaînement — le jeu ne peut JAMAIS rester bloqué ici.
-      setTimeout(function(){
-        if(S.jeu===j && j.phase==="fin"){
-          var occ=(typeof _sceneOccupee==="function" && _sceneOccupee()) || !!document.getElementById("celebration-badge");
-          if(!occ){ try{ G.mancheSuivante(); }catch(e){} }
+      // FILET DE SÉCURITÉ ABSOLU : le verdict ne reste JAMAIS plus de 9 s à l'écran.
+      // L'ancien filet ne se déclenchait qu'une fois ET seulement si la scène était
+      // libre — or c'est précisément quand elle reste occupée que l'écran se fige.
+      // Ici on vérifie en continu, et à 9 s on referme ce qui traîne et on enchaîne,
+      // sauf si un bonus a réellement démarré (c'est lui qui reprend la main).
+      if(j._veilleFin){ clearInterval(j._veilleFin); }
+      var _t0=Date.now();
+      j._veilleFin=setInterval(function(){
+        if(!S.jeu || S.jeu!==j || j.phase!=="fin" || j._bonusLance){
+          clearInterval(j._veilleFin); j._veilleFin=null; return;
         }
-      }, 7000);
+        if(Date.now()-_t0 < 9000) return;
+        clearInterval(j._veilleFin); j._veilleFin=null;
+        try{ ["destin-bonus-overlay","sage-bonus-overlay","bonus-overlay","joker-overlay","deal-overlay"]
+          .forEach(function(id){ var o=document.getElementById(id); if(o) o.classList.remove("active"); }); }catch(_){}
+        try{ var sr=document.getElementById("speciales-reveal"); if(sr) sr.remove(); }catch(_){}
+        if(G._apresInt){ clearTimeout(G._apresInt); G._apresInt=null; }
+        try{ G.mancheSuivante(); }catch(e){}
+      }, 500);
       // Le bonus attend son tour au lieu d'être perdu : si une autre séquence occupe l'écran
       // (joker, célébration, cartes légendaires, autre bonus), on suspend la manche et on retente.
       // Après 15 essais, on renonce au bonus mais la partie continue normalement.
@@ -12353,7 +12406,9 @@ const G={
                    || !!document.getElementById("celebration-badge");
         if(_occupe){
           if(G._apresInt){ clearTimeout(G._apresInt); G._apresInt=null; }   // la manche attend
-          if((essai||0) < 15){ setTimeout(function(){ _tenterBonus((essai||0)+1); }, 900); return; }
+          // 5 essais (≈4,5 s) et non 15 (≈13,5 s) : une séquence qui n'a pas fini
+          // au bout de 4,5 s est bloquée, pas occupée. On renonce au bonus.
+          if((essai||0) < 5){ setTimeout(function(){ _tenterBonus((essai||0)+1); }, 900); return; }
           G._apresInt=setTimeout(function(){ G._apresInt=null; if(S.jeu) G.mancheSuivante(); }, 250);
           return;
         }
@@ -12369,6 +12424,9 @@ const G={
         if(typeof j._bonusSeq!=="number") j._bonusSeq=Math.floor(Math.random()*_seq.length);
         var _btype=_seq[j._bonusSeq%_seq.length]; j._bonusSeq++;
         // Filet de sécurité : un bonus ne doit jamais pouvoir figer la partie.
+        // Ce drapeau désarme la veille des 9 s : à partir d'ici, c'est le bonus
+        // lui-même qui rendra la main.
+        j._bonusLance=true;
         try{
           if(j._bonusPour==="ia"){ G._bonusIA(_btype); }
           else if(_btype==="sage"){ BONUS_SAGE.launch(); }
@@ -12429,6 +12487,10 @@ const G={
   },
 
   _doMancheSuivante(j){
+    // La veille du verdict a fait son office : on ne laisse jamais un minuteur
+    // tourner en fond d'une manche à l'autre.
+    if(j._veilleFin){ clearInterval(j._veilleFin); j._veilleFin=null; }
+    j._bonusLance=false;
     const prochain=j.premier==="j1"?"ia":"j1";
     j.premier=prochain;j.manche++;
     // Révélation cinématique des cartes spéciales à l'entrée de la manche 6 (une fois par partie)
@@ -12778,7 +12840,14 @@ function lancerGardien(i){
   try{
     if(!S.campagne) S.campagne={progres:0};
     if(i<0||i>=CAMPAGNE.length) return;
-    if(i>(S.campagne.progres||0)) return; // gardien encore verrouillé
+    // Un retour muet laissait le joueur devant un bouton mort (cas de La Chute :
+    // la déroute reverrouille le gardien qu'on vient d'affronter). On explique.
+    if(i>(S.campagne.progres||0)){
+      var _gv=CAMPAGNE[i];
+      showToast("🔒 "+((_gv&&_gv.nom)||"Ce Gardien")+" s'est refermé — reprends le chemin d'abord.","info",3600);
+      S._lastCampagne=null; S.ecran="campagne"; render();
+      return;
+    }
     S.diff=CAMPAGNE[i].diff;
     S.campagneEnCours=i;
     S.survieActif=false;
@@ -14111,6 +14180,20 @@ function renderResultat(app){
             +'<button onclick="S.ecran=\'menu\';render()" style="'+subStyle+'">🏠 Menu</button></div>';
         } else if(lc.gagne){
           return '<button onclick="S.ecran=\'campagne\';render()" style="'+primStyle+'">🏆 Voir la Campagne</button>'
+            +'<div style="display:flex;gap:8px;margin-bottom:18px">'
+            +'<button onclick="S.ecran=\'menu\';render()" style="'+subStyle+'">🏠 Menu</button></div>';
+        }
+        // ── LA CHUTE : la déroute a repris un pas sur le chemin. Le gardien
+        //    affronté est donc REVERROUILLÉ (progres = gi-1) et « Réessayer ce
+        //    gardien » ne peut plus rien lancer. On dit la vérité au joueur et
+        //    on le renvoie sur la carte, où le gardien précédent l'attend.
+        if(lc.chute){
+          var _gPrec=CAMPAGNE[prog]?CAMPAGNE[prog].nom:"le gardien précédent";
+          return '<div style="font-size:12px;color:var(--red);text-align:center;margin-bottom:10px;line-height:1.5;'
+            +'border:1px solid rgba(224,85,85,0.35);border-radius:12px;padding:11px 13px;background:rgba(224,85,85,0.07)">'
+            +'⚑ La déroute t\'a repris un pas.<br>'
+            +'<span style="color:var(--muted);font-size:11px">Ce Gardien s\'est refermé — reprends '+_gPrec+' pour revenir à lui.</span></div>'
+            +'<button onclick="S.ecran=\'campagne\';render()" style="'+primStyle+'">🗺️ Reprendre le chemin</button>'
             +'<div style="display:flex;gap:8px;margin-bottom:18px">'
             +'<button onclick="S.ecran=\'menu\';render()" style="'+subStyle+'">🏠 Menu</button></div>';
         }
