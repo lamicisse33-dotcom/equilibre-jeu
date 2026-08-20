@@ -2211,7 +2211,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v97.48";
+const BUILD_TAG="v97.49";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -2673,14 +2673,14 @@ const CAMPAGNE=[
    gagnant:"Tu as voulu tout. Regarde tes mains : elles sont vides."},
   {id:"c4", acte:1,fem:true,nom:"Gardienne de la Spiritualité", pilier:"Spiritualité",icon:"🕯️",diff:"Expert",      xp:250, phrase:"Tu viens chercher. Assieds-toi. Ce que tu cherches, lui, ne se presse pas.",
    vaincu:"Tu m'as battue, disciple. Alors retiens ceci : celui qui sait se taire entend ce que les autres crient. Prends mon savoir. Il ne pèse rien, et pourtant il fera pencher ta balance.",
-   gagnant:"Reviens. L'esprit ne se conquiert pas d'un seul assaut."},
-  {id:"c5", acte:1,nom:"Le Gardien du Seuil",          pilier:"Équilibre",   icon:"🗝️",diff:"Expert",      xp:350, phrase:"Tu franchis le premier seuil. Beaucoup s'y sont brisés avant toi.",
+   gagnant:"Reviens. L'esprit ne se comprend pas en une seule partie."},
+  {id:"c5", acte:1,nom:"Le Gardien du Seuil",          pilier:"Équilibre",   icon:"🗝️",diff:"Expert",      xp:350, phrase:"Tu franchis le premier seuil. Beaucoup s'y sont égarés avant toi.",
    vaincu:"Les quatre t'ont enseigné. Tu ne domines aucun pilier — et c'est pour cela que tu passes. On te suit, désormais. Prends garde à où tu marches.",
    gagnant:"Un seul pilier a cédé. C'est toujours un de trop."},
   // ── ACTE II — L'ÉPREUVE ──
-  {id:"c6", acte:2,nom:"Le Moine de Fer",              pilier:"Santé",       icon:"🌿",diff:"Expert",      xp:420, twist:"endurance",phrase:"Ta chair cédera bien avant ma volonté.",
+  {id:"c6", acte:2,nom:"Le Moine de Fer",              pilier:"Santé",       icon:"🌿",diff:"Expert",      xp:420, twist:"endurance",phrase:"Ta patience cédera bien avant ma volonté.",
    vaincu:"Tu as tenu. Voilà tout. Ce n'est pas la force qui m'a vaincu, c'est ton refus de t'asseoir. Le fer ne plie pas : il rouille. Toi, tu respires. Prends mon savoir, disciple.",
-   gagnant:"Ta chair a cédé. Elle cède toujours. Reviens quand tu auras appris à respirer dans la douleur."},
+   gagnant:"Ta patience a cédé. Elle cède toujours la première. Reviens quand tu sauras attendre la bonne manche."},
   {id:"c7", acte:2,fem:true,nom:"La Dame des Regrets",          pilier:"Amour",       icon:"❤️",diff:"Expert",      xp:480, twist:"passion",  phrase:"Chaque cœur que tu chéris deviendra ta faiblesse.",
    vaincu:"Tu as aimé sans t'y perdre. Moi je n'ai jamais su. J'ai serré si fort que tout m'a filé entre les doigts. Aime, disciple, mais ne referme pas la main. Prends mon savoir.",
    gagnant:"Regarde ce que tu chéris. Voilà par où je suis entrée. On ne se protège pas du regret : on apprend à le porter."},
@@ -2694,9 +2694,9 @@ const CAMPAGNE=[
    vaincu:"Tu passes. Non parce que tu as vaincu, mais parce qu'aucun de tes piliers n'est tombé pendant que tu vainquais. L'Épreuve est derrière toi. L'Ascension commence. Va, et prends garde à ce que tu deviens.",
    gagnant:"Un pilier a cédé. Un seul. Ma balance ne connaît pas les circonstances — elle ne connaît que le poids."},
   // ── ACTE III — L'ASCENSION ──
-  {id:"c11",acte:3,nom:"Le Colosse Éternel",          pilier:"Santé",       icon:"🌿",diff:"Expert",      xp:820, twist:"endurance",phrase:"Mille guerriers reposent à mes pieds. Viens les rejoindre.",
+  {id:"c11",acte:3,nom:"Le Colosse Éternel",          pilier:"Santé",       icon:"🌿",diff:"Expert",      xp:820, twist:"endurance",phrase:"Mille joueurs ont cru me lire. Aucun n'a fini son calcul.",
    vaincu:"Tu tiens encore debout. Mille avant toi n'ont pas su. La pierre dure mille ans et ne vit pas un jour. Prends mon savoir, disciple : c'est ce qui plie qui dure.",
-   gagnant:"Repose-toi. Tu as tout donné, et ce n'était pas assez. Mille avant toi ont dit la même chose."},
+   gagnant:"Tu as tout joué, et ce n'était pas assez. Mille avant toi ont dit la même chose."},
   {id:"c12",acte:3,nom:"Le Cœur de Cendres",          pilier:"Amour",       icon:"❤️",diff:"Expert",      xp:900, twist:"passion",  phrase:"J'ai aimé, puis j'ai tout consumé. Ton tour approche.",
    vaincu:"Tu as aimé sans te réduire en cendres. Moi, j'ai brûlé si fort qu'il n'est rien resté à chérir. La passion n'est pas le feu qui dévore — c'est la braise qu'on garde vivante sans se consumer. Prends mon savoir, disciple.",
    gagnant:"J'ai tout brûlé pour une seule personne. Toi, tu viens de tout brûler pour une manche."},
@@ -12861,7 +12861,7 @@ function lancerGardien(i){
     var _tw=CAMPAGNE[i].twist, _msgTw={
       jackpot:"💰 ÉPREUVE DE L'ARGENT — un jackpot grossit à chaque manche ; le vainqueur d'une manche le rafle !",
       passion:"🌹 ÉPREUVE DE LA PASSION — les combos d'Amour valent une fois et demie, des deux côtés.",
-      endurance:"⏳ ÉPREUVE D'ENDURANCE — un combat de longue haleine : seize manches. Tiens bon.",
+      endurance:"⏳ ÉPREUVE D'ENDURANCE — une réflexion de longue haleine : seize manches. Garde la tête froide.",
       aveugle:"🌑 ÉPREUVE DE L'AVEUGLE — la valeur de tes cartes est masquée. Joue à l'instinct.",
       ultime:"🔮 ÉPREUVE ULTIME — jackpot ET cartes masquées. Que l'Équilibre te guide."
     };
@@ -12905,31 +12905,35 @@ function _debloquerCombatChef(){
 // (combats de 10 manches) qu'il faut vaincre avant le chef.
 // ═══════════════════════════════════════════════════════════
 const MENACES_DISCIPLE={
+  // Registre : ÉCHANGE D'ESPRITS, jamais combat physique. Le disciple lit ton jeu,
+  // annonce ton calcul, met ta patience à l'épreuve. Aucune menace au corps :
+  // ÉQUILIBRE est un jeu de cartes, de lecture et de choix.
   Argent:[
-    ["L'or ne ment jamais. Toi, si.","Tes piles d'or ne sont qu'un mirage.","Compte tes pièces tant que tu le peux encore."],
-    ["Ce que tu gagnes ici, tu le paieras au centuple.","La richesse fuit les mains qui tremblent.","Ton trésor a déjà changé de maître."],
-    ["Chaque manche te coûtera plus que tu ne possèdes.","L'avarice t'a mené jusqu'ici ; elle t'y enterrera.","Je lis ta ruine dans tes yeux."],
-    ["Tout ce que tu possèdes finira poussière entre mes doigts.","Les rois se sont agenouillés devant moi. Toi, tu ramperas.","Ton dernier sou paiera ta défaite."]
+    ["L'or ne ment jamais. Tes comptes, si.","Tu comptes tes points. Moi, je compte tes hésitations.","Chaque carte a un prix. Sais-tu lequel ?"],
+    ["Ce que tu gagnes ici, tu le paieras à la manche suivante.","Tu mises gros trop tôt. C'est un calcul, pas une envie.","Ta meilleure carte, tu la gardes. Je le sais déjà."],
+    ["Tu additionnes. Moi, je soustrais ce que tu vas perdre.","L'avidité t'a mené jusqu'ici ; elle choisira à ta place.","Je lis tes comptes dans l'ordre où tu ranges ta main."],
+    ["Toute ta fortune tient en dix cartes. J'en connais neuf.","Des rois ont bien compté devant moi. Trop tard.","Ton dernier point paiera la leçon."]
   ],
   Amour:[
-    ["Ton cœur bat trop fort ; je l'entends déjà faiblir.","L'amour t'a rendu faible, et je m'en nourris.","Tu aimes trop pour vaincre."],
-    ["Ceux que tu chéris ne te sauveront pas ici.","Ton affection sera ta faille.","J'ai vu des cœurs plus vaillants se briser."],
-    ["Chaque battement te rapproche de ta perte.","L'amour aveugle ; la défaite, elle, voit clair.","Tes larmes couleront avant la dernière manche."],
-    ["J'ai brisé des âmes plus nobles que la tienne.","Ton cœur finira glacé, comme tous les autres.","Aime une dernière fois : c'est un adieu."]
+    ["Tu joues ce que tu aimes. C'est lisible.","Ton cœur choisit avant ta tête — et je regarde ton cœur.","Tu tiens trop à tes cartes pour les jouer."],
+    ["Ceux que tu chéris ne joueront pas à ta place.","Ton attachement à cette carte se voit d'ici.","Donner au bon moment, voilà tout l'art. Tu donnes trop tard."],
+    ["Chaque carte que tu gardes me dit ce que tu crains.","L'amour aveugle. La stratégie, elle, voit clair.","Tu protèges. Moi, je place."],
+    ["J'ai lu des joueurs plus fins que toi — dans leur silence.","Tu joues avec le cœur. Je joue avec le tien.","Aime cette carte une dernière fois : tu vas la poser."]
   ],
   Santé:[
-    ["Le souffle te manquera avant la fin.","Ton corps te trahira au premier faux pas.","La fatigue coule déjà dans tes veines."],
-    ["Tes forces s'écoulent comme du sable.","Chaque manche t'épuisera davantage.","Ta vigueur n'est qu'un emprunt."],
-    ["Je viderai tes réserves une à une.","Ton endurance a une limite, et je la connais.","Bientôt, tes jambes ne te porteront plus."],
-    ["La vie t'a prêté ses forces ; je viens les reprendre.","Ton dernier souffle m'appartient déjà.","Aucun remède ne te sauvera de moi."]
+    ["Le rythme te manquera avant la fin.","Tu joues vite. La vitesse n'est pas la justesse.","Dix manches. Sais-tu doser ?"],
+    ["Tes bonnes cartes s'écoulent comme du sable.","Chaque manche exige un choix. Il t'en reste peu.","Ta réserve est un emprunt. J'en connais l'échéance."],
+    ["Je viderai ta main carte après carte, dans l'ordre.","Ton endurance a une limite : dix cartes.","Tiens le rythme — ou c'est lui qui te tiendra."],
+    ["La partie t'a prêté ses forces ; la dernière manche les reprend.","Ta dernière carte, je la connais déjà. Toi aussi.","Aucune ruse ne remplace la patience."]
   ],
   Spiritualité:[
-    ["Tu cherches la lumière ? Ici règne l'ombre.","Ton esprit vacille, je le sens.","La paix que tu cherches n'existe pas ici."],
-    ["Tes certitudes se fissurent déjà.","L'illusion te guide ; je suis la vérité.","Ton âme n'est pas prête pour ce qui l'attend."],
-    ["Je hante des esprits plus forts que le tien.","Le doute te rongera à chaque manche.","Ferme les yeux : tu ne verras que ta chute."],
-    ["Ton âme n'a pas fini de trembler.","J'ai éteint des lumières plus vives que la tienne.","Le vide t'attend, et il a mon visage."]
+    ["Tu cherches la lumière ? Ici, on cherche la faille.","Ton choix hésite. Je l'entends d'ici.","La paix ne se joue pas. Le calme, si."],
+    ["Tes certitudes se fissurent déjà. Regarde ta main.","L'intuition te guide. Moi, j'ai compté.","Tu joues ce que tu espères, pas ce que tu sais."],
+    ["J'ai troublé des esprits plus clairs que le tien.","Le doute te rongera à chaque manche. C'est mon jeu.","Ferme les yeux : tu verras enfin tes cartes."],
+    ["Ton silence parle plus fort que tes cartes.","J'ai éteint des raisonnements plus vifs que le tien.","Le vide t'attend — et c'est là que je place."]
   ]
 };
+
 var _derniereMenace="";
 function menaceDisciple(pilier,rang){
   var pool=(MENACES_DISCIPLE[pilier]&&MENACES_DISCIPLE[pilier][rang])||["Approche, si tu l'oses."];
