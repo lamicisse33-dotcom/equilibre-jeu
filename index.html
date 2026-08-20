@@ -2211,7 +2211,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v97.49";
+const BUILD_TAG="v97.50";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -12184,6 +12184,41 @@ const G={
     }, function(){ if(S.jeu) G.finPartie(); });   // le Jackpot tranche la partie
   },
 
+  // ── VEILLE DU VERDICT ────────────────────────────────────────────────
+  // Armée à CHAQUE fin de manche, pas seulement sur les manches à bonus.
+  // Le minuteur d'enchaînement (_apresInt) est annulé en 31 endroits du
+  // fichier ; il suffit qu'un seul chemin l'annule sans le replanifier pour
+  // que l'écran de verdict reste affiché indéfiniment. Cette veille est le
+  // dernier recours : elle ne dépend d'aucun de ces chemins.
+  //   10 s → on enchaîne si rien n'occupe l'écran
+  //   20 s → on ferme ce qui traîne et on enchaîne quoi qu'il arrive
+  //   60 s → même chose, mais seulement si un bonus avait réellement démarré
+  _armerVeilleFin(j){
+    if(!j) return;
+    if(j._veilleFin){ clearInterval(j._veilleFin); j._veilleFin=null; }
+    var _t0=Date.now();
+    j._veilleFin=setInterval(function(){
+      if(!S.jeu || S.jeu!==j || j.phase!=="fin"){
+        clearInterval(j._veilleFin); j._veilleFin=null; return;
+      }
+      var ms=Date.now()-_t0;
+      var occupe=false;
+      try{ occupe=(typeof _sceneOccupee==="function" && _sceneOccupee())
+                 || !!document.getElementById("celebration-badge"); }catch(_){}
+      var limite = j._bonusLance ? 60000 : 20000;
+      if(ms<10000) return;                 // on laisse le rythme normal opérer
+      if(occupe && ms<limite) return;      // une séquence joue vraiment : on patiente
+      clearInterval(j._veilleFin); j._veilleFin=null;
+      try{ ["destin-bonus-overlay","sage-bonus-overlay","bonus-overlay","joker-overlay",
+            "deal-overlay","jf-overlay","special-confirm-overlay"]
+        .forEach(function(id){ var o=document.getElementById(id); if(o) o.classList.remove("active"); }); }catch(_){}
+      try{ var sr=document.getElementById("speciales-reveal"); if(sr) sr.remove(); }catch(_){}
+      if(G._apresInt){ clearTimeout(G._apresInt); G._apresInt=null; }
+      try{ G.mancheSuivante(); }
+      catch(e){ try{ if(window.__logErr) window.__logErr(e,"veilleFin"); G.finPartie(); }catch(_){} }
+    }, 500);
+  },
+
   resoudre(cJ1,cIA,jokerFinal){
     const j=S.jeu;
     // ── Jackpot des Fantômes : les deux ont joué un Fantôme ──
@@ -12362,7 +12397,9 @@ const G={
     if(_fantJ) setTimeout(function(){ showToast("👻 Fantôme : "+cJ1.pts+" points !","badge",2400,true); }, 750);
     else if(_fantIA) setTimeout(function(){ showToast("👻 Fantôme adverse : "+cIA.pts+" points !","lose",2400,true); }, 750);
     j.phase="fin";
+    j._bonusLance=false;
     render();
+    G._armerVeilleFin(j);
     // Bonus imprévisible — alterne entre Question et Bonus du Sage
     // Toujours planifier mancheSuivante — annulée si bonus se lance
     if(G._apresInt) clearTimeout(G._apresInt);
@@ -12377,25 +12414,8 @@ const G={
       // Manche à bonus : on ANNULE l'avance auto tout de suite (sinon l'enchaînement automatique
       // pourrait sauter le bonus). Le bonus (ou _tenterBonus) relancera la manche suivante ensuite.
       if(G._apresInt){ clearTimeout(G._apresInt); G._apresInt=null; }
-      // FILET DE SÉCURITÉ ABSOLU : le verdict ne reste JAMAIS plus de 9 s à l'écran.
-      // L'ancien filet ne se déclenchait qu'une fois ET seulement si la scène était
-      // libre — or c'est précisément quand elle reste occupée que l'écran se fige.
-      // Ici on vérifie en continu, et à 9 s on referme ce qui traîne et on enchaîne,
-      // sauf si un bonus a réellement démarré (c'est lui qui reprend la main).
-      if(j._veilleFin){ clearInterval(j._veilleFin); }
-      var _t0=Date.now();
-      j._veilleFin=setInterval(function(){
-        if(!S.jeu || S.jeu!==j || j.phase!=="fin" || j._bonusLance){
-          clearInterval(j._veilleFin); j._veilleFin=null; return;
-        }
-        if(Date.now()-_t0 < 9000) return;
-        clearInterval(j._veilleFin); j._veilleFin=null;
-        try{ ["destin-bonus-overlay","sage-bonus-overlay","bonus-overlay","joker-overlay","deal-overlay"]
-          .forEach(function(id){ var o=document.getElementById(id); if(o) o.classList.remove("active"); }); }catch(_){}
-        try{ var sr=document.getElementById("speciales-reveal"); if(sr) sr.remove(); }catch(_){}
-        if(G._apresInt){ clearTimeout(G._apresInt); G._apresInt=null; }
-        try{ G.mancheSuivante(); }catch(e){}
-      }, 500);
+      // La veille du verdict est déjà armée par _calcul() pour TOUTES les manches
+      // (_armerVeilleFin) : plus besoin d'un filet propre aux manches à bonus.
       // Le bonus attend son tour au lieu d'être perdu : si une autre séquence occupe l'écran
       // (joker, célébration, cartes légendaires, autre bonus), on suspend la manche et on retente.
       // Après 15 essais, on renonce au bonus mais la partie continue normalement.
@@ -15122,6 +15142,14 @@ window.addEventListener("visibilitychange",function(){
     try{ if(typeof _stopLectureRegles==="function") _stopLectureRegles(); }catch(_){}
     sauvegarderPartieEnCours();
     sauvegarderDuelEnCours();
+  } else {
+    // Retour au premier plan : un minuteur gelé en arrière-plan ne se rattrape
+    // pas tout seul. Si le verdict est resté à l'écran, on réarme la veille.
+    try{
+      if(S.jeu && S.jeu.phase==="fin" && typeof G!=="undefined" && G._armerVeilleFin){
+        G._armerVeilleFin(S.jeu);
+      }
+    }catch(_){}
   }
 });
 
