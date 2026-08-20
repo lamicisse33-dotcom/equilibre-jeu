@@ -687,8 +687,17 @@ body.hab-clair [style*="background:rgba(0,0,0,0.35"]{background:rgba(74,56,22,0.
 .main-arriere{display:flex;flex-wrap:wrap;justify-content:center;gap:4px;
   opacity:.40;filter:grayscale(.5);animation:mainRecule .28s ease both}
 @keyframes mainRecule{from{opacity:.9;transform:translateY(8px) scale(1.1)}to{opacity:.40;transform:none}}
-/* Écran de sélection : grille fixe 3×4 — l'agrandissement ferait déborder la carte. */
-.sel-grid .carte-rep.selected{transform:none !important;}
+/* Écran de sélection : grille fixe 3×4 — l'agrandissement ferait déborder la carte.
+   Noir mat et non doré : sur des cartes crème serrées, dix halos or se rejoignent
+   en une brume qui efface les bords. Ici, pas de lueur colorée du tout — un liseré
+   sombre qui découpe la carte, et une ombre diffuse qui la décolle du fond.
+   Le tri gardée/écartée reste porté par la coche ✓ et par .ecartee. */
+.sel-grid .carte-rep.selected{
+  transform:none !important;
+  box-shadow:0 0 0 2px rgba(10,7,18,0.95),
+             0 4px 26px rgba(0,0,0,0.85),
+             0 14px 34px rgba(0,0,0,0.75) !important;
+}
 .sel-grid .ecartee{opacity:0.30;filter:grayscale(0.9);}
 .carte-rep .pts-num{font-family:'Cinzel',serif;line-height:1;font-weight:900;}
 /* Reflet animé qui balaie la carte (léger, espacé, GPU) */
@@ -2200,7 +2209,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v97.38";
+const BUILD_TAG="v97.45";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -2402,6 +2411,189 @@ function getRang(){
   return r;
 }
 // ══════════════════════════════════════════════════════════════════════
+// LES DOS DE CARTES — motifs dessinés en SVG, zéro octet d'image.
+// Chaque dos puise dans une tradition graphique africaine documentée
+// dans la bible KHALAM. Le dos est l'élément le plus vu du jeu : il
+// apparaît à chaque manche, dans la main de l'adversaire, à la pioche.
+//   fond  : le dégradé de la carte retournée
+//   trait : la couleur du motif
+//   svg(t): le motif, dessiné dans un viewBox 100×140
+//   gagne : si présent, le dos ne s'achète pas — il se mérite
+// ══════════════════════════════════════════════════════════════════════
+const DOS=[
+  {id:"origine", nom:"Le Dos d'Origine", ic:"🂠", prix:0,
+   fond:"linear-gradient(160deg,#1a0a35,#0a0520)", trait:"rgba(212,175,55,0.55)",
+   desc:"L'apparence de départ.",
+   svg:function(t){ return '<text x="50" y="78" text-anchor="middle" font-size="34" fill="'+t+'" opacity="0.30">&#127200;</text>'; }},
+
+  {id:"kuba", nom:"Le Damier Kuba", ic:"◧", prix:120,
+   fond:"linear-gradient(160deg,#2a1a10,#120a06)", trait:"#D9A441",
+   desc:"Tissage géométrique du peuple Kuba.",
+   svg:function(t){
+     var s="";
+     for(var y=0;y<7;y++) for(var x=0;x<5;x++){
+       if((x+y)%2) continue;
+       var px=x*20, py=y*20;
+       s+='<path d="M'+(px+3)+' '+(py+3)+' L'+(px+17)+' '+(py+3)+' L'+(px+10)+' '+(py+17)+' Z" fill="'+t+'" opacity="0.55"/>';
+       s+='<rect x="'+(px+7)+'" y="'+(py+7)+'" width="6" height="6" fill="none" stroke="'+t+'" stroke-width="0.8" opacity="0.7"/>';
+     }
+     return s; }},
+
+  {id:"bogolan", nom:"Le Fil Bogolan", ic:"⌗", prix:120,
+   fond:"linear-gradient(160deg,#241a12,#0f0a06)", trait:"#E8DCC0",
+   desc:"Bogolan malien, la terre et le fil.",
+   svg:function(t){
+     var s="";
+     for(var i=0;i<8;i++){
+       var y=8+i*17;
+       s+='<line x1="6" y1="'+y+'" x2="94" y2="'+y+'" stroke="'+t+'" stroke-width="1.1" opacity="0.45"/>';
+       for(var j=0;j<6;j++){
+         var x=10+j*16+(i%2?8:0);
+         s+='<rect x="'+x+'" y="'+(y+3)+'" width="7" height="7" fill="'+t+'" opacity="'+((i+j)%3?0.30:0.62)+'"/>';
+       }
+     }
+     return s; }},
+
+  {id:"nsibidi", nom:"Le Signe Nsibidi", ic:"⟠", prix:200,
+   fond:"linear-gradient(160deg,#101d2a,#050a12)", trait:"#8FD0E8",
+   desc:"Idéogrammes nsibidi du delta du Niger.",
+   svg:function(t){
+     var g='stroke="'+t+'" fill="none" stroke-width="1.6" stroke-linecap="round" opacity="0.72"';
+     return ''
+       +'<circle cx="50" cy="70" r="30" '+g+'/>'
+       +'<path d="M50 40 L50 100 M20 70 L80 70" '+g+'/>'
+       +'<path d="M29 49 L71 91 M71 49 L29 91" '+g+' opacity="0.38"/>'
+       +'<circle cx="50" cy="70" r="8" fill="'+t+'" opacity="0.55"/>'
+       +'<path d="M14 18 L28 18 L21 30 Z M86 18 L72 18 L79 30 Z" fill="'+t+'" opacity="0.45"/>'
+       +'<path d="M14 122 L28 122 L21 110 Z M86 122 L72 122 L79 110 Z" fill="'+t+'" opacity="0.45"/>'; }},
+
+  {id:"sankofa", nom:"Sankofa", ic:"🕊", prix:200,
+   fond:"linear-gradient(160deg,#2a1020,#100510)", trait:"#F0C878",
+   desc:"Adinkra — retourne chercher ce que tu as oublié.",
+   svg:function(t){
+     var g='stroke="'+t+'" fill="none" stroke-width="2.2" stroke-linecap="round" opacity="0.85"';
+     return ''
+       +'<path d="M34 96 C22 78 30 52 50 46 C68 41 78 52 74 62 C71 70 60 71 56 65" '+g+'/>'
+       +'<path d="M34 96 C40 104 54 106 62 98" '+g+'/>'
+       +'<circle cx="50" cy="88" r="5.5" fill="'+t+'" opacity="0.75"/>'
+       +'<path d="M50 46 L50 30" '+g+' opacity="0.5"/>'
+       +'<circle cx="50" cy="26" r="4" fill="'+t+'" opacity="0.6"/>'
+       +'<path d="M18 118 L82 118" stroke="'+t+'" stroke-width="1" opacity="0.35"/>'; }},
+
+  {id:"cauris", nom:"Les Cauris", ic:"🐚", prix:300,
+   fond:"linear-gradient(160deg,#1c1630,#080614)", trait:"#F0D060",
+   desc:"La monnaie du jeu, devenue motif.",
+   svg:function(t){
+     var s="", n=0;
+     for(var y=0;y<5;y++) for(var x=0;x<3;x++){
+       var cx=20+x*30+(y%2?15:0), cy=18+y*27, o=(n++%3===0)?0.75:0.42;
+       s+='<ellipse cx="'+cx+'" cy="'+cy+'" rx="9" ry="12" fill="none" stroke="'+t+'" stroke-width="1.3" opacity="'+o+'"/>';
+       s+='<path d="M'+cx+' '+(cy-7)+' L'+cx+' '+(cy+7)+'" stroke="'+t+'" stroke-width="1.6" opacity="'+o+'"/>';
+       for(var k=-5;k<=5;k+=2.5) s+='<line x1="'+(cx-3)+'" y1="'+(cy+k)+'" x2="'+(cx+3)+'" y2="'+(cy+k)+'" stroke="'+t+'" stroke-width="0.6" opacity="'+(o*0.7)+'"/>';
+     }
+     return s; }},
+
+  {id:"phenix", nom:"La Plume du Phénix", ic:"🔥", prix:null,
+   gagne:"Termine la Campagne — les 15 Gardiens.",
+   fond:"radial-gradient(ellipse at 50% 38%,#3a1206,#1a0604 62%,#0a0202)", trait:"#FF9A3C",
+   desc:"Ne s'achète pas. Se mérite.",
+   svg:function(t){
+     var g='stroke="'+t+'" fill="none" stroke-width="1.7" stroke-linecap="round"';
+     var s='<path d="M50 20 C50 60 50 100 50 122" '+g+' opacity="0.9"/>';
+     for(var i=0;i<11;i++){
+       var y=26+i*8.5, w=6+i*2.6, o=0.72-i*0.04;
+       s+='<path d="M50 '+y+' C'+(50-w*0.6)+' '+(y+2)+' '+(50-w)+' '+(y+7)+' '+(50-w*0.85)+' '+(y+12)+'" '+g+' opacity="'+o+'"/>';
+       s+='<path d="M50 '+y+' C'+(50+w*0.6)+' '+(y+2)+' '+(50+w)+' '+(y+7)+' '+(50+w*0.85)+' '+(y+12)+'" '+g+' opacity="'+o+'"/>';
+     }
+     s+='<circle cx="50" cy="18" r="4.5" fill="'+t+'" opacity="0.9"/>';
+     return s; }},
+];
+function dosActif(){ return DOS.find(function(d){return d.id===S.dos;})||DOS[0]; }
+// La Plume du Phénix se débloque en terminant la Campagne (15 Gardiens).
+function dosDebloque(d){
+  if(!d.gagne) return true;
+  return ((S.campagne&&S.campagne.progres)||0) >= 15;
+}
+// Le motif, rendu en SVG inline (aucune requête, aucun octet d'image).
+function dosMotifHTML(d){
+  return '<svg viewBox="0 0 100 140" preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" '
+    +'style="position:absolute;inset:0;width:100%;height:100%;pointer-events:none">'
+    +d.svg(d.trait)+'</svg>';
+}
+// Aperçu en grand : toucher une vitrine ouvre le dos à taille de vraie carte,
+// avec son origine et son action. Sans ça, le seul retour au toucher était le
+// petit badge « ✓ Porté » qui se déplace — invisible sur un téléphone.
+function apercuDos(id){
+  var d=DOS.find(function(x){return x.id===id;}); if(!d) return;
+  var anc=document.getElementById("dos-apercu"); if(anc) anc.remove();
+  try{ AUDIO.sfxClickUnique(); }catch(_){}
+  var libre=dosDebloque(d);
+  var possede=(MODE_TEST&&libre)||(S.dosAchetes||["origine"]).indexOf(d.id)>=0;
+  var actif=(S.dos||"origine")===d.id;
+  var reste=15-((S.campagne&&S.campagne.progres)||0);
+
+  var action;
+  if(actif) action='<div style="width:100%;min-height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;'
+      +'background:rgba(240,208,96,0.12);border:1px solid rgba(240,208,96,0.45);color:var(--goldL);'
+      +'font-family:\'Cinzel\',serif;font-size:13px;font-weight:900;letter-spacing:1px">✓ TU LE PORTES DÉJÀ</div>';
+  else if(!libre) action='<div style="width:100%;min-height:48px;border-radius:14px;display:flex;align-items:center;justify-content:center;text-align:center;'
+      +'background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.16);color:var(--muted);'
+      +'font-size:12px;font-weight:700;padding:8px 12px;line-height:1.4">🔒 '+d.gagne+'<br>Encore '+reste+' à vaincre.</div>';
+  else action='<button onclick="acheterDos(\''+d.id+'\');_fermerApercuDos()" style="width:100%;min-height:48px;border-radius:14px;cursor:pointer;border:none;'
+      +'background:linear-gradient(135deg,#F6E4A0,#F0D060 30%,#D4AF37 60%,#B8912E);color:#241703;'
+      +'font-family:\'Cinzel\',serif;font-size:14px;font-weight:900;letter-spacing:1px;box-shadow:0 6px 20px rgba(212,175,55,0.4)">'
+      +(possede?"PORTER CE DOS":"🐚 "+d.prix+" — ACQUÉRIR")+'</button>';
+
+  var ov=document.createElement("div");
+  ov.id="dos-apercu";
+  ov.style.cssText="position:fixed;inset:0;z-index:9997;display:flex;align-items:center;justify-content:center;"
+    +"background:rgba(4,3,10,0.92);padding:24px;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)";
+  ov.onclick=function(e){ if(e.target===ov) _fermerApercuDos(); };
+  ov.innerHTML='<div style="max-width:330px;width:100%;text-align:center">'
+    // La carte, en grand, à ses vraies proportions
+    +'<div style="position:relative;margin:0 auto 18px;height:46dvh;max-height:400px;aspect-ratio:100/140;'
+    +'border-radius:16px;overflow:hidden;background:'+d.fond+';border:2px solid '+d.trait+'88;'
+    +'box-shadow:0 18px 50px rgba(0,0,0,0.9),0 0 40px '+d.trait+'33">'
+    +  dosMotifHTML(d)
+    +  (libre?'':'<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.55);font-size:46px">🔒</div>')
+    +'</div>'
+    +'<div style="font-family:\'Cinzel\',serif;font-size:19px;font-weight:900;color:var(--goldL);margin-bottom:5px">'+d.ic+' '+d.nom+'</div>'
+    +'<div style="font-size:12px;color:#cbbfd8;font-family:\'Crimson Text\',Georgia,serif;font-style:italic;margin-bottom:16px;line-height:1.5">'+d.desc+'</div>'
+    +action
+    +'<button onclick="_fermerApercuDos()" style="width:100%;min-height:42px;margin-top:9px;border-radius:12px;cursor:pointer;'
+    +'background:transparent;border:1px solid rgba(255,255,255,0.14);color:var(--muted);font-size:12px">Fermer</button>'
+    +'</div>';
+  document.body.appendChild(ov);
+}
+function _fermerApercuDos(){
+  var ov=document.getElementById("dos-apercu"); if(ov) ov.remove();
+}
+
+function acheterDos(id){
+  var d=DOS.find(function(x){return x.id===id;}); if(!d) return;
+  S.dosAchetes=S.dosAchetes||["origine"];
+  if(d.gagne && !dosDebloque(d)){
+    var reste=15-((S.campagne&&S.campagne.progres)||0);
+    showToast("🔒 "+d.gagne+" — encore "+reste+" à vaincre.","info",3000); return;
+  }
+  if(MODE_TEST){
+    if(S.dosAchetes.indexOf(id)<0) S.dosAchetes.push(id);
+    AUDIO.sfxClickUnique(); S.dos=id; sauvegarder(); render();
+    showToast("🎴 Tu portes « "+d.nom+" »","win",2000);
+    return;
+  }
+  if(S.dosAchetes.indexOf(id)<0){
+    if(d.gagne){ S.dosAchetes.push(id); }        // mérité : rien à débiter
+    else {
+      if((S.cauris||0)<d.prix){ showToast("🐚 Il te manque "+(d.prix-(S.cauris||0))+" cauris — joue pour en gagner !","info",2400); return; }
+      S.cauris-=d.prix; S.dosAchetes.push(id);
+    }
+    AUDIO.sfxBadge(); showToast("🎉 « "+d.nom+" » est à toi !","win",2200);
+  } else { AUDIO.sfxClickUnique(); showToast("🎴 Tu portes « "+d.nom+" »","win",2000); }
+  S.dos=id; sauvegarder(); render();
+}
+
+// ══════════════════════════════════════════════════════════════════════
 // BOUTIQUE DES HABILLAGES — un habillage = un jeu de variables CSS.
 // Toute l'interface tire ses couleurs de :root (--gold, --goldL, --text,
 // --muted, --red, --deep, --dark) : les surcharger transforme tout l'écran.
@@ -2413,26 +2605,13 @@ function getRang(){
 const MODE_TEST=true;
 
 const HABILLAGES=[
+  // ── RAYON VIDÉ (v97.43) — les 6 habillages payants ont été retirés. ──
+  // « nuit » RESTE, et ce n'est pas un article : c'est l'apparence d'origine du
+  // jeu (v:null, bg:null = aucune surcharge). habillageActif() retombe dessus
+  // via HABILLAGES[0] ; si on la supprimait, ce repli renverrait undefined et
+  // appliquerHabillage() planterait au premier rendu.
   {id:"nuit",  nom:"Nuit Profonde",  ic:"🌙", prix:0,
-   v:null, bg:null},   // l'habillage d'origine : aucune surcharge
-  {id:"jour",  nom:"Lumière du Jour",ic:"☀️", prix:150, clair:true,
-   v:{"--gold":"#9C6B18","--goldL":"#7A5210","--text":"#3a2c14","--muted":"#6b5a3e","--deep":"#e2d0ad","--dark":"#d4bd93"},
-   bg:"radial-gradient(ellipse at top,#f6ead2,#e2d0ad 60%,#cbb488)"},
-  {id:"fete",  nom:"Fête des Cauris",ic:"🪘", prix:150,
-   v:{"--gold":"#FFC44A","--goldL":"#FFE29A","--text":"#fdf6e6","--muted":"#a9b6d8","--deep":"#03061c","--dark":"#0a1440"},
-   bg:"radial-gradient(ellipse at top,#12256b,#07103a 55%,#03061c)"},
-  {id:"pastel",nom:"Pastel Doux",    ic:"🌸", prix:150,
-   v:{"--gold":"#E3B7A0","--goldL":"#F6D9C8","--text":"#f3ecf6","--muted":"#b6a8c4","--deep":"#191428","--dark":"#241c38"},
-   bg:"radial-gradient(ellipse at top,#4a3a63,#2c2340 55%,#191428)"},
-  {id:"village",nom:"Village Ancien",ic:"🛖", prix:300,
-   v:{"--gold":"#E2A84A","--goldL":"#F7D89A","--text":"#fdf0dc","--muted":"#c2a583","--deep":"#1d0f06","--dark":"#2a1508"},
-   bg:"radial-gradient(ellipse at 50% 12%,rgba(226,168,74,0.28),transparent 58%),linear-gradient(175deg,#3a1e08,#25120a 45%,#140903)"},
-  {id:"etoiles",nom:"Nuit des Ancêtres",ic:"✨", prix:300,
-   v:{"--gold":"#C9A8E8","--goldL":"#E8D6FA","--text":"#f1eaff","--muted":"#a795c4","--deep":"#0d0820","--dark":"#181030"},
-   bg:"radial-gradient(ellipse at 50% 10%,rgba(201,168,232,0.26),transparent 55%),radial-gradient(circle at 78% 30%,rgba(140,110,220,0.18),transparent 45%),linear-gradient(175deg,#241546,#150c2c 50%,#0d0820)"},
-  {id:"seuil", nom:"Le Seuil d'Or",  ic:"🌅", prix:300,
-   v:{"--gold":"#FFC578","--goldL":"#FFE7BE","--text":"#fff2e4","--muted":"#d8b6a4","--deep":"#1b0c22","--dark":"#2a1430"},
-   bg:"radial-gradient(ellipse at 50% 8%,rgba(255,197,120,0.30),transparent 55%),linear-gradient(175deg,#4a2038,#2a1230 48%,#1b0c22)"},
+   v:null, bg:null},
 ];
 const _HAB_DEFAUT={"--gold":"#D4AF37","--goldL":"#F0D060","--text":"#EEE8D5","--muted":"#9B8FA8","--deep":"#070514","--dark":"#0F0A28"};
 function habillageActif(){ return HABILLAGES.find(function(h){return h.id===S.habillage;})||HABILLAGES[0]; }
@@ -2601,6 +2780,8 @@ function sauvegarder(){
       cauris:S.cauris,
       habillage:S.habillage,
       habAchetes:S.habAchetes,
+      dos:S.dos,
+      dosAchetes:S.dosAchetes,
     }));
   }catch(e){}
 }
@@ -2738,6 +2919,22 @@ function charger(){
     if(typeof d.volume==="number") S.volume=d.volume;
     if(typeof d.sonCoupe==="boolean"){ S.sonCoupe=d.sonCoupe; try{ AUDIO.muted=d.sonCoupe; }catch(_){} }
     if(typeof d.voixGuide==="boolean") S.voixGuide=d.voixGuide;
+    // Un habillage retiré du catalogue ne doit pas rester collé au profil :
+    // on ramène le joueur sur l'apparence d'origine et on purge les ids morts.
+    try{
+      if(S.habillage && !HABILLAGES.some(function(h){return h.id===S.habillage;})) S.habillage="nuit";
+      if(d.dos) S.dos=d.dos;
+      if(Array.isArray(d.dosAchetes)) S.dosAchetes=d.dosAchetes;
+      if(S.dos && !DOS.some(function(x){return x.id===S.dos;})) S.dos="origine";
+      S.dosAchetes=(S.dosAchetes||["origine"]).filter(function(id){ return DOS.some(function(x){return x.id===id;}); });
+      if(S.dosAchetes.indexOf("origine")<0) S.dosAchetes.push("origine");
+      if(Array.isArray(S.habAchetes)){
+        S.habAchetes=S.habAchetes.filter(function(id){
+          return HABILLAGES.some(function(h){return h.id===id;});
+        });
+        if(S.habAchetes.indexOf("nuit")<0) S.habAchetes.push("nuit");
+      }
+    }catch(_){}
   }catch(e){}
 }
 
@@ -10735,16 +10932,20 @@ function carteRepHTML(c,opts={}){
   // marge à gauche et à droite, 2,2% en haut et 4,3% en bas (mesuré au pixel
   // sur le fond). La boîte extérieure garde donc la taille d'une carte, et
   // c'est le rectangle intérieur qui reprend exactement ces marges.
-  if(hidden)return`<div style="position:relative;width:var(--card-w);min-height:var(--card-h);flex-shrink:0">
+  if(hidden){
+    var _d=(typeof dosActif==="function")?dosActif():null;
+    var _fond=_d?_d.fond:"linear-gradient(160deg,#1a0a35,#0a0520)";
+    var _bord=_d?_d.trait:"rgba(212,175,55,0.2)";
+    return`<div style="position:relative;width:var(--card-w);min-height:var(--card-h);flex-shrink:0">
     <div style="position:absolute;left:8.75%;right:8.75%;top:2.2%;bottom:4.3%;border-radius:12px;
-      background:linear-gradient(160deg,#1a0a35,#0a0520);
-      border:2px solid rgba(212,175,55,0.2);
-      display:flex;align-items:center;justify-content:center;flex-direction:column;gap:6px;
+      background:${_fond};
+      border:2px solid ${_bord};
+      overflow:hidden;
       box-shadow:0 6px 20px rgba(0,0,0,0.7)">
-      <div style="font-size:28px;opacity:0.12">🂠</div>
-      <div style="font-size:7px;color:rgba(180,160,220,0.3);letter-spacing:3px">CACHÉE</div>
+      ${_d?dosMotifHTML(_d):""}
     </div>
   </div>`;
+  }
 
   // ── Carte FANTÔME : sombre, n'affiche pas sa valeur (révélée au score) ──
   if(c.fantome){
@@ -13020,8 +13221,53 @@ function renderThemes(app){
           :'<div style="flex-shrink:0;font-size:11px;font-weight:900;color:#F0D060;border:1px solid rgba(240,208,96,0.5);border-radius:9px;padding:5px 10px">🐚 '+h.prix+'</div>')
       +'</div></div>';
   }
+  // ── RAYON 1 : LES DOS DE CARTES ────────────────────────────────────────
+  var dosAch=S.dosAchetes||["origine"];
+  function vitrineDos(d){
+    var libre=dosDebloque(d);
+    var possede=(MODE_TEST&&libre)||dosAch.indexOf(d.id)>=0;
+    var actif=(S.dos||"origine")===d.id;
+    var etiq;
+    if(actif) etiq='<div style="flex-shrink:0;font-size:10px;font-weight:800;color:#241703;background:linear-gradient(135deg,#F6E4A0,#C9A227);border-radius:9px;padding:5px 11px">✓ Porté</div>';
+    else if(!libre) etiq='<div style="flex-shrink:0;font-size:10px;font-weight:800;color:var(--muted);border:1px solid rgba(255,255,255,0.18);border-radius:9px;padding:5px 9px">🔒 À mériter</div>';
+    else if(possede) etiq='<div style="flex-shrink:0;font-size:10px;font-weight:800;color:#241703;background:linear-gradient(135deg,#F6E4A0,#C9A227);border-radius:9px;padding:5px 11px">Porter</div>';
+    else etiq='<div style="flex-shrink:0;font-size:11px;font-weight:900;color:#F0D060;border:1px solid rgba(240,208,96,0.5);border-radius:9px;padding:5px 10px">🐚 '+d.prix+'</div>';
+    return '<div onclick="apercuDos(\''+d.id+'\')" style="cursor:pointer;border-radius:18px;overflow:hidden;position:relative;'
+      +'border:2px solid '+(actif?"#F0D060":"rgba(255,255,255,0.14)")+';'
+      +'box-shadow:'+(actif?"0 0 26px rgba(240,208,96,0.5)":"0 5px 16px rgba(0,0,0,0.5)")+';'
+      +(libre?'':'opacity:0.62;')
+      +'-webkit-tap-highlight-color:transparent">'
+      // Aperçu : le dos, à ses vraies proportions de carte
+      +'<div style="height:132px;display:flex;align-items:center;justify-content:center;background:rgba(4,3,10,0.85);padding:8px">'
+      +  '<div style="position:relative;height:100%;aspect-ratio:100/140;border-radius:9px;overflow:hidden;'
+      +  'background:'+d.fond+';border:1.5px solid '+d.trait+'66;box-shadow:0 4px 14px rgba(0,0,0,0.8)">'
+      +    dosMotifHTML(d)
+      +    (libre?'':'<div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.55);font-size:26px">🔒</div>')
+      +  '</div></div>'
+      // Étiquette
+      +'<div style="padding:9px 12px 10px;background:rgba(10,6,20,0.9);display:flex;justify-content:space-between;align-items:center;gap:8px">'
+      +  '<div style="min-width:0"><div style="font-size:12.5px;font-weight:800;color:'+(actif?"#F0D060":"var(--text)")+';font-family:\'Cinzel\',serif;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+d.nom+'</div>'
+      +  '<div style="font-size:9px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+((!libre&&d.gagne)?d.gagne:d.desc)+'</div></div>'
+      +  etiq
+      +'</div></div>';
+  }
+  var dosHtml=DOS.map(vitrineDos).join("");
+
   var palettes=HABILLAGES.filter(function(h){return !h.bg||h.bg.indexOf("url(")<0;}).map(vitrine).join("");
   var paysages=HABILLAGES.filter(function(h){return h.bg&&h.bg.indexOf("url(")>=0;}).map(vitrine).join("");
+  // Un rayon sans article affiche un panneau « en préparation » plutôt qu'une
+  // grille creuse. Le rayon Paysages est vide depuis toujours (aucun habillage
+  // n'utilise url()) ; le rayon Palettes l'est devenu au vidage du catalogue.
+  function rayonVide(txt){
+    return '<div style="grid-column:1/-1;text-align:center;border:1px dashed rgba(212,175,55,0.30);'
+      +'border-radius:14px;padding:20px 16px;background:rgba(10,6,20,0.45)">'
+      +'<div style="font-size:22px;margin-bottom:6px;opacity:0.75">🪡</div>'
+      +'<div style="font-size:11.5px;color:var(--muted);line-height:1.55;font-family:\'Crimson Text\',Georgia,serif;font-style:italic">'+txt+'</div>'
+      +'</div>';
+  }
+  var nbPalettes=(HABILLAGES.filter(function(h){return !h.bg||h.bg.indexOf("url(")<0;}).length);
+  if(nbPalettes<=1) palettes=palettes+rayonVide("De nouvelles palettes sont en cours de tissage.<br>Reviens bientôt.");
+  if(!paysages) paysages=rayonVide("Les paysages de KHALAM ouvriront ici.<br>Rayon en préparation.");
 
   var boutiqueHtml=''
     // Bandeau du solde
@@ -13035,7 +13281,11 @@ function renderThemes(app){
     +'</div>'
     +(MODE_TEST?'<div style="text-align:center;font-size:10px;font-weight:800;color:#6fe3a0;background:rgba(69,201,122,0.1);border:1px solid rgba(69,201,122,0.35);border-radius:10px;padding:6px 10px;margin:0 2px 14px;letter-spacing:0.5px">🔓 VERSION TEST — tout est offert, sers-toi librement !</div>'
       :'<div style="font-size:10.5px;color:var(--muted);margin:0 2px 14px;line-height:1.5;text-align:center">Gagne des cauris en jouant : <strong style="color:var(--goldL)">+12 par partie</strong> · <strong style="color:var(--goldL)">+28 de plus par victoire</strong>.</div>')
-    // Rayon 1
+    // Rayon 1 : les dos de cartes
+    +'<div style="font-size:11px;font-weight:800;color:var(--gold);letter-spacing:2px;margin:0 2px 4px">✦ LES DOS DE CARTES</div>'
+    +'<div style="font-size:9.5px;color:var(--muted);margin:0 2px 8px">Ce que ton adversaire voit à chaque manche.</div>'
+    +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:20px">'+dosHtml+'</div>'
+    // Rayon 2
     +'<div style="font-size:11px;font-weight:800;color:var(--gold);letter-spacing:2px;margin:0 2px 8px">✦ PALETTES DE COULEURS</div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:20px">'+palettes+'</div>'
     // Rayon 2
@@ -13076,7 +13326,10 @@ function renderThemes(app){
             <div style="position:absolute;top:3px;${S.modeLeger?'right:3px':'left:3px'};width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,0.4);transition:all .2s"></div>
           </div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">${boutiqueHtml}${cards}</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div style="grid-column:1/-1">${boutiqueHtml}</div>
+          ${cards}
+        </div>
       </div>
     </div>
   </div>`;
@@ -13218,9 +13471,22 @@ function epreuveDuJour(){
 // Les planches du menu sont publiées en CSS (classes .pl-*).
 function renderMenu(app){
   const niv=getNiveau(S.xp),idxN=getIdxNiv(S.xp);
-  const xpNext=niv.xpNext||999,xpPct=Math.min(100,Math.round((S.xp-(niv.xpMin||0))/(xpNext-(niv.xpMin||0))*100));
-  const meilleurScore=S.classement&&S.classement.length>0?Math.max(...S.classement.map(function(e){return e.pts||0;})):0;
-  const partiesJouees=S.classement?S.classement.length:0;
+  // NIVEAUX ne définit que `min` : lire niv.xpNext / niv.xpMin renvoyait undefined,
+  // d'où une barre pleine en permanence et un « 999 XP → Niv.8 » inexistant.
+  // getXPProg() fait déjà le calcul juste et gère le dernier palier (« MAX »).
+  const _prog=getXPProg(S.xp);
+  const xpPct=_prog.pct;
+  const nivSuivant=NIVEAUX[idxN+1]||null;
+  const xpRestant=nivSuivant?(nivSuivant.min-S.xp):0;
+  // Le classement est coupé aux 10 meilleurs scores (slice(0,10)) : sa longueur
+  // n'est donc PAS le nombre de parties jouées, elle plafonne à 10 à vie.
+  // S.stats.parties, lui, est incrémenté à chaque fin de partie (Solo et Duel).
+  // Repli sur l'ancien calcul pour les sauvegardes antérieures à S.stats.
+  const _scoreClassement=S.classement&&S.classement.length>0?Math.max(...S.classement.map(function(e){return e.pts||0;})):0;
+  const meilleurScore=Math.max(_scoreClassement,(S.stats&&S.stats.meilleurScore)||0);
+  const partiesJouees=(S.stats&&typeof S.stats.parties==="number")
+    ? S.stats.parties
+    : (S.classement?S.classement.length:0);
   const defJour=(typeof defiDuJour==="function")?defiDuJour():(DEFIS&&DEFIS[0]?DEFIS[0]:null);
   const defDone=!!(S.defiJour&&S.defiJour.faitLe===_jourNum());
   const defSerie=(S.defiJour&&S.defiJour.serie)||0;
@@ -13264,7 +13530,9 @@ function renderMenu(app){
       </div>
       <div style="display:flex;justify-content:space-between;font-size:9px;color:#D6CBE6;text-shadow:0 1px 4px #000">
         <span>${S.xp} XP</span>
-        <span>${xpNext} XP → Niv.${(idxN||0)+2}</span>
+        <span>${nivSuivant
+          ? `encore ${xpRestant} XP → ${nivSuivant.icon||""} ${nivSuivant.label}`
+          : "Palier maximal atteint"}</span>
       </div>
       </div>
     </div>
