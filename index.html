@@ -2211,7 +2211,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v97.53";
+const BUILD_TAG="v97.57";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -2412,6 +2412,19 @@ function getRang(){
   for(var i=0;i<RANGS.length;i++){ if(p>=RANGS[i].min) r=RANGS[i]; }
   return r;
 }
+// ══════════════════════════════════════════════════════════════════════
+// ÉCHAPPEMENT HTML — tout texte venant d'un humain passe par ici.
+// Les pseudos ne sont pas de confiance : celui de l'adversaire arrive par
+// le réseau en Duel, ceux du classement arrivent de la base. Sans cet
+// échappement, un pseudo contenant du HTML s'exécutait sur l'appareil des
+// AUTRES joueurs. Mesuré : 2 balises injectées au menu, au duel et au
+// résultat de duel.
+function esc(s){
+  return String(s==null?"":s)
+    .replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+}
+
 // ══════════════════════════════════════════════════════════════════════
 // CLASSEMENT MONDIAL — base Supabase, palier gratuit.
 // Une seule ligne par appareil, mise à jour quand le joueur bat son record.
@@ -2863,6 +2876,14 @@ function sauvegarderPartieEnCours(){
         diff:S.diff,
         survieActif:S.survieActif,
         viesSurvie:S.viesSurvie,
+        // CONTEXTE DU COMBAT — sans lui, reprendre une partie de Campagne la
+        // transformait en partie Solo : le Gardien n'était plus reconnu, la
+        // victoire n'était pas comptée et l'écran de fin ne proposait que
+        // « Menu ». Le joueur perdait son combat sans le savoir.
+        campagneEnCours:S.campagneEnCours,
+        discipleEnCours:S.discipleEnCours,
+        templeEnCours:S.templeEnCours,
+        ascPalier:S.ascPalier,
         ecran:S.ecran,
         ts:Date.now()
       }));
@@ -2987,6 +3008,43 @@ function charger(){
     if(typeof d.volume==="number") S.volume=d.volume;
     if(typeof d.sonCoupe==="boolean"){ S.sonCoupe=d.sonCoupe; try{ AUDIO.muted=d.sonCoupe; }catch(_){} }
     if(typeof d.voixGuide==="boolean") S.voixGuide=d.voixGuide;
+    // L'avatar était sauvegardé mais jamais relu : il repartait à ⚖️ à chaque
+    // ouverture de l'app. Seul champ perdu sur les 24 de la sauvegarde.
+    if(d.avatar) S.avatar=d.avatar;
+    // ── GARDE-FOU DE TYPES ────────────────────────────────────────────────
+    // Une sauvegarde abîmée (stockage corrompu, migration ratée, bidouille)
+    // pouvait livrer un nombre là où le code attend une chaîne, ou une chaîne
+    // là où il attend un tableau. Résultat mesuré : écran totalement vide,
+    // app inutilisable, sans même une erreur JS. On remet chaque champ dans
+    // son type, en gardant la valeur quand elle est récupérable.
+    try{
+      if(typeof S.nom!=="string" || !S.nom.trim()) S.nom="Joueur";
+      S.nom=S.nom.slice(0,14);
+      var _num=function(v,def,min,max){
+        v=Number(v);
+        if(!isFinite(v)) return def;
+        if(typeof min==="number") v=Math.max(min,v);
+        if(typeof max==="number") v=Math.min(max,v);
+        return v;
+      };
+      S.xp=_num(S.xp,0,0,1e9);
+      S.cauris=_num(S.cauris,0,0,1e9);
+      S.volume=_num(S.volume,1,0,1);
+      S.cptParties=_num(S.cptParties,0,0,1e9);
+      if(!Array.isArray(S.classement)) S.classement=[];
+      if(!Array.isArray(S.habAchetes)) S.habAchetes=["nuit"];
+      if(!Array.isArray(S.dosAchetes)) S.dosAchetes=["origine"];
+      if(!Array.isArray(S.badgesTotal)) S.badgesTotal=[];
+      if(!Array.isArray(S.defisDone)) S.defisDone=[];
+      if(!Array.isArray(S.questionsVues)) S.questionsVues=[];
+      if(!S.stats || typeof S.stats!=="object")
+        S.stats={parties:0,victoires:0,defaites:0,egalites:0,meilleurScore:0,serie:0,meilleureSerie:0,piliers:{}};
+      if(!S.campagne || typeof S.campagne!=="object") S.campagne={progres:0};
+      S.campagne.progres=_num(S.campagne.progres,0,0,15);
+      if(!S.campagne.disciples || typeof S.campagne.disciples!=="object") S.campagne.disciples={};
+      if(typeof S.diff!=="string" || !IA_PROFILS[S.diff]) S.diff="Intermédiaire";
+      if(typeof S.avatar!=="string" || !S.avatar) S.avatar="⚖️";
+    }catch(e){}
     // Purge des cinq joueurs de démonstration livrés avec les versions ≤ v97.50.
     // Ils faussaient le « meilleur score » et le nombre de parties du menu.
     try{
@@ -6872,6 +6930,13 @@ const DUEL = {
 
   // Une partie est-elle réellement engagée ? Sert de garde-fou aux handlers
   // d'installation initiale, que PeerJS ré-émet lors d'un reconnect().
+  // Un pseudo reçu du réseau n'est pas de confiance : on le borne et on retire
+  // tout caractère de balisage AVANT qu'il n'entre dans l'état du jeu.
+  _nomSur(n, defaut){
+    var v=String(n==null?"":n).replace(/[<>&"'`]/g,"").trim().slice(0,14);
+    return v.length>=1 ? v : (defaut||"Adversaire");
+  },
+
   _partieEngagee(){
     if(DUEL._quitVolontaire) return false;
     if(DUEL._recon && DUEL._recon.active) return true;
@@ -7315,7 +7380,7 @@ const DUEL = {
         }
         if(msg.nom){
           DUEL.adversaire={
-            nom:msg.nom,
+            nom:DUEL._nomSur(msg.nom,"Adversaire"),
             couleur:(DUEL.adversaire&&DUEL.adversaire.couleur)||"#e05555",
             icon:msg.icon||(DUEL.adversaire&&DUEL.adversaire.icon)||"⚔️"
           };
@@ -7332,7 +7397,7 @@ const DUEL = {
         // On répond par l'état courant, exactement comme à un resync_req.
         if(DUEL.gs && DUEL.gs.phase && DUEL.gs.phase!=="attente"){
           if(msg.nom) DUEL.adversaire={
-            nom:msg.nom,
+            nom:DUEL._nomSur(msg.nom,"Adversaire"),
             couleur:(DUEL.adversaire&&DUEL.adversaire.couleur)||"#e05555",
             icon:msg.icon||(DUEL.adversaire&&DUEL.adversaire.icon)||"⚔️"
           };
@@ -7346,7 +7411,7 @@ const DUEL = {
           break;
         }
         // Hôte reçoit l'invité avec son nom
-        DUEL.adversaire={nom:msg.nom||"Adversaire",couleur:"#e05555",icon:msg.icon||"⚔️"};
+        DUEL.adversaire={nom:DUEL._nomSur(msg.nom,"Adversaire"),couleur:"#e05555",icon:msg.icon||"⚔️"};
         DUEL._initGS();
         DUEL.gs.phase="selection";
         DUEL.gs.selJ1Done=false;
@@ -7365,7 +7430,7 @@ const DUEL = {
 
       case "welcome":
         // Invité reçoit confirmation + état de jeu
-        DUEL.adversaire={nom:msg.nom||"Hôte",couleur:"#D4AF37",icon:msg.icon||"👑"};
+        DUEL.adversaire={nom:DUEL._nomSur(msg.nom,"Hôte"),couleur:"#D4AF37",icon:msg.icon||"👑"};
         if(msg.gs){
           DUEL.gs=msg.gs;
           DUEL.gs.phase="selection";
@@ -7922,7 +7987,7 @@ const DUEL = {
     if(host1Gagne){ butin=s2b+b; gs.s1=s1b+butin; gs.s2=0; }
     else          { butin=s1b+a; gs.s2=s2b+butin; gs.s1=0; }
     DUEL._send({type:"jackpot_fantome", a:a, b:b, winner:host1Gagne?1:2, s1:gs.s1, s2:gs.s2, s1b:s1b, s2b:s2b, butin:butin});
-    var advNom=(DUEL.adversaire&&DUEL.adversaire.nom)?DUEL.adversaire.nom:"Adversaire";
+    var advNom=esc((DUEL.adversaire&&DUEL.adversaire.nom)?DUEL.adversaire.nom:"Adversaire");
     JACKPOT_FANTOME.show({
       myName:(S.nom||"Toi"), advName:advNom,
       myVal:a, advVal:b, iWin:host1Gagne, butin:butin,
@@ -8185,7 +8250,7 @@ Object.assign(DUEL, {
 
   _ensureChatUI(){
     if(document.getElementById("duel-chat")) return;
-    var advNom=DUEL.adversaire?DUEL.adversaire.nom:"Adversaire";
+    var advNom=esc(DUEL.adversaire?DUEL.adversaire.nom:"Adversaire");
     var wrap=document.createElement("div");
     wrap.id="duel-chat";
     wrap.style.cssText="position:fixed;right:10px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:9990;display:flex;flex-direction:column;align-items:flex-end;gap:8px";
@@ -8331,7 +8396,7 @@ Object.assign(DUEL, {
     } else {
       // Bonus pour l'INVITÉ → je le lui accorde, je spectate
       DUEL._send({type:"bonus_grant", kind:kind, advance:true, who:(S.nom||"Ton adversaire")});
-      var advNom=(DUEL.adversaire&&DUEL.adversaire.nom)?DUEL.adversaire.nom:"Ton adversaire";
+      var advNom=esc((DUEL.adversaire&&DUEL.adversaire.nom)?DUEL.adversaire.nom:"Ton adversaire");
       DUEL._showSpectate(advNom, kind);
       if(DUEL._bonusWatchTO) clearTimeout(DUEL._bonusWatchTO);
       DUEL._bonusWatchTO=setTimeout(function(){ DUEL._finBonusSpectateur(0,true); }, 60000);
@@ -9366,7 +9431,7 @@ function renderDuelJeu(app){
   var phase=gs.phase||"selection";
   var isJ1=DUEL.isHost;
   var monNom=S.nom||"Vous";
-  var advNom=(DUEL.adversaire&&DUEL.adversaire.nom)||"Adversaire";
+  var advNom=esc((DUEL.adversaire&&DUEL.adversaire.nom)||"Adversaire");
   var advCoul=(DUEL.adversaire&&DUEL.adversaire.couleur)||"#e05555";
   var monScore=isJ1?gs.s1:gs.s2;
   var advScore=isJ1?gs.s2:gs.s1;
@@ -9836,7 +9901,7 @@ function renderDuelResultat(app){
   var advScore=isJ1?gs.s2:gs.s1;
   var gagne=monScore>advScore;
   var egal=monScore===advScore;
-  var advNom=(DUEL.adversaire&&DUEL.adversaire.nom)||"Adversaire";
+  var advNom=esc((DUEL.adversaire&&DUEL.adversaire.nom)||"Adversaire");
 
   app.innerHTML='<div class="center fade" style="padding:16px;min-height:100dvh">'
     +'<div class="w100" style="display:flex;flex-direction:column;gap:14px;max-width:500px">'
@@ -9850,7 +9915,7 @@ function renderDuelResultat(app){
 
     +'<div class="card" style="padding:16px">'
     +'<div style="display:grid;grid-template-columns:1fr auto 1fr;gap:12px;align-items:center;text-align:center">'
-    +'<div><div style="font-size:24px">👑</div><div style="font-size:12px;font-weight:700;color:var(--goldL)">'+(S.nom||"Vous")+'</div>'
+    +'<div><div style="font-size:24px">👑</div><div style="font-size:12px;font-weight:700;color:var(--goldL)">'+esc(S.nom||"Vous")+'</div>'
     +'<div style="font-size:32px;font-weight:900;color:var(--goldL);font-family:Cinzel,serif">'+monScore+'</div></div>'
     +'<div style="font-size:20px;color:var(--muted)">VS</div>'
     +'<div><div style="font-size:24px">'+DUEL.adversaire.icon+'</div><div style="font-size:12px;font-weight:700;color:'+DUEL.adversaire.couleur+'">'+advNom+'</div>'
@@ -11687,6 +11752,7 @@ function _partieALegendaires(){
 const G={
   startJeu(survie=false, keepVies=false){
     S._lastCampagne=null;
+    S._lastDisciple=null;
     S._templeNext=null;
     S._ascNext=null; S._ascFin=null;
     S._lastSurvie=null;
@@ -12395,7 +12461,7 @@ const G={
     // Brakeur joueur — il prend tout même si l'IA a une carte
     else if(jokerFinal?.id==="j1"){
       j.s1+=p1;
-      msg=`💀 BRAKEUR ! ${S.nom} rafle +${p1} pts !`;
+      msg=`💀 BRAKEUR ! ${esc(S.nom)} rafle +${p1} pts !`;
       xpG=p1*2;gagnant=1;showAnimPts(p1);
     }
     // Brakeur IA — elle prend tout
@@ -12407,14 +12473,14 @@ const G={
     else if(j1p){j.s2+=p2;msg=`💔 IA gagne +${p2} pts`;}
     else if(iap){
       j.s1+=p1;
-      msg=`🏆 ${S.nom} gagne +${p1} pts !`;
+      msg=`🏆 ${esc(S.nom)} gagne +${p1} pts !`;
       xpG=p1*2;gagnant=1;showAnimPts(p1);
     }
     else if(p1>p2){
       const gain=p1+p2;
       j.s1+=gain;
-      if(jokerFinal?.id==="j2") msg=`🏆 ×2 ! ${S.nom} gagne +${gain} pts !`;
-      else msg=`🏆 ${S.nom} gagne +${gain} pts !`;
+      if(jokerFinal?.id==="j2") msg=`🏆 ×2 ! ${esc(S.nom)} gagne +${gain} pts !`;
+      else msg=`🏆 ${esc(S.nom)} gagne +${gain} pts !`;
       xpG=gain*2;gagnant=1;showPotFlash(gain);
     }
     else if(p2>p1){j.s2+=p1+p2;msg=`💔 IA gagne +${p1+p2} pts`;}
@@ -12426,7 +12492,7 @@ const G={
       else {
         const gainEg=p1+p2;
         j.s1+=gainEg;
-        msg=`⚡ Égalité — joué en premier ! ${S.nom} gagne +${gainEg} pts`;
+        msg=`⚡ Égalité — joué en premier ! ${esc(S.nom)} gagne +${gainEg} pts`;
         xpG=gainEg*2; gagnant=1; showPotFlash(gainEg);
       }
     }
@@ -12624,7 +12690,7 @@ const G={
     // Sauvegarder données de partage avant tout
     var _gagne=j.s1>j.s2;
     _partageData="⚖️ ÉQUILIBRE — "+(_gagne?"VICTOIRE 🏆":"DÉFAITE 💀")+"!\n"
-      +(S.nom||"Joueur")+" : "+j.s1+" pts vs IA : "+j.s2+" pts\n"
+      +esc(S.nom||"Joueur")+" : "+j.s1+" pts vs IA : "+j.s2+" pts\n"
       +"Manches : "+(j.manche-1)+"/"+j.total+" | #Equilibre #JeuDeCartes";
     // Son victoire/défaite finale
     if(j.s1>j.s2) setTimeout(function(){AUDIO.sfxFanfare();},400);
@@ -12759,12 +12825,14 @@ const G={
         setTimeout(function(){ try{ if(S.voixGuide) _parlerGuide("Disciple vaincu !"); }catch(_){} },700);
         // → tombe dans le flux normal : célébration + écran de résultat (bouton « Continuer → »)
       } else {
-        // Défaite → le tableau du temple s'affiche pour relancer ce disciple
+        // Défaite → écran de résultat comme pour le Chef. Auparavant on sautait
+        // droit au temple : le joueur ne voyait ni son score, ni son XP, ni sa
+        // carte de sagesse, alors que tout était bel et bien enregistré.
         S._templeNext=null;
-        S.templeEnCours=_de.g; S.ecran="temple";
-        sauvegarder(); render();
-        setTimeout(function(){ showToast("💀 Le disciple t'a vaincu. Reprends ton souffle et réessaie.","lose",3200,true); },400);
-        return;
+        S.templeEnCours=_de.g;
+        S._lastDisciple={g:_de.g, rang:_de.rang};
+        setTimeout(function(){ try{ if(S.voixGuide) _parlerGuide("Le disciple t'a vaincu."); }catch(_){} },700);
+        // → tombe dans le flux normal : célébration + écran de résultat
       }
     }
     // ── Mode ASCENSION : palier suivant (victoire) ou fin du run (défaite) ──
@@ -13681,8 +13749,9 @@ function renderMenu(app){
       <div style="position:absolute;left:26%;top:8%;right:8%;text-shadow:0 2px 7px rgba(0,0,0,0.95)">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:6px">
           <div>
-            <div class="mhead-nom">
-              ${(S.nom||"Joueur").toUpperCase()}
+            <div class="mhead-nom" style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:0.78em;line-height:1;display:inline-flex;align-items:center">${avatarHTML(S.avatar||"⚖️",22)}</span>
+              <span>${esc((S.nom||"Joueur").toUpperCase())}</span>
             </div>
             <div style="font-size:12px;color:#D8CDE8;margin-top:2px">${niv.icon||"⭐"} <span style="color:#9C93AD">Niveau</span> ${niv.label||"Novice"} · ${S.xp} XP</div>
             <div style="font-size:13px;color:var(--goldL);letter-spacing:1px;margin-top:3px;font-family:'Cinzel',serif;font-weight:700;display:flex;align-items:center;gap:5px">${rangEmblemeHTML(getRang(),17)}<span style="color:#9C93AD;font-weight:400;font-size:11px">Campagne</span><span>${getRang().nom}</span></div>
@@ -13853,7 +13922,7 @@ function partagerResultat(){
   if(S.jeu){
     var j=S.jeu, g=j.s1>j.s2, e=j.s1===j.s2;
     d={gagne:g,egal:e,nom:(S.nom||"Joueur"),sj:j.s1,sa:j.s2,advNom:"IA",
-       txt:"⚖️ ÉQUILIBRE — "+(e?"ÉGALITÉ 🤝":g?"VICTOIRE 🏆":"DÉFAITE 💀")+" !\n"+(S.nom||"Joueur")+" "+j.s1+" — "+j.s2+" IA\n🎮 https://lamicisse33-dotcom.github.io/equilibre-jeu/\n#Equilibre"};
+       txt:"⚖️ ÉQUILIBRE — "+(e?"ÉGALITÉ 🤝":g?"VICTOIRE 🏆":"DÉFAITE 💀")+" !\n"+esc(S.nom||"Joueur")+" "+j.s1+" — "+j.s2+" IA\n🎮 https://lamicisse33-dotcom.github.io/equilibre-jeu/\n#Equilibre"};
   } else if(_partageData){ _partageTexte(_partageData); return; }
   else { showToast("Pas de résultat à partager","info",2000); return; }
   partagerAvecImage(d);
@@ -14009,20 +14078,20 @@ function partagerResultatDuel(){
   var gs=DUEL.gs||{};
   var ms=DUEL.isHost?(gs.s1||0):(gs.s2||0);
   var as=DUEL.isHost?(gs.s2||0):(gs.s1||0);
-  var advNom=(DUEL.adversaire&&DUEL.adversaire.nom)||"Adversaire";
+  var advNom=esc((DUEL.adversaire&&DUEL.adversaire.nom)||"Adversaire");
   var g=ms>as, e=ms===as;
   var d={gagne:g,egal:e,nom:(S.nom||"Vous"),sj:ms,sa:as,advNom:advNom,
-    txt:"⚖️ ÉQUILIBRE DUEL — "+(e?"ÉGALITÉ 🤝":g?"VICTOIRE 🏆":"DÉFAITE 💀")+" !\n"+(S.nom||"Vous")+" "+ms+" — "+as+" "+advNom+"\n🎮 https://lamicisse33-dotcom.github.io/equilibre-jeu/\n#Equilibre #Duel1v1"};
+    txt:"⚖️ ÉQUILIBRE DUEL — "+(e?"ÉGALITÉ 🤝":g?"VICTOIRE 🏆":"DÉFAITE 💀")+" !\n"+esc(S.nom||"Vous")+" "+ms+" — "+as+" "+advNom+"\n🎮 https://lamicisse33-dotcom.github.io/equilibre-jeu/\n#Equilibre #Duel1v1"};
   partagerAvecImage(d);
 }
 function _ancienPartageResultatDuel(){
   var gs=DUEL.gs||{};
   var ms=DUEL.isHost?(gs.s1||0):(gs.s2||0);
   var as=DUEL.isHost?(gs.s2||0):(gs.s1||0);
-  var advNom=(DUEL.adversaire&&DUEL.adversaire.nom)||"Adversaire";
+  var advNom=esc((DUEL.adversaire&&DUEL.adversaire.nom)||"Adversaire");
   var res=ms>as?"VICTOIRE 🏆":(ms===as?"ÉGALITÉ 🤝":"DÉFAITE 💀");
   var txt="⚖️ ÉQUILIBRE DUEL — "+res+" !\n"
-    +(S.nom||"Vous")+" : "+ms+" pts vs "+advNom+" : "+as+" pts\n"
+    +esc(S.nom||"Vous")+" : "+ms+" pts vs "+advNom+" : "+as+" pts\n"
     +"#Equilibre #Duel1v1";
   // 1) Partage natif
   try {
@@ -14186,7 +14255,7 @@ function renderResultat(app){
         animation:${gagne?"shimmer 2s 0.6s infinite":"popIn 0.5s 0.2s both"}">
         ${gagne?"VICTOIRE !":egal?"ÉGALITÉ":"DÉFAITE"}
       </div>
-      ${gagne?`<div style="font-size:13px;color:var(--gold);letter-spacing:2px;animation:sUp 0.5s 0.8s both">✨ ${S.nom} maîtrise les 4 Piliers de Vie ✨</div>`:""}
+      ${gagne?`<div style="font-size:13px;color:var(--gold);letter-spacing:2px;animation:sUp 0.5s 0.8s both">✨ ${esc(S.nom)} maîtrise les 4 Piliers de Vie ✨</div>`:""}
       ${gagne&&manchesG>0?`<div style="margin-top:12px;display:flex;justify-content:center;gap:5px;animation:sUp 0.5s 1s both">
         ${Array.from({length:Math.min(manchesG,6)},(_,i)=>`<span style="font-size:22px;animation:sPop 0.4s ${0.9+i*0.1}s both">⭐</span>`).join("")}
       </div>`:""}
@@ -14214,7 +14283,7 @@ function renderResultat(app){
           border-radius:16px;border:2px solid ${gagne?"var(--gold)":"rgba(255,255,255,0.1)"};
           box-shadow:${gagne?`0 0 32px rgba(212,175,55,0.4)`:"none"};
           animation:${gagne?"glow 2s infinite":"none"}">
-          <div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:4px">${S.nom}</div>
+          <div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-bottom:4px">${esc(S.nom)}</div>
           <div style="font-size:56px;font-weight:900;font-family:'Cinzel',serif;line-height:1;
             color:${gagne?"var(--goldL)":"var(--text)"};
             animation:${gagne?"pulseScore 1.5s 1s infinite":"none"};
@@ -14272,6 +14341,15 @@ function renderResultat(app){
           +'<div style="display:flex;gap:8px;margin-bottom:18px">'
           +'<button onclick="S._templeNext=null;_stopVoixGuide();S.ecran=\'campagne\';render()" style="'+subStyle+'">🗺️ Campagne</button>'
           +'<button onclick="S._templeNext=null;_stopVoixGuide();S.ecran=\'menu\';render()" style="'+subStyle+'">🏠 Menu</button></div>';
+      }
+      // ── DISCIPLE PERDU : réessayer le même, ou revenir au temple ──
+      if(S._lastDisciple){
+        var _ld=S._lastDisciple;
+        var _rn=["I","II","III","IV"][_ld.rang||0]||"I";
+        return '<button onclick="S._lastDisciple=null;_stopVoixGuide();lancerDisciple('+_ld.g+','+_ld.rang+')" style="'+primStyle+'">🔄 Réessayer le Disciple '+_rn+'</button>'
+          +'<div style="display:flex;gap:8px;margin-bottom:18px">'
+          +'<button onclick="S._lastDisciple=null;_stopVoixGuide();S.templeEnCours='+_ld.g+';S.ecran=\'temple\';render()" style="'+subStyle+'">🏛️ Le Temple</button>'
+          +'<button onclick="S._lastDisciple=null;_stopVoixGuide();S.ecran=\'menu\';render()" style="'+subStyle+'">🏠 Menu</button></div>';
       }
       if(S._lastCampagne){
         var lc=S._lastCampagne, prog=(S.campagne&&S.campagne.progres)||0;
@@ -14920,6 +14998,19 @@ function _ouvrirReglages(enPartie){
         +'<button onclick="_regNom()" style="flex-shrink:0;padding:0 16px;border-radius:12px;cursor:pointer;'
           +'background:rgba(240,208,96,0.12);border:1px solid rgba(240,208,96,0.45);color:var(--goldL);'
           +'font-family:\'Cinzel\',serif;font-size:12px;font-weight:900">OK</button>'
+      +'</div>'
+      // Choix de l'avatar : les 4 piliers portent leur emblème, les autres sont
+      // des emojis. Sans cet écran, le champ existait sans aucun moyen de le régler.
+      +'<div style="font-family:\'Crimson Text\',Georgia,serif;font-style:italic;font-size:13px;color:#e8e0f2;margin:12px 0 8px">Ton emblème</div>'
+      +'<div style="display:flex;flex-wrap:wrap;gap:7px;justify-content:center">'
+      +["🕯️","❤️","🌿","🪙","⚖️","👑","🔥","🌍","⭐","🦁"].map(function(av){
+          var actif=(S.avatar||"⚖️")===av;
+          return '<button onclick="_regAvatar(this,\''+av+'\')" class="av-opt" data-av="'+av+'" '
+            +'style="width:44px;height:44px;border-radius:12px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:20px;'
+            +'background:'+(actif?"rgba(212,175,55,0.3)":"rgba(255,255,255,0.05)")+';'
+            +'border:'+(actif?"1.5px solid rgba(212,175,55,0.6)":"1px solid rgba(255,255,255,0.1)")+'">'
+            +(typeof avatarHTML==="function"?avatarHTML(av,20):av)+'</button>';
+        }).join("")
       +'</div></div>')
     +lig("reg-son","🔊","Sons du jeu", AUDIO.muted?"COUPÉS":"ACTIVÉS")
     +lig("reg-musique","🎵","Musique d\'ambiance", (S.musique===false)?"COUPÉE":"ACTIVÉE")
@@ -15160,28 +15251,19 @@ function demanderNotifications(){
 }
 setTimeout(demanderNotifications,30000);
 
-// ── Fonctions popup avatar/nom ──
-function _setAvatar(el, av){
+// ── Choix de l'emblème (panneau de réglages) ──────────────────────────
+// Remplace _setAvatar/_validerNom, orphelines depuis la disparition de leur
+// popup : elles visaient des éléments (#menu-nom-inp, #menu-nom-popup) qui
+// n'existaient plus dans le document.
+function _regAvatar(el, av){
   S.avatar=av;
-  document.querySelectorAll('.av-opt').forEach(function(x){
-    x.style.background='rgba(255,255,255,0.05)';
-    x.style.border='1px solid rgba(255,255,255,0.1)';
+  try{ sauvegarder(); }catch(_){}
+  try{ AUDIO.sfxClickUnique(); }catch(_){}
+  document.querySelectorAll(".av-opt").forEach(function(x){
+    var actif=(x.getAttribute("data-av")===av);
+    x.style.background = actif?"rgba(212,175,55,0.3)":"rgba(255,255,255,0.05)";
+    x.style.border = actif?"1.5px solid rgba(212,175,55,0.6)":"1px solid rgba(255,255,255,0.1)";
   });
-  el.style.background='rgba(212,175,55,0.3)';
-  el.style.border='1.5px solid rgba(212,175,55,0.6)';
-}
-function _validerNom(){
-  var v=document.getElementById('menu-nom-inp').value.trim();
-  if(v.length>=2){
-    S.nom=v;
-    if(!S.avatar) S.avatar='👑';
-    sauvegarder();
-    var pop=document.getElementById('menu-nom-popup');
-    if(pop) pop.remove();
-    render();
-  } else {
-    showToast('⚠️ Prénom trop court (2 lettres min)','info',2000);
-  }
 }
 
 // Démarrage
@@ -15239,9 +15321,23 @@ function afficherPopupReprise(type,data){
       S.diff=data.diff;
       S.survieActif=data.survieActif;
       S.viesSurvie=data.viesSurvie;
+      // Restauration du contexte du combat. Les sauvegardes antérieures à
+      // v97.54 ne portent pas ces champs : on retombe alors sur du Solo,
+      // c'est-à-dire l'ancien comportement, sans rien casser.
+      S.campagneEnCours=(typeof data.campagneEnCours==="number")?data.campagneEnCours:-1;
+      S.discipleEnCours=data.discipleEnCours||null;
+      if(typeof data.templeEnCours==="number") S.templeEnCours=data.templeEnCours;
+      if(typeof data.ascPalier==="number") S.ascPalier=data.ascPalier;
       S.ecran="jeu";
       render();
-      showToast("▶️ Partie reprise !","win",2000);
+      var _ctx="";
+      try{
+        if(S.discipleEnCours && CAMPAGNE[S.discipleEnCours.g])
+          _ctx=" · Disciple "+["I","II","III","IV"][S.discipleEnCours.rang||0];
+        else if(S.campagneEnCours>=0 && CAMPAGNE[S.campagneEnCours])
+          _ctx=" · "+CAMPAGNE[S.campagneEnCours].nom;
+      }catch(e){}
+      showToast("▶️ Partie reprise !"+_ctx,"win",2400);
     } else if(type==="duel"){
       DUEL.reprendre(data);
     }
@@ -15634,7 +15730,7 @@ function renderJeu(app){
           background:${stJ1.accent}10;border:1.5px solid ${stJ1.accent}55;
           border-radius:10px;padding:3px 4px;">
           <div style="font-size:8px;color:${stJ1.accent};font-weight:700;letter-spacing:1px">
-            ${S.nom.toUpperCase()}
+            ${esc(String(S.nom||"").toUpperCase())}
           </div>
           ${pilierCard(j.b1,{size:"xs",played:true})}
           <div style="font-size:8px;color:${stJ1.accent};font-weight:700;
@@ -15763,7 +15859,7 @@ function renderJeu(app){
         <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:4px;
           border:1.5px solid ${stJ1.accent}66;border-radius:12px;padding:6px 4px;
           background:${stJ1.accent}0d">
-          <div style="font-size:8px;color:${stJ1.accent};font-weight:700;letter-spacing:1px">${S.nom}</div>
+          <div style="font-size:8px;color:${stJ1.accent};font-weight:700;letter-spacing:1px">${esc(S.nom)}</div>
           ${pilierCard(j.b1,{size:"sm",played:true})}
         </div>
         <div style="flex-shrink:0;text-align:center">
@@ -15826,7 +15922,7 @@ function renderJeu(app){
           border:2px solid ${PILIER[j.b1]?.accent||'var(--gold)'}77;
           border-radius:12px;padding:6px 4px;
           background:${PILIER[j.b1]?.accent||'#888'}0d">
-          <div style="font-size:8px;color:${PILIER[j.b1]?.accent||'var(--goldL)'};font-weight:700;letter-spacing:1px">${S.nom}</div>
+          <div style="font-size:8px;color:${PILIER[j.b1]?.accent||'var(--goldL)'};font-weight:700;letter-spacing:1px">${esc(S.nom)}</div>
           <div style="display:flex;align-items:center;gap:4px">
             <span style="font-size:16px">${(j.b1&&PILIER[j.b1])?emblemeMini(j.b1,16):''}</span>
             <span style="font-size:10px;font-weight:900;color:${PILIER[j.b1]?.accent||'var(--goldL)'};font-family:'Cinzel',serif">${j.b1||''}</span>
