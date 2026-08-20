@@ -2211,7 +2211,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v97.50";
+const BUILD_TAG="v97.53";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -2413,7 +2413,73 @@ function getRang(){
   return r;
 }
 // ══════════════════════════════════════════════════════════════════════
-// LES DOS DE CARTES — motifs dessinés en SVG, zéro octet d'image.
+// CLASSEMENT MONDIAL — base Supabase, palier gratuit.
+// Une seule ligne par appareil, mise à jour quand le joueur bat son record.
+// La clé ci-dessous est la clé PUBLIQUE (publishable) : elle est faite pour
+// être visible dans la page. Elle n'autorise que ce que les règles d'accès
+// de la table permettent. La clé secrète (service_role) n'est JAMAIS ici.
+// Tout est en « au mieux » : sans réseau, le jeu retombe sur le classement
+// local et rien ne bloque jamais une partie.
+// ══════════════════════════════════════════════════════════════════════
+const SUPA={
+  url:"https://mguiuamwggokbirxbyqc.supabase.co",
+  cle:"sb_publishable_OLw3XAyqiw_cur1ATMUWqA_9H9O3BVX"
+};
+function _appareilId(){
+  try{
+    var id=localStorage.getItem("khalam_appareil");
+    if(!id){
+      if(window.crypto&&crypto.randomUUID) id=crypto.randomUUID();
+      else id="xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g,function(c){
+        var r=Math.random()*16|0, v=(c==="x")?r:((r&0x3)|0x8); return v.toString(16);
+      });
+      localStorage.setItem("khalam_appareil",id);
+    }
+    return id;
+  }catch(e){ return null; }
+}
+function _supaEntetes(){
+  return {"apikey":SUPA.cle,"Authorization":"Bearer "+SUPA.cle,"Content-Type":"application/json"};
+}
+// Envoi du score : upsert sur la clé primaire (appareil). Silencieux en cas d'échec.
+function envoyerScoreMondial(){
+  try{
+    var id=_appareilId(); if(!id) return;
+    var pseudo=String(S.nom||"Joueur").trim().slice(0,14);
+    if(pseudo.length<2) pseudo="Joueur";
+    var meilleur=Math.max(0,Math.min(9999,(S.stats&&S.stats.meilleurScore)||0));
+    // Gardiens vaincus : ce qui distingue vraiment un joueur assidu d'un joueur
+    // chanceux. Borné à 15 pour coller à la contrainte de la table.
+    var gardiens=Math.max(0,Math.min(15,(S.campagne&&S.campagne.progres)||0));
+    var corps=[{appareil:id, pseudo:pseudo, points:meilleur,
+                xp:Math.max(0,S.xp||0), parties:(S.stats&&S.stats.parties)||0,
+                gardiens:gardiens,
+                maj:new Date().toISOString()}];
+    var ent=_supaEntetes(); ent["Prefer"]="resolution=merge-duplicates";
+    fetch(SUPA.url+"/rest/v1/classement",{method:"POST",headers:ent,body:JSON.stringify(corps)})
+      .catch(function(){});
+  }catch(e){}
+}
+// Lecture du top 50. Renvoie null si le réseau ou la base ne répond pas.
+function chargerClassementMondial(){
+  var id=_appareilId();
+  return fetch(SUPA.url+"/rest/v1/classement?select=appareil,pseudo,points,xp,parties,gardiens&order=points.desc&limit=50",
+               {headers:_supaEntetes()})
+    .then(function(r){ return r.ok?r.json():null; })
+    .then(function(liste){
+      if(!Array.isArray(liste)){ S._mondial=null; S._mondialErr=true; return null; }
+      S._mondial=liste.map(function(e,i){
+        return {rang:i+1, nom:e.pseudo, pts:e.points, xp:e.xp, parties:e.parties,
+                gardiens:e.gardiens||0, moi:(e.appareil===id)};
+      });
+      S._mondialErr=false;
+      return S._mondial;
+    })
+    // Échec : on retient l'essai (null ≠ undefined) pour ne pas boucler à chaque rendu.
+    .catch(function(){ S._mondial=null; S._mondialErr=true; return null; });
+}
+
+
 // Chaque dos puise dans une tradition graphique africaine documentée
 // dans la bible KHALAM. Le dos est l'élément le plus vu du jeu : il
 // apparaît à chaque manche, dans la main de l'adversaire, à la pioche.
@@ -2921,6 +2987,16 @@ function charger(){
     if(typeof d.volume==="number") S.volume=d.volume;
     if(typeof d.sonCoupe==="boolean"){ S.sonCoupe=d.sonCoupe; try{ AUDIO.muted=d.sonCoupe; }catch(_){} }
     if(typeof d.voixGuide==="boolean") S.voixGuide=d.voixGuide;
+    // Purge des cinq joueurs de démonstration livrés avec les versions ≤ v97.50.
+    // Ils faussaient le « meilleur score » et le nombre de parties du menu.
+    try{
+      var _faux=[["Amina K.",1240],["Lucas B.",980],["Sophie M.",760],["Théo D.",540],["Clara V.",320]];
+      if(Array.isArray(S.classement)){
+        S.classement=S.classement.filter(function(e){
+          return !_faux.some(function(f){ return e && e.nom===f[0] && e.pts===f[1]; });
+        });
+      }
+    }catch(_){}
     // Un habillage retiré du catalogue ne doit pas rester collé au profil :
     // on ramène le joueur sur l'apparence d'origine et on purge les ids morts.
     try{
@@ -4834,10 +4910,10 @@ let S={
   cauris:0, habillage:"nuit", habAchetes:["nuit"],   // Boutique des Habillages
   xp:0,badgesTotal:[],defisDone:[],defiJour:{faitLe:-1,serie:0},cartesVues:[],campagne:{progres:0},campagneEnCours:-1,
   stats:{parties:0,victoires:0,defaites:0,egalites:0,meilleurScore:0,serie:0,meilleureSerie:0,piliers:{}},
-  classement:[
-    {nom:"Amina K.",pts:1240,xp:2800},{nom:"Lucas B.",pts:980,xp:2100},
-    {nom:"Sophie M.",pts:760,xp:1500},{nom:"Théo D.",pts:540,xp:900},{nom:"Clara V.",pts:320,xp:500},
-  ],
+  // Classement VIDE au départ : il ne se remplit que de vraies parties.
+  // Il contenait cinq joueurs de démonstration (Amina K. 1240 pts…) qui
+  // s'affichaient comme « meilleur score » sur un profil neuf.
+  classement:[],
   survieActif:false,viesSurvie:3,
   voixGuide:true,  // le Sage lit son aide à voix haute (API vocale du navigateur)
   // Jeu en cours
@@ -8849,6 +8925,7 @@ Object.assign(DUEL, {
     enregistrerStat(monScore>advScore?"win":(monScore<advScore?"lose":"draw"), monScore, null);
     S.classement.sort(function(a,b){return b.pts-a.pts;});
     S.classement=S.classement.slice(0,10);
+    envoyerScoreMondial();          // Duel : le score part au classement mondial
     showToast("⚡ +"+xpG+" XP"+(win?" · Victoire 🏆":""), win?"win":"info", 3200);
     if(typeof sauvegarder==="function") sauvegarder();
   },
@@ -12593,6 +12670,7 @@ const G={
     enregistrerStat(j.s1>j.s2?"win":(j.s1<j.s2?"lose":"draw"), j.s1, j.profil);
     S.classement.sort((a,b)=>b.pts-a.pts);
     S.classement=S.classement.slice(0,10);
+    envoyerScoreMondial();          // Solo : le score part au classement mondial
     // Survie
     if(S.survieActif){
       if(j.s1<=j.s2){               // manche perdue ou nulle → on perd une vie
@@ -14378,22 +14456,72 @@ function renderStats(app){
 }
 
 function renderClassement(app){
+  // Première ouverture : on va chercher les vrais joueurs, puis on redessine.
+  if(S._mondial===undefined && !S._mondialEnCours){
+    S._mondialEnCours=true;
+    chargerClassementMondial().then(function(){
+      S._mondialEnCours=false;
+      if(S.ecran==="classement") render();
+    });
+  }
+  var mondial=Array.isArray(S._mondial)?S._mondial:null;
+  var enCours=S._mondialEnCours;
+
+  // Repli sur le classement local si la base ne répond pas.
+  var lignes = mondial || (S.classement||[]).map(function(p,i){
+    return {rang:i+1, nom:p.nom, pts:p.pts, xp:p.xp, moi:true};
+  });
+
+  var sousTitre = mondial
+    ? '🌍 Tous les joueurs · '+mondial.length+(mondial.length>1?" inscrits":" inscrit")
+    : (enCours ? "⏳ Recherche des joueurs…" : "📱 Hors ligne — de cet appareil uniquement");
+
+  // Le joueur voit toujours son rang, même hors du top affiché.
+  var moi = mondial?mondial.find(function(e){return e.moi;}):null;
+  var monRang = (mondial && !moi && (S.stats&&S.stats.meilleurScore))
+    ? '<div style="margin-top:14px;padding:12px 14px;border-radius:12px;border:1px dashed rgba(212,175,55,0.4);'
+      +'background:rgba(10,6,20,0.5);text-align:center;font-size:11.5px;color:var(--muted)">'
+      +'Tu n\'es pas encore dans les 50 premiers.<br>'
+      +'<span style="color:var(--goldL)">Ton meilleur score : '+(S.stats.meilleurScore)+' pts</span></div>'
+    : "";
+
+  var vide = '<div style="text-align:center;border:1px dashed rgba(212,175,55,0.3);border-radius:16px;'
+    +'padding:26px 18px;background:rgba(10,6,20,0.45)">'
+    +'<div style="font-size:30px;margin-bottom:8px;opacity:0.8">🏆</div>'
+    +'<div style="font-family:\'Cinzel\',serif;font-size:15px;color:var(--goldL);margin-bottom:6px">Ce classement t\'attend</div>'
+    +'<div style="font-size:11.5px;color:var(--muted);font-family:\'Crimson Text\',Georgia,serif;font-style:italic;line-height:1.6">'
+    +'Aucun score inventé ici — seulement de vrais joueurs.<br>Joue une partie pour ouvrir le tableau.</div></div>';
+
   app.innerHTML=`<div class="screen fade">
     <div class="w100">
-      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px">
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px">
         <button class="btn-ghost" style="width:auto;padding:8px 14px" onclick="S.ecran='menu';render()">←</button>
         <h2 style="font-family:'Cinzel',serif;color:var(--goldL);font-size:20px">🌍 Classement</h2>
-        <div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-top:2px">📱 De cet appareil uniquement</div>
       </div>
-      ${S.classement.map((p,i)=>{const n=getNiveau(p.xp||0);return`
-        <div style="display:flex;align-items:center;gap:12px;padding:13px 14px;margin-bottom:8px;border-radius:10px;background:${i===0?"linear-gradient(135deg,rgba(74,53,0,0.8),rgba(42,31,0,0.8))":"rgba(255,255,255,0.06)"};border:1px solid ${i===0?"var(--gold)":"rgba(212,175,55,0.2)"}">
-          <div style="font-size:18px;width:22px;text-align:center">${i===0?"🥇":i===1?"🥈":i===2?"🥉":`${i+1}.`}</div>
-          <div style="flex:1">
-            <div style="font-weight:700;color:${i===0?"var(--goldL)":"var(--text)"}">${p.nom}</div>
-            <div style="font-size:10px;color:${n.color}">${n.icon} ${n.label}</div>
-          </div>
-          <div style="font-size:18px;font-weight:900;color:${i===0?"var(--goldL)":"var(--text)"};font-family:'Cinzel',serif">${p.pts}</div>
-        </div>`;}).join("")}
+      <div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin:0 0 16px 54px">${sousTitre}</div>
+      ${(S._mondialErr&&!enCours)?'<div style="text-align:center;margin-bottom:14px">'
+        +'<button class="btn-ghost" style="width:auto;padding:9px 18px;font-size:12px" '
+        +'onclick="S._mondial=undefined;S._mondialErr=false;render()">🔄 Réessayer</button></div>':""}
+      ${!lignes.length?vide:lignes.map(function(p){
+        var i=p.rang-1;
+        var n=getNiveau(p.xp||0);
+        var or1=(i===0);
+        return '<div style="display:flex;align-items:center;gap:12px;padding:13px 14px;margin-bottom:8px;border-radius:10px;'
+          +'background:'+(or1?"linear-gradient(135deg,rgba(74,53,0,0.8),rgba(42,31,0,0.8))":(p.moi?"rgba(212,175,55,0.13)":"rgba(255,255,255,0.06)"))+';'
+          +'border:1px solid '+(or1?"var(--gold)":(p.moi?"rgba(240,208,96,0.55)":"rgba(212,175,55,0.2)"))+'">'
+          +'<div style="font-size:18px;width:26px;text-align:center">'+(i===0?"🥇":i===1?"🥈":i===2?"🥉":(p.rang+"."))+'</div>'
+          +'<div style="flex:1;min-width:0">'
+            +'<div style="font-weight:700;color:'+(or1?"var(--goldL)":"var(--text)")+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'
+              +String(p.nom||"—").replace(/</g,"&lt;")+(p.moi?' <span style="font-size:9px;color:var(--goldL);letter-spacing:1px">· TOI</span>':"")+'</div>'
+            +'<div style="font-size:10px;color:'+n.color+'">'+n.icon+' '+n.label
+              +(p.gardiens?'<span style="color:var(--muted)"> · </span>'
+                 +'<span style="color:#C9A227">⚔ '+p.gardiens+'/15 gardiens</span>':"")
+              +'</div>'
+          +'</div>'
+          +'<div style="font-size:18px;font-weight:900;color:'+(or1?"var(--goldL)":"var(--text)")+';font-family:\'Cinzel\',serif">'+p.pts+'</div>'
+          +'</div>';
+      }).join("")}
+      ${monRang}
     </div>
   </div>`;
 }
