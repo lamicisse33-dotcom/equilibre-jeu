@@ -2200,7 +2200,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v97.36";
+const BUILD_TAG="v97.38";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -6595,6 +6595,14 @@ const DUEL = {
     return Date.now().toString(36)+Math.random().toString(36).slice(2,5);
   },
 
+  // Une partie est-elle réellement engagée ? Sert de garde-fou aux handlers
+  // d'installation initiale, que PeerJS ré-émet lors d'un reconnect().
+  _partieEngagee(){
+    if(DUEL._quitVolontaire) return false;
+    if(DUEL._recon && DUEL._recon.active) return true;
+    return !!(DUEL.gs && DUEL.gs.phase && DUEL.gs.phase!=="attente");
+  },
+
   _reset(){
     if(DUEL.conn){try{DUEL.conn.close();}catch(e){}}
     if(DUEL.peer){try{DUEL.peer.destroy();}catch(e){}}
@@ -6644,6 +6652,11 @@ const DUEL = {
         DUEL.peer=new Peer("eq-"+DUEL.room, DUEL._ice());
 
         DUEL.peer.on("open",function(){
+          // PeerJS ré-émet "open" après un reconnect() (retour d'appel téléphonique,
+          // app remise au premier plan). Rejouer l'installation initiale appellerait
+          // _initGS() → nouveau deck, phase "attente" → retour à l'écran de sélection.
+          // Sur une partie engagée on ne touche à RIEN : la boucle de reconnexion agit.
+          if(DUEL._partieEngagee()){ try{ DUEL._flushOutbox(); }catch(_){} return; }
           // ✅ Connecté avec le vrai code — afficher le lobby
           DUEL._initGS();
           S.ecran="duel_lobby"; render();
@@ -6717,6 +6730,10 @@ const DUEL = {
       DUEL.peer=new Peer("eq-"+DUEL.myId, DUEL._ice());
       DUEL.peer.on("open",function(id){
         console.log("✅ PeerJS invité ouvert:", id);
+        // Même piège que côté hôte : un reconnect() ré-émet "open". Relancer la
+        // procédure d'entrée renverrait un "join" à l'hôte, qui repartirait de zéro.
+        // Sur une partie engagée on demande une resynchronisation, pas une entrée.
+        if(DUEL._partieEngagee()){ DUEL._tenterConnexionHote(); return; }
         // Se connecter à l'hôte
         var conn=DUEL.peer.connect("eq-"+code,{reliable:true});
         DUEL.conn=conn;
@@ -7034,6 +7051,25 @@ const DUEL = {
         break;
 
       case "join":
+        // Filet de sécurité : un "join" reçu alors qu'une partie est DÉJÀ engagée est
+        // un écho de reconnexion, jamais une nouvelle entrée. L'accepter appellerait
+        // _initGS() et renverrait les deux joueurs à l'écran de sélection, partie perdue.
+        // On répond par l'état courant, exactement comme à un resync_req.
+        if(DUEL.gs && DUEL.gs.phase && DUEL.gs.phase!=="attente"){
+          if(msg.nom) DUEL.adversaire={
+            nom:msg.nom,
+            couleur:(DUEL.adversaire&&DUEL.adversaire.couleur)||"#e05555",
+            icon:msg.icon||(DUEL.adversaire&&DUEL.adversaire.icon)||"⚔️"
+          };
+          DUEL._send({type:"resync_state",
+            gs:DUEL.gs,
+            nom:S.nom||"Hôte",
+            icon:"👑",
+            ecran:(S.ecran==="duel_resultat")?"duel_resultat":"duel_jeu"
+          });
+          DUEL._reconnexionReussie();
+          break;
+        }
         // Hôte reçoit l'invité avec son nom
         DUEL.adversaire={nom:msg.nom||"Adversaire",couleur:"#e05555",icon:msg.icon||"⚔️"};
         DUEL._initGS();
@@ -9462,18 +9498,24 @@ function renderDuelJeu(app){
       } else {
         var jokCards2="";
         mesJoks.forEach(function(jk){
-          if(jk.id==="j4") jokCards2+='<div style="width:var(--card-w);min-height:var(--card-h);display:flex;flex-shrink:0">'+jokerCardHTML(jk,{onClick:"DUEL.useEchangeLibre()"})+'</div>';
+          if(jk.id==="j4") jokCards2+=jokerCardHTML(jk,{onClick:"DUEL.useEchangeLibre()"});
         });
+        // Présentation strictement identique au Solo (cf. renderJeu, branche validesJ1===0) :
+        // message nommant le combo, bouton Passer discret en HAUT, puis l'Échange proposé.
+        html+='<div style="margin-bottom:10px">';
         if(jokCards2){
-          // A un joker Échange → vrai choix : échanger ou passer
-          html+='<div style="text-align:center;padding:12px 16px 6px;color:var(--muted);font-size:12px">Aucune carte pour ce combo</div>'
-            +'<div style="font-size:10px;color:var(--muted);text-align:center;margin-bottom:6px;letter-spacing:1px">VOS JOKERS</div>'
-            +'<div style="display:flex;flex-direction:row;gap:min(8px,2vw);justify-content:center;flex-wrap:nowrap;margin-bottom:10px">'+jokCards2+'</div>'
-            +'<div style="text-align:center;margin-top:8px"><button onclick="DUEL.jouerCarte(null)" style="padding:12px 32px;border-radius:12px;background:linear-gradient(135deg,#6b4fb0,#3d2b7d);border:1.5px solid var(--gold);color:#fff;font-size:14px;font-weight:800;letter-spacing:1px;cursor:pointer;box-shadow:0 3px 12px rgba(0,0,0,0.4)">⏭️ PASSER</button></div>';
+          html+='<div style="font-size:11px;color:var(--red);text-align:center;margin-bottom:8px">'
+              +'⚠️ Aucune carte valide pour <strong>'+(gs.cb||"")+'</strong></div>'
+            +'<button class="btn-ghost" style="width:100%;margin-bottom:10px" onclick="DUEL.jouerCarte(null)">⏭️ Passer ce tour (0 pts)</button>'
+            +'<div style="font-size:10px;color:#9B59B6;text-align:center;margin-bottom:8px;font-weight:700">'
+              +'🔄 …ou utilisez l\'Échange pour piocher une carte du combo</div>'
+            +'<div style="display:flex;gap:7px">'+jokCards2+'</div>';
         } else {
           // Aucune carte ET aucun joker → passage automatique, pas de bouton
-          html+='<div style="text-align:center;padding:16px;color:var(--red);font-size:12px;font-weight:700">⚡ Aucune carte pour ce combo — passage automatique…</div>';
+          html+='<div style="font-size:11px;color:var(--red);text-align:center;margin-bottom:4px">'
+              +'⚡ Aucune carte valide pour <strong>'+(gs.cb||"")+'</strong> — passage automatique…</div>';
         }
+        html+='</div>';
       }
       html+='</div>';
     }
