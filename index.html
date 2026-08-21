@@ -2211,7 +2211,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v97.77";
+const BUILD_TAG="v97.78";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -15183,7 +15183,7 @@ function renderClassement(app){
   });
 
   var sousTitre = mondial
-    ? '🌍 Tous les joueurs · '+mondial.length+(mondial.length>1?" inscrits":" inscrit")
+    ? '🌍 Tous les joueurs · '+mondial.length+(mondial.length>1?" inscrits":" inscrit")+' · 🔒 noms masqués'
     : (enCours ? "⏳ Recherche des joueurs…" : "📱 Hors ligne — de cet appareil uniquement");
 
   // Le joueur voit toujours son rang, même hors du top affiché.
@@ -15222,7 +15222,12 @@ function renderClassement(app){
           +'<div style="font-size:18px;width:26px;text-align:center">'+(i===0?"🥇":i===1?"🥈":i===2?"🥉":(p.rang+"."))+'</div>'
           +'<div style="flex:1;min-width:0">'
             +'<div style="font-weight:700;color:'+(or1?"var(--goldL)":"var(--text)")+';white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'
-              +String(p.nom||"—").replace(/</g,"&lt;")+(p.moi?' <span style="font-size:9px;color:var(--goldL);letter-spacing:1px">· TOI</span>':"")+'</div>'
+              +(p.moi
+                 ? esc(p.nom||"—")+' <span style="font-size:9px;color:var(--goldL);letter-spacing:1px">· TOI</span>'
+                 // Les autres pseudos sont masqués : chacun se reconnaît, personne
+                 // ne reconnaît les autres. Les scores, eux, restent visibles —
+                 // la compétition demeure entière.
+                 : '<span style="letter-spacing:2px;color:var(--muted)">••••••</span>')+'</div>'
             +'<div style="font-size:10px;color:'+n.color+'">'+n.icon+' '+n.label
               +(p.gardiens?'<span style="color:var(--muted)"> · </span>'
                  +'<span style="color:#C9A227">⚔ '+p.gardiens+'/15 gardiens</span>':"")
