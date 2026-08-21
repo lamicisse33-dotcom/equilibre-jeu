@@ -2211,7 +2211,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v97.75";
+const BUILD_TAG="v97.77";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -15661,12 +15661,18 @@ function _ouvrirReglages(enPartie){
     +'<button onclick="_regFermer()" style="width:100%;min-height:48px;border-radius:26px;border:none;cursor:pointer;margin-bottom:9px;'
       +'background:linear-gradient(135deg,#f7d9a8,#d98f3d);color:#2b1a05;font-family:\'Cinzel\',serif;font-size:14px;font-weight:900;letter-spacing:1px">'
       +'ENREGISTRER ET FERMER</button>'
-    // Accès à l'espace privé : discret, sans annoncer ce qu'il contient.
-    // Un joueur qui tombe dessus ne voit qu'une porte fermée.
-    +'<button onclick="_regFermer();setTimeout(ouvrirTableauBord,120)" '
-      +'style="width:100%;min-height:34px;margin-top:2px;margin-bottom:8px;border-radius:12px;cursor:pointer;'
-      +'background:transparent;border:1px solid rgba(255,255,255,0.10);color:rgba(180,170,200,0.5);'
-      +'font-size:10.5px;letter-spacing:1px">🔐 Espace auteur</button>'
+    // ── PORTE DÉROBÉE ────────────────────────────────────────────────────
+    // Aucun texte, aucune icône : une simple bande vide au bas du panneau,
+    // que rien ne distingue d'une marge. Elle ne s'ouvre qu'au bout de
+    // 10 secondes d'appui maintenu — un toucher normal, même appuyé, ne
+    // déclenche rien. Un joueur ne peut pas la découvrir par hasard.
+    +'<div id="porte-auteur" '
+      +'onpointerdown="_porteDebut(event)" onpointerup="_porteFin()" '
+      +'onpointercancel="_porteFin()" onpointerleave="_porteFin()" '
+      +'oncontextmenu="return false" '
+      +'style="width:100%;height:26px;margin-top:4px;border-radius:12px;'
+      +'-webkit-tap-highlight-color:transparent;-webkit-user-select:none;user-select:none;'
+      +'touch-action:none;cursor:default"></div>'
     +(enPartie?
       ('<button onclick="MULTI_DO_MENU()" style="width:100%;min-height:44px;border-radius:22px;cursor:pointer;'
       +'background:rgba(224,85,85,0.12);border:1px solid rgba(224,85,85,0.5);color:#f08a8a;font-size:13px;font-weight:700">'
@@ -15792,7 +15798,7 @@ function _empreinte(s){
 // Empreinte du mot de passe. Pour en changer : ouvrir la console du navigateur,
 // taper _empreinte("ton-nouveau-code"), et coller le résultat ci-dessous.
 // Ne JAMAIS écrire le mot de passe en clair ici — pas même en commentaire.
-const _BORD_CLE="ymmix3";
+const _BORD_CLE="3p6ifg";
 function _bordAutorise(){
   try{ return sessionStorage.getItem("khalam_bord")==="1"; }catch(e){ return false; }
 }
@@ -15966,6 +15972,37 @@ function _rendreTableauBord(liste, souci){
 // Calcule l'empreinte du mot de passe saisi et propose de la copier.
 // Le mot de passe n'est ni stocké, ni envoyé nulle part : seule l'empreinte
 // est affichée, et c'est elle qu'on recopie dans le fichier.
+// ── PORTE DÉROBÉE : 10 secondes d'appui maintenu ──────────────────────
+// La zone est vide et muette. Aucun retour visuel pendant les 8 premières
+// secondes : quelqu'un qui appuie par curiosité relâche bien avant, et
+// n'apprend rien. Un très léger éclat apparaît sur les 2 dernières secondes,
+// uniquement pour confirmer à celui qui SAIT qu'il est sur la bonne voie.
+var _porteTimer=null, _porteEclat=null;
+const _PORTE_DUREE=10000;
+function _porteDebut(e){
+  try{ if(e&&e.preventDefault) e.preventDefault(); }catch(_){}
+  _porteFin();
+  var z=document.getElementById("porte-auteur");
+  // Éclat discret à 8 s : rien avant, pour ne rien révéler.
+  _porteEclat=setTimeout(function(){
+    try{ if(z) z.style.background="rgba(240,208,96,0.05)"; }catch(_){}
+  }, 8000);
+  _porteTimer=setTimeout(function(){
+    _porteFin();
+    try{ AUDIO.sfxConfirm&&AUDIO.sfxConfirm(); }catch(_){}
+    _regFermer();
+    setTimeout(ouvrirTableauBord,120);
+  }, _PORTE_DUREE);
+}
+function _porteFin(){
+  if(_porteTimer){ clearTimeout(_porteTimer); _porteTimer=null; }
+  if(_porteEclat){ clearTimeout(_porteEclat); _porteEclat=null; }
+  try{
+    var z=document.getElementById("porte-auteur");
+    if(z) z.style.background="transparent";
+  }catch(_){}
+}
+
 function _bordCalculer(){
   var i=document.getElementById("bord-nouv");
   var res=document.getElementById("bord-res");
