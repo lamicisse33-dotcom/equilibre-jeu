@@ -2211,7 +2211,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v97.58";
+const BUILD_TAG="v97.62";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -2863,6 +2863,9 @@ function sauvegarder(){
       habAchetes:S.habAchetes,
       dos:S.dos,
       dosAchetes:S.dosAchetes,
+      voix:S.voix,
+      voixAchetees:S.voixAchetees,
+      exploits:S.exploits,
     }));
   }catch(e){}
 }
@@ -3070,6 +3073,13 @@ function charger(){
       if(S.dos && !DOS.some(function(x){return x.id===S.dos;})) S.dos="origine";
       S.dosAchetes=(S.dosAchetes||["origine"]).filter(function(id){ return DOS.some(function(x){return x.id===id;}); });
       if(S.dosAchetes.indexOf("origine")<0) S.dosAchetes.push("origine");
+      if(d.voix) S.voix=d.voix;
+      if(Array.isArray(d.voixAchetees)) S.voixAchetees=d.voixAchetees;
+      if(S.voix && !VOIX.some(function(x){return x.id===S.voix;})) S.voix="guide";
+      S.voixAchetees=(S.voixAchetees||["guide","silence"]).filter(function(id){ return VOIX.some(function(x){return x.id===id;}); });
+      ["guide","silence"].forEach(function(id){ if(S.voixAchetees.indexOf(id)<0) S.voixAchetees.push(id); });
+      if(d.exploits && typeof d.exploits==="object") S.exploits=d.exploits;
+      if(!S.exploits || typeof S.exploits!=="object") S.exploits={};
       if(Array.isArray(S.habAchetes)){
         S.habAchetes=S.habAchetes.filter(function(id){
           return HABILLAGES.some(function(h){return h.id===id;});
@@ -4843,9 +4853,22 @@ function dealEquilibre(){
       if(opts.length) deck.push(opts[Math.floor(Math.random()*opts.length)]);
     });
   });
-  // Mélange pur (Fisher-Yates) puis coupe équitable 12/12
-  deck=shuffle(deck);
-  return { j1:deck.slice(0,12), j2:deck.slice(12,24) };
+  // ── DONNE ÉQUILIBRÉE ────────────────────────────────────────────────────
+  // Le mélange pur laissait 9 % des manches SANS aucune carte jouable : le
+  // joueur passait son tour sans avoir rien décidé, et l'IA encaissait
+  // gratuitement. Mesuré sur 4000 donnes : 43 % des manches ne demandaient
+  // aucune décision (aucune carte, ou une seule possible).
+  // Le deck compte 6 combos × 4 paliers = 24 cartes, coupées 12/12 : donner
+  // exactement 2 cartes de CHAQUE combo à chacun tombe juste, et la répartition
+  // des paliers reste aléatoire — donc la force des mains varie toujours.
+  // Après cette correction : 0 % de manches sans carte, 67 % avec un vrai choix.
+  var j1=[], j2=[];
+  combos.forEach(function(cb){
+    var s=shuffle(deck.filter(function(c){return c.combo===cb;}));
+    j1.push(s[0], s[1]);
+    j2.push(s[2], s[3]);
+  });
+  return { j1:shuffle(j1), j2:shuffle(j2) };
 }
 // Enregistre les cartes découvertes (vues dans la main du joueur)
 function marquerVues(cartes){
@@ -4860,12 +4883,79 @@ const mkCombo=(a,b)=>[a,b].sort().join("+");
 function carteSupreme(cb){ return {id:"sup_"+cb, combo:cb, name:"Suprême", pts:50, supreme:true, cit:"La carte des maîtres — puissance absolue."}; }
 function carteFantome(cb){ return {id:"fan_"+cb, combo:cb, name:"Fantôme", pts:0, fantome:true, cit:"Nul ne connaît sa valeur avant de la jouer."}; }
 // Cartes jouables du joueur pour le combo courant, + les spéciales à partir de la manche 6
+// ══════════════════════════════════════════════════════════════════════
+// LES CARTES MÉRITÉES — elles ne s'achètent JAMAIS.
+// Elles se gagnent par un exploit, et se jouent comme la Suprême : une
+// seule fois par partie, à partir de la manche 6, sur le combo courant.
+// Vendre une carte fausserait le classement mondial, qui compare des
+// scores. Un score acheté n'est plus un score. Ici, jouer la carte dit
+// « j'y suis arrivé », pas « j'ai payé ».
+//   cond(S) : l'exploit est-il accompli ?
+//   pts     : valeur, ou null si elle se calcule au moment de jouer
+// ══════════════════════════════════════════════════════════════════════
+const CARTES_MERITEES=[
+  {id:"sceau", nom:"Le Sceau des Gardiens", ic:"⚔", pts:60,
+   comment:"Vaincre les 15 Gardiens de la Campagne",
+   cit:"Quinze portes franchies. Celle-ci s'ouvre d'elle-même.",
+   cond:function(){ return ((S.campagne&&S.campagne.progres)||0)>=15; }},
+
+  {id:"braise", nom:"La Braise", ic:"🔥", pts:45,
+   comment:"Enchaîner 10 victoires d'affilée",
+   cit:"Le feu qui ne s'éteint pas entre deux parties.",
+   cond:function(){ return ((S.stats&&S.stats.meilleureSerie)||0)>=10; }},
+
+  {id:"aplomb", nom:"L'Aplomb", ic:"⚖", pts:null,   // vaut le pot adverse
+   comment:"Finir une partie avec les quatre piliers à moins de 20 points d'écart",
+   cit:"Ni le plus haut, ni le plus bas. Le plus juste.",
+   cond:function(){ return !!(S.exploits&&S.exploits.aplomb); }},
+
+  {id:"patience", nom:"La Patience", ic:"🌿", pts:40,
+   comment:"Jouer 100 parties",
+   cit:"Elle n'a jamais couru. Elle est arrivée quand même.",
+   cond:function(){ return ((S.stats&&S.stats.parties)||0)>=100; }}
+];
+function carteMeritee(cb, id){
+  var m=CARTES_MERITEES.find(function(x){return x.id===id;});
+  if(!m) return null;
+  return {id:"mer_"+id+"_"+cb, combo:cb, name:m.nom, pts:(m.pts==null?0:m.pts),
+          meritee:true, meriteId:id, ic:m.ic, cit:m.cit};
+}
+// Cartes méritées effectivement débloquées par le joueur.
+function meriteesDebloquees(){
+  try{ return CARTES_MERITEES.filter(function(m){ return m.cond(); }); }catch(e){ return []; }
+}
+// Exploit « Aplomb » : les quatre piliers resserrés en fin de partie.
+function _verifierAplomb(profil){
+  try{
+    if(!profil) return;
+    var v=PILIERS.map(function(p){ return profil[p]||0; });
+    var mx=Math.max.apply(null,v), mn=Math.min.apply(null,v);
+    if(mx>0 && (mx-mn)<=20){
+      S.exploits=S.exploits||{};
+      if(!S.exploits.aplomb){
+        S.exploits.aplomb=true;
+        try{ sauvegarder(); }catch(_){}
+        setTimeout(function(){ showToast("⚖ Exploit : L'Aplomb — une nouvelle carte t'attend !","badge",4200); },2400);
+      }
+    }
+  }catch(e){}
+}
+
 function validesAvecSpeciales(j){
   if(!j||!j.cb) return [];
   var base=j.mainRepJ1.filter(function(c){return c.combo===j.cb;});
   if(j.legendaires && j.manche>=6){
     if(!j.supremeUse && !j._supremeMasque) base=base.concat([carteSupreme(j.cb)]);
     if(!j.fantomeUse && !j._fantomeMasque) base=base.concat([carteFantome(j.cb)]);
+  }
+  // Cartes méritées : disponibles dès la manche 6 de TOUTE partie (pas seulement
+  // celles à légendaires), une seule fois chacune. Elles récompensent un exploit
+  // déjà accompli — rien à débourser, rien à tirer au sort.
+  if(j.manche>=6){
+    j.meriteesUse=j.meriteesUse||{};
+    meriteesDebloquees().forEach(function(m){
+      if(!j.meriteesUse[m.id]) base=base.concat([carteMeritee(j.cb,m.id)]);
+    });
   }
   return base;
 }
@@ -4972,6 +5062,9 @@ let S={
   nom:"Joueur",
   avatar:"⚖️",diff:"Intermédiaire",theme:"t1",
   cauris:0, habillage:"nuit", habAchetes:["nuit"],   // Boutique des Habillages
+  dos:"origine", dosAchetes:["origine"],             // Boutique — dos de cartes
+  voix:"guide",  voixAchetees:["guide","silence"],   // Boutique — voix du Guide
+  exploits:{},                                       // Cartes méritées (jamais achetées)
   xp:0,badgesTotal:[],defisDone:[],defiJour:{faitLe:-1,serie:0},cartesVues:[],campagne:{progres:0},campagneEnCours:-1,
   stats:{parties:0,victoires:0,defaites:0,egalites:0,meilleurScore:0,serie:0,meilleureSerie:0,piliers:{}},
   // Classement VIDE au départ : il ne se remplit que de vraies parties.
@@ -10082,9 +10175,79 @@ function _sceneOccupee(){
     return false;
   }catch(e){ return false; }
 }
+// ══════════════════════════════════════════════════════════════════════
+// LES VOIX DU GUIDE — un timbre = trois réglages de la synthèse vocale.
+// Zéro octet : aucun fichier son, tout est produit par le téléphone.
+//   masc  : voix masculine du système plutôt que féminine
+//   rate  : débit (0,5 lent … 1,5 rapide)
+//   pitch : hauteur (0,5 grave … 2 aigu)
+//   muet  : ne parle pas du tout
+// ══════════════════════════════════════════════════════════════════════
+const VOIX=[
+  {id:"guide",  nom:"La Guide",      ic:"🌙", prix:0,
+   desc:"La voix d'origine, posée et claire.",
+   masc:false, rate:0.90, pitch:1.06},
+  {id:"griot",  nom:"Le Griot",      ic:"🪘", prix:150,
+   desc:"Le conteur. Grave, lent, il prend son temps.",
+   masc:true,  rate:0.78, pitch:0.82},
+  {id:"sage",   nom:"Le Vieux Sage", ic:"🕯️", prix:200,
+   desc:"Chaque mot pèse. Il ne se presse jamais.",
+   masc:true,  rate:0.68, pitch:0.68},
+  {id:"enfant", nom:"L'Enfant",      ic:"🌱", prix:200,
+   desc:"Vif et curieux. Il découvre le jeu avec toi.",
+   masc:false, rate:1.22, pitch:1.75},
+  {id:"souffle",nom:"Le Souffle",    ic:"🍃", prix:150,
+   desc:"À peine un murmure. Doux et lointain.",
+   masc:false, rate:0.82, pitch:1.30, volume:0.55},
+  {id:"silence",nom:"Le Silence",    ic:"🤫", prix:0,
+   desc:"Aucune parole. Les sons du jeu, rien de plus.",
+   muet:true}
+];
+function voixActive(){ return VOIX.find(function(v){return v.id===S.voix;})||VOIX[0]; }
+function acheterVoix(id){
+  var v=VOIX.find(function(x){return x.id===id;}); if(!v) return;
+  S.voixAchetees=S.voixAchetees||["guide","silence"];
+  if(MODE_TEST){
+    if(S.voixAchetees.indexOf(id)<0) S.voixAchetees.push(id);
+    S.voix=id; sauvegarder(); render();
+    try{ AUDIO.sfxClickUnique(); }catch(_){}
+    showToast("🗣️ Guide : « "+v.nom+" »","win",2000);
+    _essayerVoix(id); return;
+  }
+  if(S.voixAchetees.indexOf(id)<0){
+    if((S.cauris||0)<v.prix){ showToast("🐚 Il te manque "+(v.prix-(S.cauris||0))+" cauris — joue pour en gagner !","info",2400); return; }
+    S.cauris-=v.prix; S.voixAchetees.push(id);
+    try{ AUDIO.sfxBadge(); }catch(_){}
+    showToast("🎉 « "+v.nom+" » rejoint ton cercle !","win",2200);
+  } else {
+    try{ AUDIO.sfxClickUnique(); }catch(_){}
+    showToast("🗣️ Guide : « "+v.nom+" »","win",2000);
+  }
+  S.voix=id; sauvegarder(); render(); _essayerVoix(id);
+}
+// Écouter avant d'acheter : c'est le seul moyen de juger une voix.
+function _essayerVoix(id){
+  var v=VOIX.find(function(x){return x.id===id;}); if(!v||v.muet) return;
+  try{
+    if(!S.voixGuide){ showToast("🔇 La voix du guide est coupée dans les Réglages.","info",2600); return; }
+    _parlerGuide("Je suis "+v.nom+". Je t'accompagnerai sur les quatre piliers.");
+  }catch(e){}
+}
+
 function _parlerGuide(txt, opts){
   if(!_voixDispo() || !txt) return false;
   opts=opts||{};
+  // Le timbre choisi en Boutique s'applique ICI, au cœur : les 22 appels
+  // répartis dans le fichier en héritent sans avoir à être touchés.
+  // Un appel qui fixe explicitement un réglage garde la priorité.
+  var _v=(typeof voixActive==="function")?voixActive():null;
+  if(_v){
+    if(_v.muet) return false;
+    if(typeof opts.rate!=="number"  && typeof _v.rate==="number")  opts.rate=_v.rate;
+    if(typeof opts.pitch!=="number" && typeof _v.pitch==="number") opts.pitch=_v.pitch;
+    if(typeof opts.volume!=="number"&& typeof _v.volume==="number")opts.volume=_v.volume;
+    if(typeof opts.masc!=="boolean" && typeof _v.masc==="boolean") opts.masc=_v.masc;
+  }
   try{
     window.speechSynthesis.cancel();
     var u=new SpeechSynthesisUtterance(txt);
@@ -11213,7 +11376,15 @@ function carteK(c,opts,k,h){
   // la mise en page interne est en %, elle se recompose toute seule).
   h=h||156;
   const ky=k.toFixed(4);
-  return '<div style="flex-shrink:0;overflow:hidden;border-radius:12px;'
+  // `.carte-rep.selected` applique scale(1.1) : la carte grandit de 10 %, soit
+  // ~8 px au-dessus du cadre. Avec overflow:hidden taillé pour la taille NORMALE,
+  // ce surplus était coupé — le numéro de points et le badge ✓ apparaissaient
+  // rognés en haut. On ne rogne donc que la carte COUCHÉE, dont l'illustration
+  // dessine volontairement une tranche à faire disparaître. Pour les autres, on
+  // laisse déborder et on remonte la carte au-dessus de ses voisines.
+  var _rogne = opts.couche ? "overflow:hidden;" : "overflow:visible;";
+  var _dessus = opts.selected ? "position:relative;z-index:5;" : "";
+  return '<div style="flex-shrink:0;'+_rogne+_dessus+'border-radius:12px;'
     +'width:calc(110px * '+k+' * var(--kv));height:calc('+h+'px * '+ky+' * var(--kv))">'
     +'<div style="--card-w:110px;--card-h:'+h+'px;width:110px;height:'+h+'px;'
     +'transform:scale(calc('+k+' * var(--kv)),calc('+ky+' * var(--kv)));transform-origin:top left">'
@@ -11998,6 +12169,9 @@ const G={
     const j=S.jeu;
     if(!j||j.phase!=="afficheBases"||j.phaseEchange)return;
     var isSup=id.indexOf("sup_")===0, isFan=id.indexOf("fan_")===0;
+    var isMer=id.indexOf("mer_")===0;
+    // Une carte méritée est unique dans la partie : même confirmation que la Suprême.
+    if(isMer && !force){ G._demanderSpeciale(id, "meritee"); return; }
     // Cartes spéciales (Suprême/Fantôme) : une seule par partie → on demande « Jouer / Pas maintenant ».
     if((isSup||isFan) && !force){
       G._demanderSpeciale(id, isSup?"supreme":"fantome");
@@ -12006,6 +12180,19 @@ const G={
     let c;
     if(isSup){ c=carteSupreme(j.cb); j.supremeUse=true; }
     else if(isFan){ c=carteFantome(j.cb); c.pts=Math.floor(Math.random()*101); j.fantomeUse=true; }
+    else if(isMer){
+      var _mid=id.split("_")[1];
+      c=carteMeritee(j.cb,_mid);
+      if(!c) return;
+      // L'Aplomb n'a pas de valeur propre : elle égale la mise adverse, à 1 près.
+      // Elle ne surpasse pas, elle rétablit. C'est tout son propos.
+      if(_mid==="aplomb"){
+        var _adv=j.mainRepJ2.filter(function(x){return x.combo===j.cb;});
+        var _max=_adv.length?Math.max.apply(null,_adv.map(function(x){return x.pts;})):0;
+        c.pts=_max+1;
+      }
+      j.meriteesUse=j.meriteesUse||{}; j.meriteesUse[_mid]=true;
+    }
     else c=j.mainRepJ1.find(x=>x.id===id);
     if(!c)return;
     // Jeu immédiat : toucher une carte la joue directement (plus de double-tap ni de validation)
@@ -12740,6 +12927,7 @@ const G={
     // Classement
     S.classement.push({nom:S.nom,pts:j.s1,xp:S.xp});
     enregistrerStat(j.s1>j.s2?"win":(j.s1<j.s2?"lose":"draw"), j.s1, j.profil);
+    _verifierAplomb(j.profil);      // exploit : les quatre piliers resserrés
     S.classement.sort((a,b)=>b.pts-a.pts);
     S.classement=S.classement.slice(0,10);
     envoyerScoreMondial();          // Solo : le score part au classement mondial
@@ -13498,6 +13686,52 @@ function renderThemes(app){
   }
   var dosHtml=DOS.map(vitrineDos).join("");
 
+  // ── RAYON 2 : LES VOIX DU GUIDE ────────────────────────────────────────
+  var voixAch=S.voixAchetees||["guide","silence"];
+  function vitrineVoix(v){
+    var possede=MODE_TEST||voixAch.indexOf(v.id)>=0;
+    var actif=(S.voix||"guide")===v.id;
+    var etiq;
+    if(actif) etiq='<span style="flex-shrink:0;font-size:10px;font-weight:800;color:#241703;background:linear-gradient(135deg,#F6E4A0,#C9A227);border-radius:9px;padding:5px 11px">✓ Choisie</span>';
+    else if(possede) etiq='<span style="flex-shrink:0;font-size:10px;font-weight:800;color:#241703;background:linear-gradient(135deg,#F6E4A0,#C9A227);border-radius:9px;padding:5px 11px">Choisir</span>';
+    else etiq='<span style="flex-shrink:0;font-size:11px;font-weight:900;color:#F0D060;border:1px solid rgba(240,208,96,0.5);border-radius:9px;padding:5px 10px">🐚 '+v.prix+'</span>';
+    // Écouter sans acheter : une voix ne se juge pas sur un descriptif.
+    var ecoute=(!v.muet&&!possede)
+      ? '<button onclick="event.stopPropagation();_essayerVoix(\''+v.id+'\')" '
+        +'style="flex-shrink:0;margin-right:8px;padding:5px 10px;border-radius:9px;cursor:pointer;'
+        +'background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.18);color:#cbbfd8;font-size:10px">▶ Écouter</button>'
+      : '';
+    return '<div onclick="acheterVoix(\''+v.id+'\')" style="cursor:pointer;display:flex;align-items:center;gap:11px;'
+      +'padding:12px 13px;margin-bottom:9px;border-radius:14px;'
+      +'background:'+(actif?"rgba(212,175,55,0.12)":"rgba(255,255,255,0.04)")+';'
+      +'border:1px solid '+(actif?"rgba(240,208,96,0.55)":"rgba(212,175,55,0.22)")+';'
+      +'-webkit-tap-highlight-color:transparent">'
+      +'<span style="font-size:21px;line-height:1;flex-shrink:0">'+v.ic+'</span>'
+      +'<span style="flex:1;min-width:0">'
+        +'<span style="display:block;font-family:\'Cinzel\',serif;font-size:13px;font-weight:800;color:'+(actif?"#F0D060":"var(--text)")+'">'+v.nom+'</span>'
+        +'<span style="display:block;font-size:10px;color:var(--muted);font-family:\'Crimson Text\',Georgia,serif;font-style:italic;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+v.desc+'</span>'
+      +'</span>'+ecoute+etiq+'</div>';
+  }
+  var voixHtml=DOS?VOIX.map(vitrineVoix).join(""):"";
+
+  // ── LES CARTES MÉRITÉES — vitrine, pas rayon : rien n'y est en vente ──
+  var meriteesHtml=CARTES_MERITEES.map(function(m){
+    var ok=false; try{ ok=m.cond(); }catch(e){}
+    return '<div style="display:flex;align-items:center;gap:11px;padding:12px 13px;margin-bottom:9px;border-radius:14px;'
+      +'background:'+(ok?"rgba(212,175,55,0.10)":"rgba(255,255,255,0.03)")+';'
+      +'border:1px solid '+(ok?"rgba(240,208,96,0.5)":"rgba(255,255,255,0.10)")+';'
+      +(ok?"":"opacity:0.62;")+'">'
+      +'<span style="font-size:20px;line-height:1;flex-shrink:0">'+(ok?m.ic:"🔒")+'</span>'
+      +'<span style="flex:1;min-width:0">'
+        +'<span style="display:block;font-family:\'Cinzel\',serif;font-size:13px;font-weight:800;color:'+(ok?"#F0D060":"var(--muted)")+'">'
+          +m.nom+(m.pts?' <span style="font-size:10px;opacity:0.8">· '+m.pts+' pts</span>':'')+'</span>'
+        +'<span style="display:block;font-size:10px;color:var(--muted);font-family:\'Crimson Text\',Georgia,serif;font-style:italic">'+m.comment+'</span>'
+      +'</span>'
+      +(ok?'<span style="flex-shrink:0;font-size:10px;font-weight:800;color:#241703;background:linear-gradient(135deg,#F6E4A0,#C9A227);border-radius:9px;padding:5px 10px">Obtenue</span>'
+          :'<span style="flex-shrink:0;font-size:10px;color:var(--muted);border:1px solid rgba(255,255,255,0.16);border-radius:9px;padding:5px 9px">À mériter</span>')
+      +'</div>';
+  }).join("");
+
   var palettes=HABILLAGES.filter(function(h){return !h.bg||h.bg.indexOf("url(")<0;}).map(vitrine).join("");
   var paysages=HABILLAGES.filter(function(h){return h.bg&&h.bg.indexOf("url(")>=0;}).map(vitrine).join("");
   // Un rayon sans article affiche un panneau « en préparation » plutôt qu'une
@@ -13526,11 +13760,20 @@ function renderThemes(app){
     +'</div>'
     +(MODE_TEST?'<div style="text-align:center;font-size:10px;font-weight:800;color:#6fe3a0;background:rgba(69,201,122,0.1);border:1px solid rgba(69,201,122,0.35);border-radius:10px;padding:6px 10px;margin:0 2px 14px;letter-spacing:0.5px">🔓 VERSION TEST — tout est offert, sers-toi librement !</div>'
       :'<div style="font-size:10.5px;color:var(--muted);margin:0 2px 14px;line-height:1.5;text-align:center">Gagne des cauris en jouant : <strong style="color:var(--goldL)">+12 par partie</strong> · <strong style="color:var(--goldL)">+28 de plus par victoire</strong>.</div>')
+    // Vitrine d'honneur : ce qui ne s'achète pas
+    +'<div style="font-size:11px;font-weight:800;color:var(--gold);letter-spacing:2px;margin:0 2px 4px">✦ LES CARTES MÉRITÉES</div>'
+    +'<div style="font-size:9.5px;color:var(--muted);margin:0 2px 8px">Aucun cauri ne les obtient. Elles se gagnent.</div>'
+    +'<div style="margin-bottom:20px">'+meriteesHtml+'</div>'
     // Rayon 1 : les dos de cartes
     +'<div style="font-size:11px;font-weight:800;color:var(--gold);letter-spacing:2px;margin:0 2px 4px">✦ LES DOS DE CARTES</div>'
     +'<div style="font-size:9.5px;color:var(--muted);margin:0 2px 8px">Ce que ton adversaire voit à chaque manche.</div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:20px">'+dosHtml+'</div>'
-    // Rayon 2
+    // Rayon 2 : les voix du Guide
+    +'<div style="font-size:11px;font-weight:800;color:var(--gold);letter-spacing:2px;margin:0 2px 4px">✦ LES VOIX DU GUIDE</div>'
+    +'<div style="font-size:9.5px;color:var(--muted);margin:0 2px 8px">Qui t\'accompagne pendant la partie.'
+      +(S.voixGuide?'':' <span style="color:#f0a">La voix est coupée dans les Réglages.</span>')+'</div>'
+    +'<div style="margin-bottom:20px">'+voixHtml+'</div>'
+    // Rayon 3
     +'<div style="font-size:11px;font-weight:800;color:var(--gold);letter-spacing:2px;margin:0 2px 8px">✦ PALETTES DE COULEURS</div>'
     +'<div style="display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:20px">'+palettes+'</div>'
     // Rayon 2
