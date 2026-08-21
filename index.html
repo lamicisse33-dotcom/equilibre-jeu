@@ -2211,7 +2211,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v97.68";
+const BUILD_TAG="v97.70";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -6947,9 +6947,24 @@ const BONUS = {
         font-family:'Cinzel',serif;font-size:14px">+${p} pts</span>`;
     });
 
-    // Son
-    if(isCorrect){ AUDIO.sfxWin(); setTimeout(()=>AUDIO.sfxBadge(),300); }
-    else AUDIO.sfxLose();
+    // ── RÉCOMPENSE SONORE ET VISUELLE ────────────────────────────────────
+    // Meilleure réponse → feux d'artifice, courte fanfare et voix du Guide.
+    // Mauvaise réponse → la voix seule, sans fracas : l'échec ne se célèbre pas.
+    // Le tableau se referme à 2 s : les phrases sont courtes et lancées tôt,
+    // pour qu'elles aient le temps d'être dites en entier.
+    if(isCorrect){
+      AUDIO.sfxWin(); setTimeout(function(){ AUDIO.sfxBadge(); },260);
+      try{ AUDIO.playCelebration&&AUDIO.playCelebration(); }catch(_){}
+      _feuxArtificeBonus();
+      setTimeout(function(){
+        try{ if(S.voixGuide) _parlerGuide("Bravo !"); }catch(_){}
+      },220);
+    } else {
+      AUDIO.sfxLose();
+      setTimeout(function(){
+        try{ if(S.voixGuide) _parlerGuide("Mauvaise réponse."); }catch(_){}
+      },200);
+    }
 
     // Résultat
     const res = document.getElementById("bonus-result");
@@ -6973,24 +6988,34 @@ const BONUS = {
       ${isCorrect
         ?`<div style="font-size:10px;color:var(--muted);margin-bottom:12px">Meilleure réponse !</div>`
         :`<div style="font-size:10px;color:var(--muted);margin-bottom:12px">La meilleure réponse était : <strong style="color:#45c97a">${q.rep.find(r=>r.pts===best).t}</strong></div>`}
-      <div id="bonus-countdown" style="font-size:11px;color:var(--muted);margin-top:8px">
-        Fermeture dans <span id="bonus-sec" style="color:var(--gold);font-weight:900">3</span>s…
+      <div id="bonus-countdown" style="font-size:11px;color:var(--muted);margin-top:10px">
+        ${isCorrect?"✨ La partie reprend…":"La partie reprend…"}
       </div>`;
 
     // Anim points flottants
     if(pts > 0) showAnimPts(pts);
 
-    // Fermeture automatique après 3s — pas de bouton
-    let _bSec = 3;
-    const _bInt = setInterval(function(){
-      _bSec--;
-      const el = document.getElementById("bonus-sec");
-      if(el) el.textContent = _bSec;
-      if(_bSec <= 0){
-        clearInterval(_bInt);
-        BONUS.close(pts);
-      }
-    }, 1000);
+    // ── REPRISE AUTOMATIQUE APRÈS 2 SECONDES ─────────────────────────────
+    // Plus rien à toucher : la célébration joue, et le jeu repart de lui-même.
+    // Deux secondes suffisent pour lire le verdict sans casser le rythme.
+    // Le toucher reste accepté pour passer plus vite, mais n'est plus requis.
+    var _ovB=document.getElementById("bonus-overlay");
+    var _ferme=false;
+    var _fermer=function(){
+      if(_ferme) return; _ferme=true;
+      clearTimeout(_auto);
+      try{ if(_ovB) _ovB.removeEventListener("click",_auToucher); }catch(_){}
+      try{ _stopVoixGuide(); }catch(_){}
+      BONUS.close(pts);
+    };
+    var _auToucher=function(){ _fermer(); };
+    var _auto=setTimeout(_fermer, 2000);
+    // Le toucher n'est écouté qu'après un court délai : sinon le doigt encore
+    // posé sur la réponse refermerait le tableau avant même son affichage.
+    setTimeout(function(){
+      if(_ferme) return;
+      try{ if(_ovB) _ovB.addEventListener("click",_auToucher); }catch(_){}
+    }, 450);
   },
 
   close(pts){
@@ -13972,7 +13997,38 @@ function renderThemes(app){
   </div>`;
 }
 
-// ── LA SAGESSE D'UNE CARTE ────────────────────────────────────────────
+// ── FEUX D'ARTIFICE — récompense de la meilleure réponse au Bonus ──────
+// Dessinés en DOM pur, aucune image : quatre gerbes qui partent en étoile
+// depuis des points différents du tableau. Nettoyés tout seuls.
+function _feuxArtificeBonus(){
+  var zone=document.getElementById("bonus-confetti");
+  if(!zone) return;
+  var couleurs=["#F0D060","#45c97a","#e8c877","#ff8c42","#8FD0E8","#F6E4A0"];
+  var gerbe=function(cx,cy,retard){
+    var n=18;
+    for(var i=0;i<n;i++){
+      var ang=(Math.PI*2*i/n)+Math.random()*0.3;
+      var dist=45+Math.random()*70;
+      var p=document.createElement("div");
+      p.style.cssText="position:absolute;left:"+cx+"%;top:"+cy+"%;width:6px;height:6px;border-radius:50%;"
+        +"background:"+couleurs[(Math.random()*couleurs.length)|0]+";pointer-events:none;"
+        +"box-shadow:0 0 8px currentColor;opacity:0;"
+        +"transition:transform 0.85s cubic-bezier(.15,.75,.35,1),opacity 0.85s ease";
+      zone.appendChild(p);
+      (function(el,dx,dy,r){
+        setTimeout(function(){
+          el.style.opacity="1";
+          el.style.transform="translate("+dx+"px,"+dy+"px) scale(0.4)";
+          setTimeout(function(){ el.style.opacity="0"; },520);
+          setTimeout(function(){ try{ el.remove(); }catch(_){} },1000);
+        }, r);
+      })(p, Math.cos(ang)*dist, Math.sin(ang)*dist, retard+i*6);
+    }
+  };
+  gerbe(28,32,0); gerbe(72,26,180); gerbe(50,52,340); gerbe(20,60,520);
+}
+
+
 // Les 48 citations existaient déjà dans les données, mais ne s'affichaient
 // qu'une seconde en fin de manche puis disparaissaient : un joueur qui en
 // aimait une ne pouvait plus jamais la retrouver. La Collection devient le
