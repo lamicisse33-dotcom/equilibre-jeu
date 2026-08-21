@@ -2211,7 +2211,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v97.70";
+const BUILD_TAG="v97.75";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -2469,25 +2469,43 @@ function envoyerScoreMondial(){
                 gardiens:gardiens,
                 maj:new Date().toISOString()}];
     var ent=_supaEntetes(); ent["Prefer"]="resolution=merge-duplicates";
-    fetch(SUPA.url+"/rest/v1/classement",{method:"POST",headers:ent,body:JSON.stringify(corps)})
-      .catch(function(){});
+    var _envoi=function(c){
+      return fetch(SUPA.url+"/rest/v1/classement",{method:"POST",headers:ent,body:JSON.stringify(c)})
+        .then(function(r){ if(!r.ok) throw new Error(r.status); return r; });
+    };
+    // Si la colonne `gardiens` n'a pas encore été créée, la base rejette tout
+    // l'envoi : le score serait perdu. On renvoie alors sans elle.
+    _envoi(corps).catch(function(){
+      var sans=[{appareil:id, pseudo:pseudo, points:meilleur,
+                 xp:Math.max(0,S.xp||0), parties:(S.stats&&S.stats.parties)||0,
+                 maj:new Date().toISOString()}];
+      return _envoi(sans);
+    }).catch(function(){});
   }catch(e){}
 }
 // Lecture du top 50. Renvoie null si le réseau ou la base ne répond pas.
 function chargerClassementMondial(){
   var id=_appareilId();
-  return fetch(SUPA.url+"/rest/v1/classement?select=appareil,pseudo,points,xp,parties,gardiens&order=points.desc&limit=50",
-               {headers:_supaEntetes()})
-    .then(function(r){ return r.ok?r.json():null; })
-    .then(function(liste){
-      if(!Array.isArray(liste)){ S._mondial=null; S._mondialErr=true; return null; }
-      S._mondial=liste.map(function(e,i){
-        return {rang:i+1, nom:e.pseudo, pts:e.points, xp:e.xp, parties:e.parties,
-                gardiens:e.gardiens||0, moi:(e.appareil===id)};
-      });
-      S._mondialErr=false;
-      return S._mondial;
-    })
+  // Même précaution que pour le tableau de bord : si la colonne `gardiens`
+  // n'existe pas encore côté base, la requête entière est rejetée et le
+  // classement resterait vide. On réessaie sans elle.
+  var _lire=function(avecGardiens){
+    var cols="appareil,pseudo,points,xp,parties"+(avecGardiens?",gardiens":"");
+    return fetch(SUPA.url+"/rest/v1/classement?select="+cols+"&order=points.desc&limit=50",
+                 {headers:_supaEntetes()})
+      .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); });
+  };
+  var _adopter=function(liste){
+    if(!Array.isArray(liste)){ S._mondial=null; S._mondialErr=true; return null; }
+    S._mondial=liste.map(function(e,i){
+      return {rang:i+1, nom:e.pseudo, pts:e.points, xp:e.xp, parties:e.parties,
+              gardiens:e.gardiens||0, moi:(e.appareil===id)};
+    });
+    S._mondialErr=false;
+    return S._mondial;
+  };
+  return _lire(true).then(_adopter)
+    .catch(function(){ return _lire(false).then(_adopter); })
     // Échec : on retient l'essai (null ≠ undefined) pour ne pas boucler à chaque rendu.
     .catch(function(){ S._mondial=null; S._mondialErr=true; return null; });
 }
@@ -5112,7 +5130,41 @@ let S={
 // UI HELPERS
 // ════════════════════════════════════════════════
 let toastTimer=null;
+// ── FILE D'ATTENTE DES BANDEAUX ───────────────────────────────────────
+// Tous les bandeaux partagent le même élément #toast : chaque nouveau
+// EFFAÇAIT le précédent. En fin de partie de Campagne, quatre s'enchaînaient
+// en 1,6 s — l'annonce de rang ne restait affichée que 197 ms avant d'être
+// remplacée par « +40 cauris », en pleine lecture vocale.
+// Chacun dispose maintenant d'un temps de parole minimum ; les suivants
+// patientent. La file est bornée pour ne jamais s'accumuler indéfiniment.
+var _toastFile=[], _toastAffiche=0, _toastDuree=0, _toastPurge=null;
+const _TOAST_MAX_ATTENTE=2600;    // un bandeau ne bloque jamais les suivants au-delà
 function showToast(msg,type="info",ms=2800,parler=false){
+  // Le bandeau à l'écran garde sa place le temps qu'il a demandé, plafonné à
+  // 2,6 s : un message important (rang, badge) a le temps d'être lu, sans que
+  // la file s'allonge indéfiniment.
+  var garde=Math.min(_toastDuree||0,_TOAST_MAX_ATTENTE);
+  var reste=_toastAffiche?(garde-(Date.now()-_toastAffiche)):0;
+  if(reste>0){
+    // Un bandeau occupe encore l'écran : celui-ci attend son tour.
+    if(_toastFile.length<4) _toastFile.push([msg,type,ms,parler]);
+    if(!_toastPurge){
+      _toastPurge=setTimeout(function(){
+        _toastPurge=null;
+        var suiv=_toastFile.shift();
+        if(suiv) _afficherToast(suiv[0],suiv[1],suiv[2],suiv[3]);
+      }, reste+60);
+    }
+    return;
+  }
+  _afficherToast(msg,type,ms,parler);
+}
+function _afficherToast(msg,type,ms,parler){
+  // Si d'autres bandeaux patientent, celui-ci abrège son passage au plafond :
+  // sans ça, un message de 5,2 s repoussait le suivant à 8 s, bien après que
+  // le joueur ait changé d'écran.
+  if(_toastFile.length) ms=Math.min(ms,_TOAST_MAX_ATTENTE);
+  _toastAffiche=Date.now(); _toastDuree=ms;
   const el=document.getElementById("toast");
   const col=type==="win"?"#45c97a":type==="lose"?"#e05555":type==="badge"?"#f39c12":"#D4AF37";
   el.textContent=msg;
@@ -5123,7 +5175,13 @@ function showToast(msg,type="info",ms=2800,parler=false){
   el.style.animation="none";
   requestAnimationFrame(()=>el.style.animation="popIn 0.3s both");
   clearTimeout(toastTimer);
-  toastTimer=setTimeout(()=>el.style.display="none",ms);
+  toastTimer=setTimeout(function(){
+    el.style.display="none";
+    _toastAffiche=0; _toastDuree=0;
+    // Au tour du suivant, s'il y en a un en attente.
+    var suiv=_toastFile.shift();
+    if(suiv) _afficherToast(suiv[0],suiv[1],suiv[2],suiv[3]);
+  },ms);
   // Lecture vocale optionnelle (uniquement pour les bannières de jeu marquées, si la voix est activée)
   // Aucune lecture automatique sur l'écran de sélection : les annonces de
   // début de partie (épreuve, modificateur) y tombaient pendant que le joueur
@@ -9331,6 +9389,7 @@ function celebrerNiveau(niv){
   try{ if(AUDIO&&AUDIO.playCelebration) AUDIO.playCelebration(); }catch(e){}
   try{ if(typeof showConfetti==="function") showConfetti(70,[n.color,"#F0D060","#fff"]); }catch(e){}
   var ov=document.createElement("div");
+  ov.id="celeb-niveau";   // identifiant : permet de le retirer si l'écran change
   // Le voile à 0.88 laissait passer l'écran de fin : les gros scores et le
   // titre DÉFAITE se lisaient à travers et se superposaient au texte du
   // palier. Voile quasi opaque + flou, avec un halo à la couleur du niveau.
@@ -10798,6 +10857,18 @@ document.addEventListener("visibilitychange",function(){
 },true);
 
 function render(){
+  // Le voile « NIVEAU SUPÉRIEUR » n'appartient qu'à l'écran de résultat.
+  // Il restait 6 s : en Campagne, il se posait sur la présentation du disciple
+  // suivant si le joueur enchaînait. Il disparaît maintenant avec l'écran.
+  // On NE coupe PAS l'attente en cours : elle doit encore s'exécuter pour
+  // basculer sur un simple bandeau, sinon le joueur parti trop vite ne saurait
+  // jamais qu'il a changé de niveau.
+  try{
+    if(S.ecran!=="resultat"){
+      var _cn=document.getElementById("celeb-niveau");
+      if(_cn) _cn.remove();
+    }
+  }catch(_){}
   // Toute fenêtre qui quitte l'écran coupe la lecture immédiatement.
   // Seule exception : la lecture du mode d'emploi, lancée volontairement par le joueur.
   try{
@@ -13199,7 +13270,29 @@ const G={
     if(S.jeu&&S.jeu.s1>S.jeu.s2)celebrerVictoire(S.jeu.s1);
     try{ localStorage.setItem("equilibre_onboarding_fait","1"); }catch(e){}
     S.ecran="resultat";sauvegarder();render();
-    try{ var _nvAp=getIdxNiv(S.xp); if(_nvAp>(S._nivDebut||0)){ setTimeout(function(){ celebrerNiveau(_nvAp); },1100); } }catch(e){}
+    // ── UNE CÉLÉBRATION À LA FOIS ────────────────────────────────────────
+    // celebrerVictoire() occupe l'écran 2250 ms (fondu compris) ; la montée de
+    // niveau partait à 1100 ms et se posait PAR-DESSUS. Pire, son voile reste
+    // 6 s : en Campagne, le joueur qui enchaînait aussitôt le voyait apparaître
+    // au milieu de la présentation du disciple suivant.
+    // On attend donc la fin de la première, et on n'ouvre le voile que si le
+    // joueur est TOUJOURS sur l'écran de résultat. S'il est parti, on ne perd
+    // rien : un bandeau l'informe sans lui bloquer l'écran.
+    try{
+      var _nvAp=getIdxNiv(S.xp);
+      if(_nvAp>(S._nivDebut||0)){
+        if(G._celebNivTimer){ clearTimeout(G._celebNivTimer); }
+        var _gagne2=!!(S.jeu&&S.jeu.s1>S.jeu.s2);
+        G._celebNivTimer=setTimeout(function(){
+          G._celebNivTimer=null;
+          if(S.ecran==="resultat"){ celebrerNiveau(_nvAp); }
+          else {
+            var _n=NIVEAUX[_nvAp];
+            if(_n) showToast("✨ Niveau supérieur : "+_n.icon+" "+_n.label,"badge",3600);
+          }
+        }, _gagne2?2400:700);   // après le fondu de la célébration de victoire
+      }
+    }catch(e){}
   },
 
   checkBadges(jeu){
@@ -15568,6 +15661,12 @@ function _ouvrirReglages(enPartie){
     +'<button onclick="_regFermer()" style="width:100%;min-height:48px;border-radius:26px;border:none;cursor:pointer;margin-bottom:9px;'
       +'background:linear-gradient(135deg,#f7d9a8,#d98f3d);color:#2b1a05;font-family:\'Cinzel\',serif;font-size:14px;font-weight:900;letter-spacing:1px">'
       +'ENREGISTRER ET FERMER</button>'
+    // Accès à l'espace privé : discret, sans annoncer ce qu'il contient.
+    // Un joueur qui tombe dessus ne voit qu'une porte fermée.
+    +'<button onclick="_regFermer();setTimeout(ouvrirTableauBord,120)" '
+      +'style="width:100%;min-height:34px;margin-top:2px;margin-bottom:8px;border-radius:12px;cursor:pointer;'
+      +'background:transparent;border:1px solid rgba(255,255,255,0.10);color:rgba(180,170,200,0.5);'
+      +'font-size:10.5px;letter-spacing:1px">🔐 Espace auteur</button>'
     +(enPartie?
       ('<button onclick="MULTI_DO_MENU()" style="width:100%;min-height:44px;border-radius:22px;cursor:pointer;'
       +'background:rgba(224,85,85,0.12);border:1px solid rgba(224,85,85,0.5);color:#f08a8a;font-size:13px;font-weight:700">'
@@ -15670,6 +15769,238 @@ function _regNom(){
   try{ AUDIO.sfxClickUnique(); }catch(_){}
   showToast("✅ Pseudo enregistré : "+v,"win",2000);
   return true;
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// TABLEAU DE BORD PRIVÉ — réservé à l'auteur du jeu.
+//
+// ⚠️ À LIRE AVANT DE MODIFIER LE MOT DE PASSE
+// Ce code part dans le navigateur de chaque joueur, et le dépôt GitHub est
+// public : quelqu'un de motivé PEUT retrouver ce mot de passe. Il écarte les
+// curieux, il ne protège pas un secret. Ne mets donc jamais ici un mot de
+// passe que tu utilises ailleurs.
+// Le mot de passe n'est pas écrit en clair : on ne garde que son empreinte.
+// Ça ne rend pas la chose inviolable, ça évite juste qu'il se lise d'un coup
+// d'œil dans le fichier.
+// ══════════════════════════════════════════════════════════════════════
+function _empreinte(s){
+  var h=5381;
+  s=String(s||"");
+  for(var i=0;i<s.length;i++){ h=((h*33) ^ s.charCodeAt(i)) >>> 0; }
+  return h.toString(36);
+}
+// Empreinte du mot de passe. Pour en changer : ouvrir la console du navigateur,
+// taper _empreinte("ton-nouveau-code"), et coller le résultat ci-dessous.
+// Ne JAMAIS écrire le mot de passe en clair ici — pas même en commentaire.
+const _BORD_CLE="ymmix3";
+function _bordAutorise(){
+  try{ return sessionStorage.getItem("khalam_bord")==="1"; }catch(e){ return false; }
+}
+function ouvrirTableauBord(){
+  if(_bordAutorise()){ _chargerTableauBord(); return; }
+  var anc=document.getElementById("bord-porte"); if(anc) anc.remove();
+  var ov=document.createElement("div");
+  ov.id="bord-porte";
+  ov.style.cssText="position:fixed;inset:0;z-index:9800;display:flex;align-items:center;justify-content:center;"
+    +"background:rgba(4,3,10,0.94);padding:24px;-webkit-backdrop-filter:blur(5px);backdrop-filter:blur(5px)";
+  ov.onclick=function(e){ if(e.target===ov) ov.remove(); };
+  ov.innerHTML='<div style="max-width:320px;width:100%;text-align:center;'
+    +'background:linear-gradient(150deg,#160d30,#08051a);border:2px solid rgba(212,175,55,0.5);'
+    +'border-radius:22px;padding:26px 22px;box-shadow:0 18px 50px rgba(0,0,0,0.9)">'
+    +'<div style="font-size:30px;margin-bottom:6px">🔐</div>'
+    +'<div style="font-family:\'Cinzel\',serif;font-size:17px;font-weight:900;color:var(--goldL);margin-bottom:4px">Tableau de bord</div>'
+    +'<div style="font-size:11px;color:var(--muted);font-family:\'Crimson Text\',Georgia,serif;font-style:italic;margin-bottom:18px">Espace réservé à l\'auteur du jeu.</div>'
+    +'<input id="bord-cle" type="password" inputmode="text" placeholder="Mot de passe" '
+      +'style="width:100%;padding:13px 14px;border-radius:14px;border:1px solid rgba(212,175,55,0.4);'
+      +'background:rgba(0,0,0,0.4);color:var(--goldL);font-family:\'Cinzel\',serif;font-size:15px;text-align:center;margin-bottom:8px">'
+    +'<div id="bord-err" style="font-size:11px;color:#e05555;min-height:16px;margin-bottom:8px"></div>'
+    +'<button onclick="_bordValider()" style="width:100%;min-height:48px;border-radius:14px;cursor:pointer;border:none;'
+      +'background:linear-gradient(135deg,#F6E4A0,#F0D060 30%,#D4AF37 60%,#B8912E);color:#241703;'
+      +'font-family:\'Cinzel\',serif;font-size:14px;font-weight:900;letter-spacing:1px">OUVRIR</button>'
+    +'<button onclick="document.getElementById(\'bord-porte\').remove()" '
+      +'style="width:100%;min-height:40px;margin-top:8px;border-radius:12px;cursor:pointer;'
+      +'background:transparent;border:1px solid rgba(255,255,255,0.14);color:var(--muted);font-size:12px">Annuler</button>'
+    +'</div>';
+  document.body.appendChild(ov);
+  setTimeout(function(){
+    var i=document.getElementById("bord-cle");
+    if(i){ i.focus(); i.addEventListener("keydown",function(e){ if(e.key==="Enter") _bordValider(); }); }
+  },250);
+}
+function _bordValider(){
+  var i=document.getElementById("bord-cle");
+  var v=i?i.value:"";
+  if(_empreinte(v)!==_BORD_CLE){
+    var e=document.getElementById("bord-err");
+    if(e) e.textContent="Mot de passe incorrect.";
+    if(i){ i.value=""; i.focus(); }
+    try{ AUDIO.sfxLose&&AUDIO.sfxLose(); }catch(_){}
+    return;
+  }
+  // Valable le temps de la session seulement : à la fermeture de l'app,
+  // la porte se referme.
+  try{ sessionStorage.setItem("khalam_bord","1"); }catch(_){}
+  try{ AUDIO.sfxConfirm&&AUDIO.sfxConfirm(); }catch(_){}
+  var ov=document.getElementById("bord-porte"); if(ov) ov.remove();
+  _chargerTableauBord();
+}
+function fermerTableauBord(){
+  var o=document.getElementById("bord-panneau"); if(o) o.remove();
+}
+// Lecture directe de la base : tous les joueurs, pas seulement le top 50.
+function _chargerTableauBord(){
+  var anc=document.getElementById("bord-panneau"); if(anc) anc.remove();
+  var ov=document.createElement("div");
+  ov.id="bord-panneau";
+  ov.style.cssText="position:fixed;inset:0;z-index:9805;overflow-y:auto;"
+    +"background:linear-gradient(160deg,#0d0722,#050310);padding:18px 14px 40px";
+  ov.innerHTML='<div style="text-align:center;color:var(--muted);font-size:12px;padding:40px 0">⏳ Lecture de la base…</div>';
+  document.body.appendChild(ov);
+  // La colonne `gardiens` a été ajoutée après coup : si le SQL n'a pas été
+  // exécuté, la base rejette TOUTE la requête. On réessaie donc sans elle
+  // plutôt que d'afficher un échec, et on retient la cause exacte.
+  var _essai=function(avecGardiens){
+    var cols="appareil,pseudo,points,xp,parties"+(avecGardiens?",gardiens":"")+",maj";
+    return fetch(SUPA.url+"/rest/v1/classement?select="+cols+"&order=maj.desc&limit=500",
+                 {headers:_supaEntetes()})
+      .then(function(r){
+        if(r.ok) return r.json();
+        return r.text().then(function(t){ throw {code:r.status, txt:(t||"").slice(0,180)}; });
+      });
+  };
+  _essai(true)
+    .then(function(l){ _rendreTableauBord(l,null); })
+    .catch(function(e1){
+      _essai(false)
+        .then(function(l){ _rendreTableauBord(l,"colonne_gardiens"); })
+        .catch(function(e2){ _rendreTableauBord(null,e2||e1); });
+    });
+}
+function _rendreTableauBord(liste, souci){
+  var ov=document.getElementById("bord-panneau"); if(!ov) return;
+  var entete='<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">'
+    +'<button onclick="fermerTableauBord()" class="btn-ghost" style="width:auto;padding:8px 14px">←</button>'
+    +'<div><div style="font-family:\'Cinzel\',serif;font-size:18px;font-weight:900;color:var(--goldL)">🔐 Tableau de bord</div>'
+    +'<div style="font-size:9px;color:var(--muted);letter-spacing:1px">KHALAM · usage privé</div></div></div>';
+  if(!liste){
+    // Message de diagnostic : le code HTTP et la réponse de la base disent
+    // précisément quoi corriger. « La base ne répond pas » n'aidait personne.
+    var code=(souci&&souci.code)||0, txt=(souci&&souci.txt)||"";
+    var piste;
+    if(code===0) piste="Aucune réponse du serveur.<br>Si tu as ouvert le fichier depuis tes <strong>Fichiers</strong> plutôt que depuis <strong>tonequilibre.khalam.app</strong>, la base refuse la connexion : c'est normal, teste depuis le site.<br>Sinon, le projet Supabase est peut-être en <strong>pause</strong> (7 jours sans activité) — relance-le depuis son tableau de bord.";
+    else if(code===404||code===400) piste="La base a répondu <strong>"+code+"</strong> : la table ou une colonne manque.<br>Exécute dans le SQL Editor :<br><code style=\"font-size:10px;color:#8FD0E8\">alter table classement add column if not exists gardiens int not null default 0;</code>";
+    else if(code===401||code===403) piste="La base a répondu <strong>"+code+"</strong> : clé refusée ou règles d'accès manquantes.<br>Vérifie les trois règles <em>lecture / écriture / maj publique</em>.";
+    else piste="La base a répondu <strong>"+code+"</strong>.";
+    ov.innerHTML=entete+'<div style="border:1px dashed rgba(224,85,85,0.4);border-radius:14px;'
+      +'padding:20px 16px;color:#cbbfd8;font-size:12px;line-height:1.6">📡 <strong>Connexion impossible</strong><br><br>'+piste
+      +(txt?'<div style="margin-top:12px;font-size:10px;color:var(--muted);word-break:break-all">'+esc(txt)+'</div>':'')
+      +'<div style="text-align:center;margin-top:16px">'
+      +'<button onclick="_chargerTableauBord()" class="btn-ghost" style="width:auto;padding:8px 18px;font-size:12px">🔄 Réessayer</button></div></div>';
+    return;
+  }
+  var n=liste.length;
+  var actifs7=0, actifs30=0, parties=0, gardiensMax=0, maintenant=Date.now();
+  liste.forEach(function(e){
+    var d=(maintenant-new Date(e.maj||0).getTime())/86400000;
+    if(d<=7) actifs7++;
+    if(d<=30) actifs30++;
+    parties+=(e.parties||0);
+    if((e.gardiens||0)>gardiensMax) gardiensMax=e.gardiens||0;
+  });
+  var vitrine=function(v,l,c){
+    return '<div style="flex:1;min-width:88px;background:rgba(255,255,255,0.05);border:1px solid rgba(212,175,55,0.22);'
+      +'border-radius:12px;padding:11px 8px;text-align:center">'
+      +'<div style="font-size:20px;font-weight:900;color:'+(c||"var(--goldL)")+';font-family:\'Cinzel\',serif">'+v+'</div>'
+      +'<div style="font-size:8.5px;color:var(--muted);letter-spacing:1px;margin-top:2px">'+l+'</div></div>';
+  };
+  var lignes=liste.map(function(e,i){
+    var j=Math.floor((maintenant-new Date(e.maj||0).getTime())/86400000);
+    var frais=j<=7;
+    return '<div style="display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:10px;margin-bottom:6px;'
+      +'background:'+(frais?"rgba(69,201,122,0.07)":"rgba(255,255,255,0.03)")+';'
+      +'border:1px solid '+(frais?"rgba(69,201,122,0.25)":"rgba(255,255,255,0.08)")+'">'
+      +'<div style="width:22px;font-size:10px;color:var(--muted)">'+(i+1)+'</div>'
+      +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:12.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(e.pseudo)+'</div>'
+        +'<div style="font-size:9px;color:var(--muted)">'+(e.parties||0)+' parties · '+(e.xp||0)+' XP'
+          +((e.gardiens||0)?' · ⚔ '+e.gardiens+'/15':'')+'</div>'
+      +'</div>'
+      +'<div style="text-align:right">'
+        +'<div style="font-size:14px;font-weight:900;color:var(--goldL);font-family:\'Cinzel\',serif">'+(e.points||0)+'</div>'
+        +'<div style="font-size:8.5px;color:'+(frais?"#45c97a":"var(--muted)")+'">'+(isNaN(j)?"—":(j===0?"aujourd\'hui":j+" j"))+'</div>'
+      +'</div></div>';
+  }).join("");
+  ov.innerHTML=entete
+    +'<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:8px">'
+      +vitrine(n,"JOUEURS")+vitrine(actifs7,"ACTIFS 7 J","#45c97a")+vitrine(actifs30,"ACTIFS 30 J")
+    +'</div>'
+    +'<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px">'
+      +vitrine(parties,"PARTIES TOTALES")+vitrine(gardiensMax+"/15","MEILLEURE CAMPAGNE")
+      +vitrine(n?Math.round(parties/n):0,"PARTIES / JOUEUR")
+    +'</div>'
+    +'<div style="font-size:10px;color:var(--gold);letter-spacing:2px;margin:0 2px 8px">✦ TOUS LES JOUEURS · du plus récent au plus ancien</div>'
+    +(n?lignes:'<div style="text-align:center;color:var(--muted);font-size:12px;padding:26px">Aucun joueur enregistré pour l\'instant.</div>')
+    +'<div style="text-align:center;margin-top:14px">'
+      +'<button onclick="_chargerTableauBord()" class="btn-ghost" style="width:auto;padding:9px 18px;font-size:12px">🔄 Actualiser</button></div>'
+    // ── OUTIL : calculer l'empreinte d'un nouveau mot de passe ────────────
+    // Permet de changer le code sans console ni intermédiaire : le mot de
+    // passe est saisi ici, seule son empreinte s'affiche, et c'est elle seule
+    // qui est recopiée dans le fichier. Le mot de passe lui-même ne sort
+    // jamais de l'appareil.
+    +'<div style="margin-top:22px;border-top:1px solid rgba(255,255,255,0.08);padding-top:16px">'
+      +'<div style="font-size:10px;color:var(--gold);letter-spacing:2px;margin-bottom:6px">✦ CHANGER LE MOT DE PASSE</div>'
+      +'<div style="font-size:10.5px;color:var(--muted);line-height:1.55;margin-bottom:10px;font-family:\'Crimson Text\',Georgia,serif;font-style:italic">'
+      +'Tape le mot de passe voulu : seule son empreinte s\'affiche. Recopie-la dans <code style="font-style:normal;color:#8FD0E8">_BORD_CLE</code> au sein de index.html, puis redéploie.</div>'
+      +'<div style="display:flex;gap:8px;margin-bottom:10px">'
+        +'<input id="bord-nouv" type="text" autocomplete="off" autocapitalize="none" spellcheck="false" placeholder="Nouveau mot de passe" '
+          +'style="flex:1;min-width:0;padding:11px 12px;border-radius:12px;border:1px solid rgba(212,175,55,0.35);'
+          +'background:rgba(0,0,0,0.4);color:var(--goldL);font-family:\'Cinzel\',serif;font-size:13px">'
+        +'<button onclick="_bordCalculer()" style="flex-shrink:0;padding:0 16px;border-radius:12px;cursor:pointer;'
+          +'background:rgba(240,208,96,0.12);border:1px solid rgba(240,208,96,0.45);color:var(--goldL);'
+          +'font-family:\'Cinzel\',serif;font-size:12px;font-weight:900">CALCULER</button>'
+      +'</div>'
+      +'<div id="bord-res"></div>'
+    +'</div>';
+}
+
+// Calcule l'empreinte du mot de passe saisi et propose de la copier.
+// Le mot de passe n'est ni stocké, ni envoyé nulle part : seule l'empreinte
+// est affichée, et c'est elle qu'on recopie dans le fichier.
+function _bordCalculer(){
+  var i=document.getElementById("bord-nouv");
+  var res=document.getElementById("bord-res");
+  if(!i||!res) return;
+  var v=i.value.trim();
+  if(v.length<4){
+    res.innerHTML='<div style="font-size:11px;color:#e05555">Choisis au moins 4 caractères.</div>';
+    return;
+  }
+  var e=_empreinte(v);
+  var ligne='const _BORD_CLE="'+e+'";';
+  res.innerHTML='<div style="background:rgba(0,0,0,0.4);border:1px solid rgba(143,208,232,0.35);'
+    +'border-radius:12px;padding:12px">'
+    +'<div style="font-size:9.5px;color:var(--muted);letter-spacing:1px;margin-bottom:6px">LIGNE À RECOPIER DANS index.html</div>'
+    +'<div id="bord-ligne" style="font-family:monospace;font-size:12.5px;color:#8FD0E8;word-break:break-all;user-select:all">'+esc(ligne)+'</div>'
+    +'<button onclick="_bordCopier()" style="width:100%;min-height:40px;margin-top:10px;border-radius:11px;cursor:pointer;border:none;'
+      +'background:linear-gradient(135deg,#F6E4A0,#D4AF37);color:#241703;font-family:\'Cinzel\',serif;font-size:12px;font-weight:900">📋 COPIER</button>'
+    +'<div style="font-size:10px;color:var(--muted);margin-top:9px;line-height:1.5">'
+    +'Cherche <code style="color:#8FD0E8">_BORD_CLE</code> dans index.html et remplace la ligne entière. '
+    +'Le nouveau mot de passe agira dès le prochain dépôt.</div></div>';
+  i.value="";
+  try{ AUDIO.sfxClickUnique(); }catch(_){}
+}
+function _bordCopier(){
+  var el=document.getElementById("bord-ligne");
+  if(!el) return;
+  var t=el.textContent;
+  try{
+    if(navigator.clipboard){ navigator.clipboard.writeText(t); showToast("📋 Ligne copiée","win",2000); return; }
+  }catch(e){}
+  try{
+    var r=document.createRange(); r.selectNodeContents(el);
+    var s=window.getSelection(); s.removeAllRanges(); s.addRange(r);
+    showToast("📋 Sélectionnée — copie-la","info",2600);
+  }catch(e){}
 }
 
 function _regFermer(){
