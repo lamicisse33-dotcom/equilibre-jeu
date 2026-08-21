@@ -2211,7 +2211,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v97.62";
+const BUILD_TAG="v97.68";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -2741,51 +2741,51 @@ const THEMES=[
 // ── MODE CAMPAGNE : « La Voie des 4 Piliers » (5 gardiens, pilier fort différent) ──
 const CAMPAGNE=[
   // ── ACTE I — L'ÉVEIL ──
-  {id:"c1", acte:1,nom:"Gardien de la Santé",          pilier:"Santé",       icon:"🌿",diff:"Débutant",     xp:80,  phrase:"Debout. On ne s'assied pas devant moi. Le corps qui s'assoit trop longtemps oublie comment se relever.",
+  {id:"c1", acte:1,nom:"Gardien de la Santé",          pilier:"Santé",       icon:"🌿",diff:"Débutant",     xp:80,  phrase:"Debout. Dix manches, dix cartes — le corps qui s'assoit trop tôt oublie comment se relever à la dixième.",
    vaincu:"Tu es tombé trois fois, tu t'es levé quatre. Voilà tout ce que j'avais à t'apprendre. Le corps n'est pas ton serviteur, disciple : c'est ta maison. Prends mon savoir.",
    gagnant:"Ton souffle est parti avant toi. Reviens quand il t'aura rattrapé."},
-  {id:"c2", acte:1,fem:true,nom:"Gardienne de l'Amour",         pilier:"Amour",       icon:"❤️",diff:"Intermédiaire",xp:120, phrase:"Approche. Ici, on ne gagne pas contre moi : on gagne avec moi, ou l'on perd seul.",
+  {id:"c2", acte:1,fem:true,nom:"Gardienne de l'Amour",         pilier:"Amour",       icon:"❤️",diff:"Intermédiaire",xp:120, phrase:"Approche. Ouvre le pilier que tu veux : je répondrai par celui que tu redoutes.",
    vaincu:"Tu as donné avant de compter. C'est cela, le cœur. Ce que tu donnes ne quitte pas ta main, disciple — il change seulement de forme. Prends mon savoir.",
    gagnant:"Tu as joué pour vaincre. Le cœur ne se prend pas comme une ville."},
-  {id:"c3", acte:1,nom:"Gardien de l'Argent",          pilier:"Argent",      icon:"🪙",diff:"Intermédiaire",xp:180, twist:"jackpot",phrase:"Bienvenue. Tout ici a un prix. Même mon sourire. Surtout mon sourire.",
+  {id:"c3", acte:1,nom:"Gardien de l'Argent",          pilier:"Argent",      icon:"🪙",diff:"Intermédiaire",xp:180, twist:"jackpot",phrase:"Bienvenue. Chaque carte a son prix — même le 5 que tu crois sans valeur. Surtout lui.",
    vaincu:"Tu as su t'arrêter. Rares sont ceux-là. L'argent est un bon serviteur et un maître épouvantable, disciple — tu viens de choisir lequel il sera. Prends mon savoir.",
    gagnant:"Tu as voulu tout. Regarde tes mains : elles sont vides."},
-  {id:"c4", acte:1,fem:true,nom:"Gardienne de la Spiritualité", pilier:"Spiritualité",icon:"🕯️",diff:"Expert",      xp:250, phrase:"Tu viens chercher. Assieds-toi. Ce que tu cherches, lui, ne se presse pas.",
+  {id:"c4", acte:1,fem:true,nom:"Gardienne de la Spiritualité", pilier:"Spiritualité",icon:"🕯️",diff:"Expert",      xp:250, phrase:"Tu viens chercher. Assieds-toi. À la manche six, les légendaires se lèvent — sauras-tu attendre jusque-là ?",
    vaincu:"Tu m'as battue, disciple. Alors retiens ceci : celui qui sait se taire entend ce que les autres crient. Prends mon savoir. Il ne pèse rien, et pourtant il fera pencher ta balance.",
    gagnant:"Reviens. L'esprit ne se comprend pas en une seule partie."},
-  {id:"c5", acte:1,nom:"Le Gardien du Seuil",          pilier:"Équilibre",   icon:"🗝️",diff:"Expert",      xp:350, phrase:"Tu franchis le premier seuil. Beaucoup s'y sont égarés avant toi.",
+  {id:"c5", acte:1,nom:"Le Gardien du Seuil",          pilier:"Équilibre",   icon:"🗝️",diff:"Expert",      xp:350, phrase:"Premier seuil. Beaucoup ont écarté les mauvaises cartes avant toi, et l'ont su trop tard.",
    vaincu:"Les quatre t'ont enseigné. Tu ne domines aucun pilier — et c'est pour cela que tu passes. On te suit, désormais. Prends garde à où tu marches.",
    gagnant:"Un seul pilier a cédé. C'est toujours un de trop."},
   // ── ACTE II — L'ÉPREUVE ──
-  {id:"c6", acte:2,nom:"Le Moine de Fer",              pilier:"Santé",       icon:"🌿",diff:"Expert",      xp:420, twist:"endurance",phrase:"Ta patience cédera bien avant ma volonté.",
+  {id:"c6", acte:2,nom:"Le Moine de Fer",              pilier:"Santé",       icon:"🌿",diff:"Expert",      xp:420, twist:"endurance",phrase:"Je ne joue jamais mon 40 avant la septième. Ta patience cédera bien avant ma volonté.",
    vaincu:"Tu as tenu. Voilà tout. Ce n'est pas la force qui m'a vaincu, c'est ton refus de t'asseoir. Le fer ne plie pas : il rouille. Toi, tu respires. Prends mon savoir, disciple.",
    gagnant:"Ta patience a cédé. Elle cède toujours la première. Reviens quand tu sauras attendre la bonne manche."},
-  {id:"c7", acte:2,fem:true,nom:"La Dame des Regrets",          pilier:"Amour",       icon:"❤️",diff:"Expert",      xp:480, twist:"passion",  phrase:"Chaque cœur que tu chéris deviendra ta faiblesse.",
+  {id:"c7", acte:2,fem:true,nom:"La Dame des Regrets",          pilier:"Amour",       icon:"❤️",diff:"Expert",      xp:480, twist:"passion",  phrase:"Chaque carte que tu chéris devient ta faiblesse. J'ai un Espion : montre-moi tes trois plus belles.",
    vaincu:"Tu as aimé sans t'y perdre. Moi je n'ai jamais su. J'ai serré si fort que tout m'a filé entre les doigts. Aime, disciple, mais ne referme pas la main. Prends mon savoir.",
    gagnant:"Regarde ce que tu chéris. Voilà par où je suis entrée. On ne se protège pas du regret : on apprend à le porter."},
-  {id:"c8", acte:2,nom:"Le Marchand d'Ombres",        pilier:"Argent",      icon:"🪙",diff:"Expert",      xp:540, twist:"jackpot",  phrase:"Ta fortune n'est qu'un prêt. Je viens réclamer mon dû.",
+  {id:"c8", acte:2,nom:"Le Marchand d'Ombres",        pilier:"Argent",      icon:"🪙",diff:"Expert",      xp:540, twist:"jackpot",  phrase:"Ta fortune n'est qu'un prêt. Mon Brakeur prendra le pot entier, et ton dû avec.",
    vaincu:"Tu as refusé mon dernier marché. Personne ne le refuse. L'ombre n'est pas dans l'or, disciple — elle est dans celui qui compte sans jamais lever les yeux. Prends mon savoir, il ne coûte rien.",
    gagnant:"Tout se négocie. Ta défaite était à vendre, et tu l'as achetée toi-même. Reviens avec de meilleurs comptes."},
-  {id:"c9", acte:2,nom:"L'Ermite Aveugle",            pilier:"Spiritualité",icon:"🕯️",diff:"Expert",      xp:600, twist:"aveugle",  phrase:"Ferme les yeux : ici, la vue ne sert plus à rien.",
+  {id:"c9", acte:2,nom:"L'Ermite Aveugle",            pilier:"Spiritualité",icon:"🕯️",diff:"Expert",      xp:600, twist:"aveugle",  phrase:"Ferme les yeux. Ici on ne lit pas les cartes — on écoute lesquelles ne sont jamais tombées.",
    vaincu:"Tu as joué les yeux fermés et tu as vu. Moi j'ai perdu la vue pour comprendre ça. Ce que l'on cherche n'est jamais devant : c'est dessous. Prends mon savoir, disciple.",
    gagnant:"Tu regardais tes cartes. Il fallait écouter la mienne. Reviens quand tes yeux ne te serviront plus à rien."},
-  {id:"c10",acte:2,nom:"Le Juge de l'Équilibre",      pilier:"Équilibre",   icon:"⚖️",diff:"Expert",      xp:750, phrase:"Tu as vu l'Épreuve. Reste à savoir si tu la mérites.",
+  {id:"c10",acte:2,nom:"Le Juge de l'Équilibre",      pilier:"Équilibre",   icon:"⚖️",diff:"Expert",      xp:750, phrase:"Tu as vu l'Épreuve. Six combos, quatre paliers : montre-moi que tu sais lequel sacrifier.",
    vaincu:"Tu passes. Non parce que tu as vaincu, mais parce qu'aucun de tes piliers n'est tombé pendant que tu vainquais. L'Épreuve est derrière toi. L'Ascension commence. Va, et prends garde à ce que tu deviens.",
    gagnant:"Un pilier a cédé. Un seul. Ma balance ne connaît pas les circonstances — elle ne connaît que le poids."},
   // ── ACTE III — L'ASCENSION ──
-  {id:"c11",acte:3,nom:"Le Colosse Éternel",          pilier:"Santé",       icon:"🌿",diff:"Expert",      xp:820, twist:"endurance",phrase:"Mille joueurs ont cru me lire. Aucun n'a fini son calcul.",
+  {id:"c11",acte:3,nom:"Le Colosse Éternel",          pilier:"Santé",       icon:"🌿",diff:"Expert",      xp:820, twist:"endurance",phrase:"Mille joueurs ont cru me lire. Aucun n'a tenu ses comptes jusqu'à la dixième manche.",
    vaincu:"Tu tiens encore debout. Mille avant toi n'ont pas su. La pierre dure mille ans et ne vit pas un jour. Prends mon savoir, disciple : c'est ce qui plie qui dure.",
    gagnant:"Tu as tout joué, et ce n'était pas assez. Mille avant toi ont dit la même chose."},
-  {id:"c12",acte:3,nom:"Le Cœur de Cendres",          pilier:"Amour",       icon:"❤️",diff:"Expert",      xp:900, twist:"passion",  phrase:"J'ai aimé, puis j'ai tout consumé. Ton tour approche.",
+  {id:"c12",acte:3,nom:"Le Cœur de Cendres",          pilier:"Amour",       icon:"❤️",diff:"Expert",      xp:900, twist:"passion",  phrase:"J'ai aimé chaque carte, puis je les ai toutes brûlées. Ton tour approche — Multiplicateur en main.",
    vaincu:"Tu as aimé sans te réduire en cendres. Moi, j'ai brûlé si fort qu'il n'est rien resté à chérir. La passion n'est pas le feu qui dévore — c'est la braise qu'on garde vivante sans se consumer. Prends mon savoir, disciple.",
    gagnant:"J'ai tout brûlé pour une seule personne. Toi, tu viens de tout brûler pour une manche."},
-  {id:"c13",acte:3,nom:"Le Roi sans Trône",           pilier:"Argent",      icon:"🪙",diff:"Expert",      xp:1000,twist:"jackpot",  phrase:"L'or du monde entier ne rachètera pas ta défaite.",
+  {id:"c13",acte:3,nom:"Le Roi sans Trône",           pilier:"Argent",      icon:"🪙",diff:"Expert",      xp:1000,twist:"jackpot",  phrase:"Tout l'or du monde ne rachètera pas une carte mal posée. Et tu en as déjà posé une.",
    vaincu:"Tu me bats sans couronne, sans trésor, sans rien. C'est ainsi que j'aurais dû régner. On ne possède que ce qu'on peut perdre sans mourir. Prends mon savoir, disciple.",
    gagnant:"J'ai perdu un royaume. Toi, tu viens de perdre une partie. Nous avons tous deux voulu tout garder."},
-  {id:"c14",acte:3,nom:"Le Prophète du Vide",         pilier:"Spiritualité",icon:"🕯️",diff:"Expert",      xp:1150,twist:"aveugle",  phrase:"Au bout du chemin, il n'y a que le silence. Et moi.",
+  {id:"c14",acte:3,nom:"Le Prophète du Vide",         pilier:"Spiritualité",icon:"🕯️",diff:"Expert",      xp:1150,twist:"aveugle",  phrase:"Au bout du chemin il n'y a qu'une main vide, un silence — et moi.",
    vaincu:"Tu as traversé le vide et tu parles encore. Alors écoute : le silence n'est pas l'absence, c'est ce qui reste quand le bruit s'en va. Prends mon savoir, disciple. Il ne pèse rien.",
    gagnant:"Tu as rempli le vide de tes cris. Il les a bus. Reviens quand tu n'auras plus rien à dire."},
-  {id:"c15",acte:3,nom:"Le Maître Suprême",           pilier:"Équilibre",   icon:"🔮",diff:"Expert",      xp:1600,twist:"ultime",   phrase:"Tu as parcouru le chemin tout entier. Prouve maintenant que tu as trouvé l'Équilibre.",
+  {id:"c15",acte:3,nom:"Le Maître Suprême",           pilier:"Équilibre",   icon:"🔮",diff:"Expert",      xp:1600,twist:"ultime",   phrase:"Quatorze Gardiens derrière toi. Il te reste dix cartes et moi. Prouve que tu as trouvé l'Équilibre.",
    vaincu:"Ainsi s'achève le chemin. Tu n'as dominé aucun pilier — tu ne les as pas laissés tomber. C'est tout ce que j'attendais. Nul ne t'a donné ce titre : tu l'as porté jusqu'ici. Lève-toi, Chef de Cercle.",
    gagnant:"Tu as voulu me vaincre. On ne vainc pas l'équilibre — on le tient, ou on le lâche. Recommence."},
 ];
@@ -2843,6 +2843,7 @@ function sauvegarder(){
       defisDone:S.defisDone,
       defiJour:S.defiJour,
       cartesVues:S.cartesVues,
+      cartesJouees:S.cartesJouees,
       campagne:S.campagne,
       classement:S.classement,
       stats:S.stats,
@@ -2995,6 +2996,7 @@ function charger(){
     if(d.defisDone)  S.defisDone=d.defisDone;
     if(d.defiJour)   S.defiJour=d.defiJour;
     if(d.cartesVues) S.cartesVues=d.cartesVues;
+    if(d.cartesJouees && typeof d.cartesJouees==="object") S.cartesJouees=d.cartesJouees;
     if(d.campagne)   S.campagne=d.campagne;
     if(d.classement) S.classement=d.classement;
     if(d.stats) S.stats=d.stats;
@@ -3041,6 +3043,7 @@ function charger(){
       if(!Array.isArray(S.badgesTotal)) S.badgesTotal=[];
       if(!Array.isArray(S.defisDone)) S.defisDone=[];
       if(!Array.isArray(S.questionsVues)) S.questionsVues=[];
+      if(!S.cartesJouees || typeof S.cartesJouees!=="object") S.cartesJouees={};
       if(!S.stats || typeof S.stats!=="object")
         S.stats={parties:0,victoires:0,defaites:0,egalites:0,meilleurScore:0,serie:0,meilleureSerie:0,piliers:{}};
       if(!S.campagne || typeof S.campagne!=="object") S.campagne={progres:0};
@@ -4877,6 +4880,23 @@ function marquerVues(cartes){
     (cartes||[]).forEach(function(c){ if(c&&c.id&&S.cartesVues.indexOf(c.id)<0) S.cartesVues.push(c.id); });
   }catch(e){}
 }
+// ── MAÎTRISE ──────────────────────────────────────────────────────────
+// Voir une carte est facile : au bout de quelques parties, la Collection
+// affiche 48/48 et n'a plus rien à dire. La jouer est autre chose.
+// On compte donc chaque carte RÉELLEMENT posée. À 5 fois, elle est maîtrisée.
+const SEUIL_MAITRISE=5;
+function marquerJouee(c){
+  try{
+    if(!c||!c.id||c.meritee||c.fantome||c.supreme) return;
+    S.cartesJouees=S.cartesJouees||{};
+    S.cartesJouees[c.id]=(S.cartesJouees[c.id]||0)+1;
+  }catch(e){}
+}
+function nbJouee(id){ try{ return (S.cartesJouees&&S.cartesJouees[id])||0; }catch(e){ return 0; } }
+function nbMaitrisees(){
+  try{ return REPONSES.filter(function(c){ return nbJouee(c.id)>=SEUIL_MAITRISE; }).length; }
+  catch(e){ return 0; }
+}
 const mkCombo=(a,b)=>[a,b].sort().join("+");
 
 // ── Cartes spéciales (débloquées à la manche 6, une de chaque par partie) ──
@@ -4917,7 +4937,18 @@ const CARTES_MERITEES=[
 function carteMeritee(cb, id){
   var m=CARTES_MERITEES.find(function(x){return x.id===id;});
   if(!m) return null;
-  return {id:"mer_"+id+"_"+cb, combo:cb, name:m.nom, pts:(m.pts==null?0:m.pts),
+  var pts=(m.pts==null?0:m.pts);
+  // L'Aplomb n'a pas de valeur fixe : elle égale la meilleure carte adverse,
+  // plus un. Afficher « 0 » dans la main ne disait rien au joueur — on calcule
+  // la valeur dès l'affichage, à partir de la main de l'adversaire.
+  if(id==="aplomb"){
+    try{
+      var j=S.jeu;
+      var adv=(j&&j.mainRepJ2)?j.mainRepJ2.filter(function(x){return x.combo===cb;}):[];
+      pts=(adv.length?Math.max.apply(null,adv.map(function(x){return x.pts;})):0)+1;
+    }catch(e){ pts=1; }
+  }
+  return {id:"mer_"+id+"_"+cb, combo:cb, name:m.nom, pts:pts,
           meritee:true, meriteId:id, ic:m.ic, cit:m.cit};
 }
 // Cartes méritées effectivement débloquées par le joueur.
@@ -5065,7 +5096,7 @@ let S={
   dos:"origine", dosAchetes:["origine"],             // Boutique — dos de cartes
   voix:"guide",  voixAchetees:["guide","silence"],   // Boutique — voix du Guide
   exploits:{},                                       // Cartes méritées (jamais achetées)
-  xp:0,badgesTotal:[],defisDone:[],defiJour:{faitLe:-1,serie:0},cartesVues:[],campagne:{progres:0},campagneEnCours:-1,
+  xp:0,badgesTotal:[],defisDone:[],defiJour:{faitLe:-1,serie:0},cartesVues:[],cartesJouees:{},campagne:{progres:0},campagneEnCours:-1,
   stats:{parties:0,victoires:0,defaites:0,egalites:0,meilleurScore:0,serie:0,meilleureSerie:0,piliers:{}},
   // Classement VIDE au départ : il ne se remplit que de vraies parties.
   // Il contenait cinq joueurs de démonstration (Amina K. 1240 pts…) qui
@@ -12162,6 +12193,31 @@ const G={
     if(p===j.b2)return;
     j.b1=p;j.cb=mkCombo(p,j.b2);
     j.repChoisie=null;j.repIA=null;j.phase="afficheBases";
+    // ── ÉQUITÉ DE L'ORDRE DE JEU ─────────────────────────────────────────
+    // L'IA posait TOUJOURS sa carte en dernier, y compris les manches qu'elle
+    // ouvrait : elle voyait donc toujours la carte du joueur avant de choisir.
+    // Avantage permanent, et permanent d'un seul côté.
+    // Désormais : celui qui OUVRE le pilier pose aussi sa carte le premier.
+    // Ici c'est l'IA qui a ouvert → elle s'engage À L'AVEUGLE, sans rien
+    // savoir de la main du joueur, et c'est le joueur qui répond en voyant.
+    j.iaDabord=true;
+    var _vIA=j.mainRepJ2.filter(function(c){return c.combo===j.cb;});
+    if(_vIA.length){
+      var _asc=[..._vIA].sort(function(a,b){return a.pts-b.pts;});
+      var _fin=j.total?(j.manche/j.total):0;
+      var _c;
+      if(S.diff==="Débutant") _c=pick(_asc);
+      else if(S.diff==="Expert"){
+        // Elle a choisi ce pilier parce qu'elle y est forte : elle assume et
+        // pose sa meilleure carte. En fin de partie, plus rien à garder.
+        _c=_asc[_asc.length-1];
+      } else {
+        // Intermédiaire : elle garde parfois sa meilleure pour plus tard.
+        _c=(Math.random()<0.65||_fin>0.7)?_asc[_asc.length-1]:_asc[Math.max(0,_asc.length-2)];
+      }
+      j.repIA=_c;
+      j.mainRepJ2=j.mainRepJ2.filter(function(x){return x.id!==_c.id;});
+    }
     G.startTimer();render();
   },
 
@@ -12264,6 +12320,19 @@ const G={
   execRep(cJ1){
     const j=S.jeu;
     G.stopTimer();
+    // L'IA s'est déjà engagée à l'aveugle (c'est elle qui a ouvert le pilier) :
+    // sa carte est posée, on n'y touche plus. La rechoisir ici reviendrait à
+    // lui laisser voir la carte du joueur après coup — exactement ce qu'on veut
+    // éviter.
+    if(j.iaDabord && j.repIA){
+      j.iaDabord=false;
+      var _cIA=j.repIA;
+      if(cJ1) j.mainRepJ1=j.mainRepJ1.filter(x=>x.id!==cJ1.id);
+      if(cJ1) marquerJouee(cJ1);
+      j.repChoisie=cJ1; j.repIA=_cIA;
+      G.resoudre(cJ1,_cIA,null);
+      return;
+    }
     const vIA=j.mainRepJ2.filter(c=>c.combo===j.cb);
     let cIA=null;
     if(vIA.length>0){
@@ -12321,6 +12390,7 @@ const G={
     }
     if(cJ1)j.mainRepJ1=j.mainRepJ1.filter(x=>x.id!==cJ1.id);
     if(cIA)j.mainRepJ2=j.mainRepJ2.filter(x=>x.id!==cIA.id);
+    if(cJ1) marquerJouee(cJ1);      // maîtrise : la carte a été RÉELLEMENT posée
     j.repChoisie=cJ1;j.repIA=cIA;
 
     // ── Cas passe ──────────────────────────────────────
@@ -12565,14 +12635,22 @@ const G={
       const brak=j.mainJokJ2.find(x=>x.id==="j1"),mult=j.mainJokJ2.find(x=>x.id==="j2");
       const pot=p1+p2;
       const derniers=j.manche>=(j.total-1);            // 2 dernières manches → ne pas gaspiller ses jokers
+      // ── SEUIL DES JOKERS ────────────────────────────────────────────────
+      // Mesuré sur 3000 parties, la distribution réelle des pots :
+      //   pot ≥ 30 → 68 % des manches   ·   ≥ 45 → 50 %   ·   ≥ 60 → 25 %
+      // Avec un seuil à 30, l'Expert brûlait son Brakeur dès la manche 2 ou 3,
+      // sur une manche quelconque. Il n'a que DEUX jokers pour dix manches :
+      // à 45, il ne les sort plus que sur la moitié haute des pots.
+      const SEUIL_JOKER_IA = 45;
       if(S.diff==="Expert"){
         // Conserve ses jokers pour les gros pots ; les sort d'office en fin de partie
-        if(p1>p2 && brak && (pot>=30 || derniers)) jIAUsed=brak;        // vole un gros pot qu'elle allait perdre
-        else if(p2>=p1 && mult && (pot>=30 || derniers)) jIAUsed=mult;  // double une victoire déjà conséquente
+        if(p1>p2 && brak && (pot>=SEUIL_JOKER_IA || derniers)) jIAUsed=brak;        // vole un gros pot qu'elle allait perdre
+        else if(p2>=p1 && mult && (pot>=SEUIL_JOKER_IA || derniers)) jIAUsed=mult;  // double une victoire déjà conséquente
       }
       else if(S.diff==="Intermédiaire"){
-        // Joue le bon joker selon la situation, plus souvent sur les gros pots
-        const chance = pot>=30 ? 0.6 : 0.18;
+        // Joue le bon joker selon la situation, plus souvent sur les gros pots.
+        // Seuil volontairement plus bas que l'Expert : elle gaspille encore un peu.
+        const chance = pot>=38 ? 0.6 : 0.18;
         if(Math.random()<chance){
           if(p1>p2&&brak) jIAUsed=brak;
           else if(p2>=p1&&mult) jIAUsed=mult;
@@ -12851,18 +12929,55 @@ const G={
     j.premier=prochain;j.manche++;
     // Révélation cinématique des cartes spéciales à l'entrée de la manche 6 (une fois par partie)
     if(j.legendaires && j.manche===6 && !j._specialesRevelees){ j._specialesRevelees=true; setTimeout(function(){ animerCartesSpeciales(); }, 350); }
+    // ── Annonce des CARTES MÉRITÉES ─────────────────────────────────────
+    // Elles arrivent en main à la manche 6 comme les légendaires, mais sans
+    // cinématique : rien ne signalait au joueur qu'une carte qu'il a GAGNÉE
+    // vient d'entrer dans son jeu. Une seule annonce par partie, et seulement
+    // s'il en possède au moins une.
+    if(j.manche===6 && !j._meriteesAnnoncees){
+      j._meriteesAnnoncees=true;
+      var _mes=meriteesDebloquees();
+      if(_mes.length){
+        var _txt=(_mes.length===1)
+          ? "Ta carte méritée entre en jeu : "+_mes[0].nom+"."
+          : "Tes "+_mes.length+" cartes méritées entrent en jeu.";
+        setTimeout(function(){
+          try{ if(S.voixGuide) _parlerGuide(_txt); }catch(e){}
+          showToast("★ "+(_mes.length===1?_mes[0].ic+" "+_mes[0].nom:_mes.length+" cartes méritées")+" — à toi de jouer","badge",3600);
+        }, j.legendaires?5200:600);   // après la cinématique des légendaires si elle joue
+      }
+    }
     // Modificateur SOLO : annonce de la Manche du Destin à son arrivée
     if(j.modif==="destin" && j.manche===j.modifDestinManche){ setTimeout(function(){ showToast("🎲 MANCHE DU DESTIN — elle vaut DOUBLE !","badge",3500,true); },300); }
     j.b1=null;j.b2=null;j.cb=null;
     j.repChoisie=null;j.repIA=null;j.msg="";j.lastBonusQ=j.lastBonusQ||null;
     j.jActif=null;j.jIA=null;j.espionActif=false;j.repIAVues=[];j.phaseEchange=false;j.gainFinal=null;
-    j._supremeMasque=false;j._fantomeMasque=false;
+    j._supremeMasque=false;j._fantomeMasque=false;j.iaDabord=false;
     if(prochain==="ia"){
-      // Choisir un pilier où l'IA a encore des cartes disponibles
+      // ── L'IA OUVRE LE PILIER ───────────────────────────────────────────
+      // Elle le tirait AU HASARD parmi ses piliers jouables : une manche sur
+      // deux, elle ne réfléchissait pas du tout. Elle ouvre désormais là où sa
+      // main est la plus forte — comme le ferait n'importe quel joueur.
+      // Elle ne consulte QUE sa propre main : aucune information sur celle du
+      // joueur n'entre dans ce choix.
       const piliersDispo=PILIERS.filter(p=>
         PILIERS.some(p2=>p2!==p&&j.mainRepJ2.some(c=>c.combo===mkCombo(p,p2)))
       );
-      j.b2=piliersDispo.length>0?pick(piliersDispo):pick(PILIERS);
+      if(!piliersDispo.length){ j.b2=pick(PILIERS); }
+      else if(S.diff==="Débutant"){ j.b2=pick(piliersDispo); }
+      else {
+        var _note=function(p){
+          var cs=j.mainRepJ2.filter(function(c){return c.combo.includes(p);});
+          if(!cs.length) return -1;
+          var mx=0,som=0;
+          cs.forEach(function(c){ var v=c.pts||0; som+=v; if(v>mx) mx=v; });
+          // meilleure carte d'abord, puis profondeur du pilier
+          return mx*1000 + som + cs.length*10;
+        };
+        var _tri=[...piliersDispo].sort(function(a,b){ return _note(b)-_note(a); });
+        // L'Intermédiaire hésite encore : elle ouvre juste 3 fois sur 4.
+        j.b2=(S.diff==="Expert"||Math.random()<0.75)?_tri[0]:pick(piliersDispo);
+      }
       j.phase="iaChoisitBase";
     }
     else j.phase="choixBase";
@@ -13265,34 +13380,68 @@ function _debloquerCombatChef(){
 // (combats de 10 manches) qu'il faut vaincre avant le chef.
 // ═══════════════════════════════════════════════════════════
 const MENACES_DISCIPLE={
-  // Registre : ÉCHANGE D'ESPRITS, jamais combat physique. Le disciple lit ton jeu,
-  // annonce ton calcul, met ta patience à l'épreuve. Aucune menace au corps :
-  // ÉQUILIBRE est un jeu de cartes, de lecture et de choix.
+  // Registre : ÉCHANGE D'ESPRITS autour des CARTES. Le disciple nomme le jeu —
+  // ses jokers, ses combos, ses paliers, la manche 6 — plutôt que de menacer
+  // dans le vague. Chaque réplique doit pouvoir se dire à voix haute au-dessus
+  // d'une table de cartes. Aucune menace au corps.
   Argent:[
-    ["L'or ne ment jamais. Tes comptes, si.","Tu comptes tes points. Moi, je compte tes hésitations.","Chaque carte a un prix. Sais-tu lequel ?"],
-    ["Ce que tu gagnes ici, tu le paieras à la manche suivante.","Tu mises gros trop tôt. C'est un calcul, pas une envie.","Ta meilleure carte, tu la gardes. Je le sais déjà."],
-    ["Tu additionnes. Moi, je soustrais ce que tu vas perdre.","L'avidité t'a mené jusqu'ici ; elle choisira à ta place.","Je lis tes comptes dans l'ordre où tu ranges ta main."],
-    ["Toute ta fortune tient en dix cartes. J'en connais neuf.","Des rois ont bien compté devant moi. Trop tard.","Ton dernier point paiera la leçon."]
+    ["Dix cartes, six combos. Fais tes comptes, moi j'ai fait les miens.",
+     "Un 5 posé au bon moment vaut mieux qu'un 40 gaspillé. Tu l'apprendras.",
+     "Chaque carte a un prix. Le tien, tu le paieras à la manche six."],
+    ["Je garde un Multiplicateur au chaud. Devine sur quelle manche.",
+     "Tu mises ton 40 trop tôt. C'est un calcul, pas une envie.",
+     "Ta meilleure carte, tu la gardes pour la fin. Tout le monde fait ça."],
+    ["J'ai un Brakeur dans ma manche. Il prend le pot entier — le tien compris.",
+     "Tu additionnes tes points. Moi je compte ceux qu'il te reste à perdre.",
+     "Écarte tes deux cartes. Je saurai lesquelles rien qu'à ton hésitation."],
+    ["Brakeur et Multiplicateur. Je n'en jouerai qu'un. Lequel ?",
+     "Des rois ont bien compté devant moi. Ils comptaient juste — un tour trop tard.",
+     "Toute ta fortune tient en dix cartes. J'en connais déjà neuf."]
   ],
   Amour:[
-    ["Tu joues ce que tu aimes. C'est lisible.","Ton cœur choisit avant ta tête — et je regarde ton cœur.","Tu tiens trop à tes cartes pour les jouer."],
-    ["Ceux que tu chéris ne joueront pas à ta place.","Ton attachement à cette carte se voit d'ici.","Donner au bon moment, voilà tout l'art. Tu donnes trop tard."],
-    ["Chaque carte que tu gardes me dit ce que tu crains.","L'amour aveugle. La stratégie, elle, voit clair.","Tu protèges. Moi, je place."],
-    ["J'ai lu des joueurs plus fins que toi — dans leur silence.","Tu joues avec le cœur. Je joue avec le tien.","Aime cette carte une dernière fois : tu vas la poser."]
+    ["Tu ouvres toujours sur le pilier que tu préfères. C'est écrit sur ton visage.",
+     "Ton cœur choisit la carte avant ta tête. Et je regarde ton cœur.",
+     "Tu tiens trop à ta Dévotion pour la poser. Elle mourra dans ta main."],
+    ["J'ai l'Espion. Tes trois meilleures cartes n'ont plus de secret.",
+     "Ton attachement à cette carte se voit d'ici. Elle vaut 40, n'est-ce pas ?",
+     "Donner au bon moment, voilà tout l'art. Tu donnes toujours trop tard."],
+    ["Chaque carte que tu gardes me dit ce que tu crains de perdre.",
+     "L'amour aveugle. Le combo, lui, ne ment pas.",
+     "Tu protèges ta main. Moi je place la mienne. Ce n'est pas le même jeu."],
+    ["Espion posé, ton jeu est nu. Joue quand même, pour l'honneur.",
+     "Tu joues avec le cœur. Moi je joue avec le tien — et j'ai un Échange.",
+     "Aime cette carte une dernière fois. Tu vas devoir la poser."]
   ],
   Santé:[
-    ["Le rythme te manquera avant la fin.","Tu joues vite. La vitesse n'est pas la justesse.","Dix manches. Sais-tu doser ?"],
-    ["Tes bonnes cartes s'écoulent comme du sable.","Chaque manche exige un choix. Il t'en reste peu.","Ta réserve est un emprunt. J'en connais l'échéance."],
-    ["Je viderai ta main carte après carte, dans l'ordre.","Ton endurance a une limite : dix cartes.","Tiens le rythme — ou c'est lui qui te tiendra."],
-    ["La partie t'a prêté ses forces ; la dernière manche les reprend.","Ta dernière carte, je la connais déjà. Toi aussi.","Aucune ruse ne remplace la patience."]
+    ["Dix manches. Dix cartes. Sais-tu doser, ou vas-tu tout brûler avant six ?",
+     "Tu joues vite. La vitesse n'est pas la justesse.",
+     "Un souffle mal placé, et tes deux 40 partent sur un 5."],
+    ["Tes bonnes cartes s'écoulent comme du sable. J'ai compté trois manches.",
+     "Chaque manche exige un choix. Il ne t'en reste plus beaucoup.",
+     "Ta réserve est un emprunt. J'en connais l'échéance : manche neuf."],
+    ["Je viderai ta main carte après carte, dans l'ordre que j'ai choisi.",
+     "Mon Échange est prêt. Je peux redessiner ma main quand la tienne s'épuise.",
+     "Tiens le rythme — ou c'est le rythme qui te tiendra."],
+    ["La partie t'a prêté ses forces. La dixième manche les reprend toutes.",
+     "Ta dernière carte, je la connais déjà. Toi aussi. C'est bien ça, le problème.",
+     "Aucun joker ne remplace la patience. Mais j'ai les deux."]
   ],
   Spiritualité:[
-    ["Tu cherches la lumière ? Ici, on cherche la faille.","Ton choix hésite. Je l'entends d'ici.","La paix ne se joue pas. Le calme, si."],
-    ["Tes certitudes se fissurent déjà. Regarde ta main.","L'intuition te guide. Moi, j'ai compté.","Tu joues ce que tu espères, pas ce que tu sais."],
-    ["J'ai troublé des esprits plus clairs que le tien.","Le doute te rongera à chaque manche. C'est mon jeu.","Ferme les yeux : tu verras enfin tes cartes."],
-    ["Ton silence parle plus fort que tes cartes.","J'ai éteint des raisonnements plus vifs que le tien.","Le vide t'attend — et c'est là que je place."]
+    ["Tu cherches l'équilibre ? Ici, on cherche la faille dans ta main.",
+     "Ton choix hésite entre deux piliers. Je l'entends d'ici.",
+     "La paix ne se joue pas. Le calme, si — et il vaut plus que 40 points."],
+    ["Tes certitudes se fissurent. Regarde ta main : combien de vraies options ?",
+     "L'intuition te guide. Moi, j'ai compté les cartes tombées.",
+     "Tu joues ce que tu espères. Pas ce que tu sais."],
+    ["À la manche six, les légendaires se lèvent. Sauras-tu attendre ?",
+     "Le doute te rongera à chaque combo. C'est mon jeu, pas le tien.",
+     "Ferme les yeux. Tu verras enfin ce que tes cartes valent vraiment."],
+    ["Ton silence parle plus fort que tes cartes. Et il dit que tu doutes.",
+     "J'ai éteint des raisonnements plus vifs. Il leur manquait un joker.",
+     "Le vide t'attend à la dernière manche. C'est exactement là que je place."]
   ]
 };
+
 
 var _derniereMenace="";
 function menaceDisciple(pilier,rang){
@@ -13823,11 +13972,67 @@ function renderThemes(app){
   </div>`;
 }
 
+// ── LA SAGESSE D'UNE CARTE ────────────────────────────────────────────
+// Les 48 citations existaient déjà dans les données, mais ne s'affichaient
+// qu'une seconde en fin de manche puis disparaissaient : un joueur qui en
+// aimait une ne pouvait plus jamais la retrouver. La Collection devient le
+// livre où on les relit.
+function ouvrirSagesse(id){
+  var c=REPONSES.find(function(x){return x.id===id;}); if(!c) return;
+  var anc=document.getElementById("sagesse-popup"); if(anc) anc.remove();
+  try{ AUDIO.sfxClickUnique(); }catch(_){}
+  var pa=c.combo.split("+")[0], pb=c.combo.split("+")[1];
+  var sA=PILIER[pa]||{}, sB=PILIER[pb]||{};
+  var n=nbJouee(c.id), maitre=n>=SEUIL_MAITRISE;
+  var pct=Math.min(100,Math.round(n/SEUIL_MAITRISE*100));
+
+  var ov=document.createElement("div");
+  ov.id="sagesse-popup";
+  ov.style.cssText="position:fixed;inset:0;z-index:9600;display:flex;align-items:center;justify-content:center;"
+    +"background:rgba(4,3,10,0.93);padding:24px;-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)";
+  ov.onclick=function(e){ if(e.target===ov) ov.remove(); };
+  ov.innerHTML='<div style="max-width:340px;width:100%;text-align:center;'
+    +'background:linear-gradient(155deg,'+(sA.bg||"#1a0a35")+','+(sB.bg||"#0a0620")+');'
+    +'border:2px solid '+(sA.accent||"#D4AF37")+'88;border-radius:22px;padding:26px 22px;'
+    +'box-shadow:0 18px 50px rgba(0,0,0,0.9)">'
+    +'<div style="display:flex;align-items:center;justify-content:center;gap:6px;font-size:10px;letter-spacing:1.5px;color:var(--muted)">'
+      +emblemeMini(pa)+' '+pa+' + '+emblemeMini(pb)+' '+pb+'</div>'
+    +'<div style="font-family:\'Cinzel\',serif;font-size:22px;font-weight:900;color:var(--goldL);margin:8px 0 2px">'+esc(c.name)+'</div>'
+    +'<div style="font-size:26px;font-weight:900;color:'+(sA.accent||"#F0D060")+';line-height:1;margin-bottom:14px">'+c.pts+'</div>'
+    +'<div style="font-size:14px;color:#e8e0f2;font-family:\'Crimson Text\',Georgia,serif;font-style:italic;line-height:1.65;'
+      +'border-top:1px solid rgba(255,255,255,0.12);border-bottom:1px solid rgba(255,255,255,0.12);padding:15px 4px;margin-bottom:15px">'
+      +'« '+esc(c.cit||"")+' »</div>'
+    // Maîtrise : jouée combien de fois ?
+    +'<div style="font-size:10px;color:'+(maitre?"#F0D060":"var(--muted)")+';letter-spacing:1px;margin-bottom:6px">'
+      +(maitre?'★ CARTE MAÎTRISÉE':'JOUÉE '+n+' FOIS SUR '+SEUIL_MAITRISE)+'</div>'
+    +'<div style="height:5px;border-radius:3px;background:rgba(255,255,255,0.10);overflow:hidden;margin-bottom:18px">'
+      +'<div style="height:100%;width:'+pct+'%;background:linear-gradient(90deg,#C9A227,#F6E4A0)"></div></div>'
+    +'<button onclick="_partagerSagesse(\''+c.id+'\')" style="width:100%;min-height:46px;border-radius:14px;cursor:pointer;border:none;'
+      +'background:linear-gradient(135deg,#F6E4A0,#F0D060 30%,#D4AF37 60%,#B8912E);color:#241703;'
+      +'font-family:\'Cinzel\',serif;font-size:13px;font-weight:900;letter-spacing:1px">📤 PARTAGER CETTE SAGESSE</button>'
+    +'<button onclick="document.getElementById(\'sagesse-popup\').remove()" '
+      +'style="width:100%;min-height:40px;margin-top:8px;border-radius:12px;cursor:pointer;'
+      +'background:transparent;border:1px solid rgba(255,255,255,0.14);color:var(--muted);font-size:12px">Fermer</button>'
+    +'</div>';
+  document.body.appendChild(ov);
+}
+function _partagerSagesse(id){
+  var c=REPONSES.find(function(x){return x.id===id;}); if(!c) return;
+  var txt="« "+(c.cit||"")+" »\n— "+c.name+" · "+c.combo+"\nÉQUILIBRE, Les 4 Piliers de Vie";
+  try{
+    if(navigator.share){ navigator.share({text:txt}).catch(function(){}); return; }
+    if(navigator.clipboard){ navigator.clipboard.writeText(txt); showToast("📋 Sagesse copiée","win",2000); return; }
+  }catch(e){}
+  showToast("📋 "+c.name,"info",2000);
+}
+
 function renderCollection(app){
   var vues=S.cartesVues||[];
   var total=REPONSES.length;
   var nb=REPONSES.filter(function(c){return vues.indexOf(c.id)>=0;}).length;
   var pct=Math.round(nb/total*100);
+  var maitrisees=nbMaitrisees();
+  var pctM=Math.round(maitrisees/total*100);
   var combos=[...new Set(REPONSES.map(function(c){return c.combo;}))];
   var sections=combos.map(function(cb){
     var cs=REPONSES.filter(function(c){return c.combo===cb;}).sort(function(a,b){return b.pts-a.pts;});
@@ -13836,9 +14041,17 @@ function renderCollection(app){
     var cards=cs.map(function(c){
       var vu=vues.indexOf(c.id)>=0;
       if(vu){
-        return '<div style="background:linear-gradient(160deg,'+(sA.bg||"#1a0a35")+','+(sA.accent||"#333")+'33);border:1px solid '+(sA.accent||"#555")+'99;border-radius:10px;padding:8px 5px;text-align:center;box-shadow:inset 0 1px 0 rgba(255,255,255,0.12)">'
-          +'<div style="font-size:10.5px;font-weight:900;color:var(--goldL);font-family:Cinzel,serif;line-height:1.15;min-height:26px;display:flex;align-items:center;justify-content:center">'+c.name+'</div>'
+        var n=nbJouee(c.id), maitre=n>=SEUIL_MAITRISE;
+        var pct=Math.min(100,Math.round(n/SEUIL_MAITRISE*100));
+        return '<div onclick="ouvrirSagesse(\''+c.id+'\')" style="cursor:pointer;background:linear-gradient(160deg,'+(sA.bg||"#1a0a35")+','+(sA.accent||"#333")+'33);'
+          +'border:'+(maitre?'1.5px solid #F0D060':'1px solid '+(sA.accent||"#555")+'99')+';border-radius:10px;padding:8px 5px 6px;text-align:center;'
+          +'box-shadow:inset 0 1px 0 rgba(255,255,255,0.12)'+(maitre?',0 0 12px rgba(240,208,96,0.28)':'')+';-webkit-tap-highlight-color:transparent">'
+          +'<div style="font-size:10.5px;font-weight:900;color:var(--goldL);font-family:Cinzel,serif;line-height:1.15;min-height:26px;display:flex;align-items:center;justify-content:center">'
+            +(maitre?'★ ':'')+c.name+'</div>'
           +'<div style="font-size:16px;font-weight:900;color:'+(sA.accent||"#F0D060")+';margin-top:2px">'+c.pts+'</div>'
+          // Jauge de maîtrise : discrète, mais elle donne une raison de revenir.
+          +'<div style="height:3px;border-radius:2px;background:rgba(255,255,255,0.10);overflow:hidden;margin-top:5px">'
+            +'<div style="height:100%;width:'+pct+'%;background:'+(maitre?'linear-gradient(90deg,#C9A227,#F6E4A0)':(sA.accent||"#F0D060"))+'"></div></div>'
           +'</div>';
       }
       return '<div style="background:rgba(255,255,255,0.03);border:1px dashed rgba(255,255,255,0.14);border-radius:10px;padding:8px 5px;text-align:center;opacity:0.55;min-height:56px;display:flex;flex-direction:column;justify-content:center">'
@@ -13866,9 +14079,17 @@ function renderCollection(app){
           <div style="height:6px;border-radius:3px;background:rgba(255,255,255,0.08);overflow:hidden;margin-top:8px">
             <div style="height:100%;width:${pct}%;background:linear-gradient(90deg,var(--gold),#45c97a);border-radius:3px"></div>
           </div>
+          <!-- Découvrir se termine ; maîtriser dure. Sans cette seconde barre,
+               l'écran affiche 48/48 pour toujours et n'a plus rien à dire. -->
+          <div style="font-size:11.5px;color:var(--muted);margin-top:12px">
+            ★ <strong style="color:var(--goldL);font-size:15px">${maitrisees}</strong> / ${total} maîtrisées
+            <span style="font-size:9.5px;opacity:0.8">· jouer une carte ${SEUIL_MAITRISE} fois la maîtrise</span></div>
+          <div style="height:5px;border-radius:3px;background:rgba(255,255,255,0.08);overflow:hidden;margin-top:6px">
+            <div style="height:100%;width:${pctM}%;background:linear-gradient(90deg,#C9A227,#F6E4A0);border-radius:3px"></div>
+          </div>
         </div>
         ${sections}
-        <div style="text-align:center;font-size:10px;color:var(--muted);margin-top:4px">Joue des parties pour découvrir toutes les cartes ! 🎴</div>
+        <div style="text-align:center;font-size:10px;color:var(--muted);margin-top:4px">Touche une carte pour relire sa sagesse. ✨</div>
       </div>
     </div>
   </div>`;
@@ -14745,11 +14966,24 @@ function renderStats(app){
   var parties=st.parties||0;
   var tauxV=parties>0?Math.round((st.victoires||0)/parties*100):0;
   var piliers=st.piliers||{}, pilierFav="—", maxP=0, totalP=0;
-  for(var p in piliers){ totalP+=piliers[p]||0; if((piliers[p]||0)>maxP){ maxP=piliers[p]; pilierFav=p; } }
+  // Le favori était choisi par ordre d'insertion dans les données : à valeurs
+  // égales, il pouvait désigner un pilier dont la barre s'affiche APRÈS une
+  // autre de même longueur, ce qui paraissait arbitraire. On parcourt donc
+  // dans l'ordre d'affichage, et on nomme TOUS les ex aequo.
+  PILIERS.forEach(function(p){ totalP+=piliers[p]||0; });
+  for(var k in piliers){ if(PILIERS.indexOf(k)<0) totalP+=piliers[k]||0; }
+  PILIERS.forEach(function(p){ if((piliers[p]||0)>maxP) maxP=piliers[p]||0; });
+  var favs=PILIERS.filter(function(p){ return maxP>0 && (piliers[p]||0)===maxP; });
+  pilierFav = favs.length===0 ? "—"
+            : favs.length===1 ? favs[0]
+            : favs.slice(0,-1).join(", ")+" et "+favs[favs.length-1];
   var cartes=[
     {i:"🎮",l:"Parties",v:parties,c:"var(--goldL)"},
     {i:"🏆",l:"Victoires",v:st.victoires||0,c:"#45c97a"},
     {i:"💀",l:"Défaites",v:st.defaites||0,c:"#e05555"},
+    // Sans cette vitrine, victoires + défaites ne retombaient pas sur le total
+    // des parties dès qu'une partie nulle survenait : l'écart restait inexpliqué.
+    {i:"🤝",l:"Égalités",v:st.egalites||0,c:"#9fb4d0"},
     {i:"📊",l:"Taux de victoire",v:tauxV+"%",c:"var(--goldL)"},
     {i:"⭐",l:"Meilleur score",v:st.meilleurScore||0,c:"#f1c40f"},
     {i:"🔥",l:"Meilleure série",v:st.meilleureSerie||0,c:"#ff8c42"}
@@ -14769,7 +15003,7 @@ function renderStats(app){
       <div style="font-size:48px;margin-bottom:12px">📊</div>
       <div style="font-size:14px;line-height:1.6">Aucune partie enregistrée pour l'instant.<br>Joue une partie et tes stats apparaîtront ici !</div></div>`
     :`<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:18px">
-      ${cartes.map(c=>`<div style="background:rgba(255,255,255,0.05);border:1px solid rgba(212,175,55,0.2);border-radius:14px;padding:14px;text-align:center">
+      ${cartes.map((c,i)=>`<div style="${(cartes.length%2===1&&i===cartes.length-1)?'grid-column:1/-1;':''}background:rgba(255,255,255,0.05);border:1px solid rgba(212,175,55,0.2);border-radius:14px;padding:14px;text-align:center">
         <div style="font-size:22px;margin-bottom:4px">${c.i}</div>
         <div style="font-size:24px;font-weight:900;color:${c.c};font-family:'Cinzel',serif;line-height:1">${c.v}</div>
         <div style="font-size:9px;color:var(--muted);letter-spacing:1px;margin-top:4px">${c.l.toUpperCase()}</div></div>`).join('')}
@@ -16114,6 +16348,15 @@ function renderJeu(app){
             <div style="font-size:12px;color:var(--gold);font-weight:700;margin-bottom:2px;text-align:center">
               ✅ Vos cartes — <strong style="color:var(--goldL)">${j.cb}</strong>
             </div>
+            ${(j.iaDabord&&j.repIA)?`<div style="text-align:center;margin-bottom:8px">
+              <div style="display:inline-flex;align-items:center;gap:8px;font-size:11.5px;font-weight:700;
+                color:var(--goldL);background:rgba(240,208,96,0.10);border:1px solid rgba(240,208,96,0.42);
+                border-radius:20px;padding:5px 14px">
+                <span>🎴 L'IA a ouvert et posé la première :</span>
+                <strong style="font-size:14px">${esc(j.repIA.name)} · ${j.repIA.pts}</strong>
+              </div>
+              <div style="font-size:9.5px;color:var(--muted);margin-top:4px">C'est à toi de répondre — tu vois sa carte, elle n'a pas vu la tienne.</div>
+            </div>`:""}
             ${vIA.length===0?`<div style="font-size:10px;color:#45c97a;text-align:center;margin-bottom:8px;font-weight:700">💡 L'IA n'a pas de carte valide — jouez et gagnez vos points !</div>`:""}
             ${(function(){ var b=null; validesJ1.forEach(function(x){ if(!x.fantome && (!b || (x.pts||0)>(b.pts||0))) b=x; }); j._cibleDoigt=b?b.id:null; return ""; })()}
             <div class="main-avant">
