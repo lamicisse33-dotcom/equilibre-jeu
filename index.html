@@ -2211,7 +2211,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v98.05";
+const BUILD_TAG="v98.06";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -14838,10 +14838,22 @@ function _encaissement(){
             +'style="width:100%;min-height:50px;border-radius:15px;cursor:pointer;border:none;'
             +'background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.16);color:var(--muted);'
             +'font-family:\'Cinzel\',serif;font-size:13px;font-weight:900;letter-spacing:1px">FERMER</button>'
-          : '<button onclick="document.getElementById(\'enc-popup\').remove();G.startJeu(false)" '
-            +'style="width:100%;min-height:50px;border-radius:15px;cursor:pointer;border:none;'
-            +'background:linear-gradient(135deg,#F6E4A0,#F0D060 30%,#D4AF37 60%,#B8912E);color:#241703;'
-            +'font-family:\'Cinzel\',serif;font-size:14px;font-weight:900;letter-spacing:1px">▶ JOUER UNE PARTIE</button>'))
+          // Deux chemins, pas un seul. La Campagne rapporte un bonus d'XP
+          // en plus de la partie (vaincre un Gardien ajoute son XP propre) :
+          // n'offrir que le Solo envoyait vers le mode le MOINS rentable
+          // pour l'objectif affiché juste au-dessus.
+          : '<div style="display:flex;gap:8px">'
+            +'<button onclick="document.getElementById(\'enc-popup\').remove();S.ecran=\'campagne\';render()" '
+              +'style="flex:1;min-height:52px;border-radius:15px;cursor:pointer;border:none;'
+              +'background:linear-gradient(135deg,#F6E4A0,#F0D060 30%,#D4AF37 60%,#B8912E);color:#241703;'
+              +'font-family:\'Cinzel\',serif;font-size:12.5px;font-weight:900;line-height:1.15">'
+              +'⚔ CAMPAGNE<br><span style="font-size:9px;font-weight:700;opacity:0.85">plus d\'XP</span></button>'
+            +'<button onclick="document.getElementById(\'enc-popup\').remove();G.startJeu(false)" '
+              +'style="flex:1;min-height:52px;border-radius:15px;cursor:pointer;'
+              +'background:rgba(240,208,96,0.12);border:1.5px solid rgba(240,208,96,0.45);color:var(--goldL);'
+              +'font-family:\'Cinzel\',serif;font-size:12.5px;font-weight:900;line-height:1.15">'
+              +'▶ SOLO<br><span style="font-size:9px;font-weight:700;opacity:0.8">partie rapide</span></button>'
+            +'</div>'))
     +((fini||!_ouverte)?'':'<button onclick="document.getElementById(\'enc-popup\').remove()" '
       +'style="width:100%;min-height:40px;margin-top:8px;border-radius:12px;cursor:pointer;'
       +'background:transparent;border:1px solid rgba(255,255,255,0.14);color:var(--muted);font-size:12px">Fermer</button>')
