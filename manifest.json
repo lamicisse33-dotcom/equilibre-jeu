@@ -2,34 +2,22 @@
   "name": "ÉQUILIBRE — Les 4 Piliers de Vie",
   "short_name": "ÉQUILIBRE",
   "description": "Le jeu de cartes des quatre piliers : Amour, Santé, Argent, Spiritualité.",
-  "start_url": "./index.html",
-  "scope": "./",
   "id": "/",
+  "start_url": "/",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "fullscreen", "minimal-ui"],
   "orientation": "portrait",
   "background_color": "#0a0620",
   "theme_color": "#0a0620",
   "lang": "fr",
   "dir": "ltr",
-  "categories": ["games", "card"],
+  "prefer_related_applications": false,
+  "categories": ["games"],
   "icons": [
-    {
-      "src": "icon-192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "icon-512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    }
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "maskable" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ]
 }
