@@ -62,6 +62,9 @@
 <meta name="apple-mobile-web-app-title" content="Équilibre"/>
 <meta name="theme-color" content="#12082e"/>
 <link rel="apple-touch-icon" href="apple-touch-icon.png"/>
+<!-- Icône de secours embarquée : si les PNG manquent à la racine, l'onglet
+     et les favoris gardent quand même la balance de KHALAM. -->
+<link rel="icon" type="image/webp" href="data:image/webp;base64,UklGRvYEAABXRUJQVlA4IOoEAAAwGwCdASpAAEAAPjEWiEKiISEVCZ7kIAMEoAtkeYDlgEcKeb3AB6HNuH5gP1d9Zn0I+gB+rvWPegB5Y/7c/B7+13pVUg78Ysma93/KD8jtQ5/aPx7yxH6H/YPyk5gO46/1vGDTGP8H51n+7/bPyA9tHzv/rvcE/kf83/yH9r/dX9//Er6KX7KIi4Z+mL13U9qHbA4POjrvPLmWQhYnTdzZcUp7Z0PsA1GUqWQqMgOR/mBtKfPgxOb6DYlT9Ed5yQDwJWZCjXmxKKveEnsH2WIqdkyMUF792oASP3uwORybG+QAAP7/6CFT1xK0HZBYq4tZlf6qsBmnP/qCJLvrp4U5nCAeAebLSMnJEFDuEUd2WHrD5zQflPc3/TUWz3lAZUr7/ZgrTxVKeKNuf2efn9HSsamK9mHGfNZi3Vz9aaAd6aGLFuSTr4FhkzZ1c1FmC22USAP2sCEf+QgOMnIb/wVff/1M/KrQznzJo1MKrQOJeI5OnyL+Dz5FzUqPOUdPCv+c0b17mfzKB6bFrPr23gMocR+dEhrLsWkfYNxZ53fjAeZvBDVFhc78hIgUAlq1ppeEncG/12uobsq//ltvSeEhPSou2rWdNLlbDte+xoefR2lM4X6Zi/p4bdMNUjJtpD/qGSj0P8E+upTmmUtk3hMCk+zf3rWy3VhWmqenVtK7jy90nDUQivGvtYvwGxmM0IHxGaQkJJCiqvzFGcp2b4w1NI8HMfDvTgdmll/GnL4ajIvqGlSXvWXEjFwztFMHSUD1CDYnSutV+M2qNwD25aercjRN/mJbYefSjYIJ9++jth0u/SV/sOzV/bEJXgdKUjk3emFn5JsshXA7U9JbaMyaSMZAa+GCsqZaH7+zR0DaI/jZ2P+q/emRMe8Ltr6Q3/56FMvVJrrYikXby4MPlef/8Q7Kr7VZ0ytz61kEkHPs/BBGUIdk0/LbkVBNIZV/fLlzvFAUGyDXrCOCQsm/EnzdwFDGvX8n85NnGfaZZZpgonz/mIavCsOrOcc/qVI86SEaHscxx822913P3iWjz8dkfa+JFHd8Ipbqgy9vgQ6HIZFXaMvBC2BzXG754Sb8fRl1oRDL/hlpI43E86Ai/QaffbT3q5vvpBJkYtn4/hzu/zJipMgrxNj9PcHalJOfIE8GwRJwJW2wPVlT+LStaBDJ13bZT/5Z2llBkeS/7QkiViU8Yqu4NFNS6KWo6MSUBtL1DRv/G2rT5VLErpUebGdt9Yt3JSveGMW7v2UzbP6Tu9zMsC94pbFlNAV7E1BxhswfDj8DsNlH6oz4yrBpi3u0wDtdXrGtd0eo//XBio9OhXLM//V+gNXv/8ocFvuJjZW1zDOCwI2dXaGRnFWxK5m2IR2RmQdRCPp/L0glFT9z695G5DCIBUjP//u1rsY9OVUeQISRYLqTb7f+ycR+mDcLohvsO1t1yUKT7owvjr3fshZSQyZHIHGk2ev5Qc2dSJdvZeNUJ97dwh2iLlyDyymbsJ0ihTxgPZbC3Hy5ay84DMOh71BbX0PCP5u1R9qQzBXD2epf/0Pj8zSv8vWApEfk9o1Udvi3oP9VVF1B8USTt951PcXsglNf/9LMM+l2EwXOcYL+qsikrvh64+3Psi4qxHmvJBbR2UvvMezvdHJRNPJWdHvGdmx/38Y1wRzEd7kXetmtjHJZgAAA"/>
 <link rel="manifest" href="manifest.json"/>
 <title>⚖️ ÉQUILIBRE — Les 4 Piliers de Vie</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"/>
@@ -2211,7 +2214,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v98.06";
+const BUILD_TAG="v98.08";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -18171,6 +18174,19 @@ function renderJeu(app){
 // ── Invite « Ajouter à l'écran d'accueil » (PWA) ──
 (function(){
   function estStandalone(){ try{ return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone===true; }catch(e){ return false; } }
+  // ── RELANCE UNIQUE DE LA BANNIÈRE D'INSTALLATION ────────────────────
+  // Le manifeste manquait sur le dépôt : Chrome ne proposait donc jamais
+  // l'installation, et les testeurs qui ont fermé la bannière entre-temps
+  // ne la reverraient plus jamais. On efface le marqueur UNE FOIS, à cette
+  // version précise — ceux qui ont déjà installé ne verront rien, puisque
+  // estStandalone() les écarte de toute façon.
+  try{
+    var _relance="install-2026-08-manifeste";
+    if(localStorage.getItem("equilibre_install_relance")!==_relance){
+      localStorage.removeItem("equilibre_install_vu");
+      localStorage.setItem("equilibre_install_relance",_relance);
+    }
+  }catch(e){}
   function dejaVu(){ try{ return !!localStorage.getItem("equilibre_install_vu"); }catch(e){ return true; } }
   function marquerVu(){ try{ localStorage.setItem("equilibre_install_vu","1"); }catch(e){} }
   function fermer(){ var b=document.getElementById("install-banner"); if(b&&b.parentNode) b.parentNode.removeChild(b); }
