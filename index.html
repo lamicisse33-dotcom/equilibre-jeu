@@ -2211,7 +2211,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v98.03";
+const BUILD_TAG="v98.05";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -14849,35 +14849,128 @@ function _encaissement(){
   document.body.appendChild(ov);
 }
 
+// Petite fenêtre de message. Le bandeau passait trop vite et se perdait en
+// bas de l'écran ; ici le joueur lit à son rythme et ferme quand il veut.
+// Elle s'ajuste à son texte : pas de cadre plus grand que nécessaire.
+function _encMessage(html, teinte){
+  var anc=document.getElementById("encmsg-popup"); if(anc) anc.remove();
+  var ov=document.createElement("div");
+  ov.id="encmsg-popup";
+  ov.style.cssText="position:fixed;inset:0;z-index:9700;display:flex;align-items:center;justify-content:center;"
+    +"background:rgba(4,3,10,0.86);padding:28px;-webkit-backdrop-filter:blur(3px);backdrop-filter:blur(3px)";
+  // Toucher n'importe où ferme : le joueur n'a pas à viser le bouton.
+  ov.onclick=function(){ ov.remove(); };
+  ov.innerHTML='<div style="max-width:300px;background:linear-gradient(150deg,#1a0f38,#0a0620);'
+    +'border:2px solid '+(teinte||"rgba(240,208,96,0.55)")+';border-radius:18px;'
+    +'padding:20px 20px 16px;text-align:center;box-shadow:0 16px 44px rgba(0,0,0,0.9)">'
+    +html
+    +'<button style="width:100%;min-height:42px;margin-top:16px;border-radius:12px;cursor:pointer;'
+      +'background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.16);color:var(--muted);'
+      +'font-family:\'Cinzel\',serif;font-size:12px;font-weight:800">FERMER</button>'
+    +'</div>';
+  document.body.appendChild(ov);
+}
+
 // Toucher un opérateur : soit on part encaisser, soit on dit précisément
 // ce qui manque. Un bouton muet laisserait le joueur croire à une panne.
 function _encOperateur(op){
   if(!_legendeOuverte()){
-    showToast("⛔ L'offre s'est terminée le "+LEGENDE_FIN_TXT,"info",3600);
+    _encMessage('<div style="font-size:30px;margin-bottom:6px">⛔</div>'
+      +'<div style="font-family:\'Cinzel\',serif;font-size:14px;font-weight:900;color:#f08a8a;margin-bottom:6px">Offre close</div>'
+      +'<div style="font-size:12.5px;color:#cbbfd8;line-height:1.6">Elle s\'est terminée le <strong>'
+      +LEGENDE_FIN_TXT+'</strong>.<br>La prochaine sera annoncée sur les réseaux de KHALAM.</div>',
+      "rgba(224,85,85,0.5)");
     return;
   }
   if(_legendeAtteinte()){
-    // Palier atteint : on emmène le joueur au formulaire, opérateur pré-choisi.
-    S._legOp=op;
-    var ov=document.getElementById("enc-popup"); if(ov) ov.remove();
-    S.ecran="legende"; render();
-    setTimeout(function(){
-      try{ var b=[].slice.call(document.querySelectorAll(".lgop"))
-        .filter(function(x){ return x.getAttribute("data-op")===op; })[0];
-        if(b) _legOperateur(b,op);
-      }catch(e){}
-    }, 260);
+    // Palier atteint : on propose d'envoyer la demande à KHALAM par WhatsApp,
+    // directement depuis ce bouton. Une confirmation d'abord — un toucher
+    // accidentel ne doit pas consommer une tranche.
+    var _tr=Math.min(LEGENDE_TRANCHES,_legendeTranchesPrises()+1);
+    var _logo=(op.indexOf("Wave")>=0)?WAVE_LOGO:ORANGE_LOGO;
+    var _teinte=(op.indexOf("Wave")>=0)?"#4DC3F0":"#FF7900";
+    try{ AUDIO.sfxClickUnique&&AUDIO.sfxClickUnique(); }catch(_){}
+    _encMessage(
+      (_logo?'<img src="'+_logo+'" alt="" style="width:44px;height:44px;border-radius:11px;object-fit:cover;margin-bottom:8px">':'')
+      +'<div style="font-family:\'Cinzel\',serif;font-size:14px;font-weight:900;color:var(--goldL);margin-bottom:8px">'+esc(op)+'</div>'
+      +'<div style="font-size:13px;color:#e8e0f2;line-height:1.6">Tranche <strong style="color:var(--goldL)">'
+        +_tr+'/'+LEGENDE_TRANCHES+'</strong><br><strong style="color:#6fe3a0;font-size:20px">'
+        +_fmtMontant(LEGENDE_MONTANT)+' F CFA</strong></div>'
+      +'<div style="font-size:11.5px;color:#cbbfd8;line-height:1.6;margin-top:10px;padding-top:10px;'
+        +'border-top:1px solid rgba(255,255,255,0.12)">Ta demande part à KHALAM par <strong>WhatsApp</strong>.<br>'
+        +'<span style="color:var(--muted);font-size:10.5px">Vérifie ton numéro '+esc(op)+' dans le message avant d\'envoyer.</span></div>'
+      +'<button onclick="_legEnvoyerWhatsApp(\''+op.replace(/'/g,"")+'\')" '
+        +'style="width:100%;min-height:46px;margin-top:14px;border-radius:12px;cursor:pointer;border:none;'
+        +'background:linear-gradient(135deg,#F6E4A0,#F0D060 30%,#D4AF37 60%,#B8912E);color:#241703;'
+        +'font-family:\'Cinzel\',serif;font-size:13px;font-weight:900;letter-spacing:0.5px">📤 ENVOYER MA DEMANDE</button>',
+      _teinte+"99");
     return;
   }
   var reste=_legendeResteXP();
   var prochaine=Math.min(LEGENDE_TRANCHES,_legendeTranchesPrises()+1);
   var cible=prochaine*LEGENDE_XP;
-  // Le message doit dire trois choses : ce qui manque, ce qu'il faut
-  // atteindre, et que ça vaut la peine de revenir. Les boutons étant
-  // toujours actifs, c'est lui qui porte toute l'information.
+  var logo=(op.indexOf("Wave")>=0)?WAVE_LOGO:ORANGE_LOGO;
+  var teinte=(op.indexOf("Wave")>=0)?"#4DC3F0":"#FF7900";
   try{ AUDIO.sfxClickUnique&&AUDIO.sfxClickUnique(); }catch(_){}
-  showToast("🔒 Encore "+_fmtMontant(reste)+" XP — atteins "+_fmtMontant(cible)
-    +" XP et reviens retirer tes "+_fmtMontant(LEGENDE_MONTANT)+" F par "+op,"badge",5200);
+  _encMessage(
+    (logo?'<img src="'+logo+'" alt="" style="width:44px;height:44px;border-radius:11px;object-fit:cover;margin-bottom:8px">'
+         :'<div style="font-size:28px;margin-bottom:6px">🔒</div>')
+    +'<div style="font-family:\'Cinzel\',serif;font-size:14px;font-weight:900;color:var(--goldL);margin-bottom:10px">'
+      +esc(op)+'</div>'
+    +'<div style="font-size:13px;color:#e8e0f2;line-height:1.65">'
+      +'Il te manque encore<br><strong style="color:#F0D060;font-size:21px">'+_fmtMontant(reste)+' XP</strong></div>'
+    +'<div style="font-size:12px;color:#cbbfd8;line-height:1.6;margin-top:10px;padding-top:10px;'
+      +'border-top:1px solid rgba(255,255,255,0.12)">'
+      +'Atteins <strong style="color:var(--goldL)">'+_fmtMontant(cible)+' XP</strong> et reviens retirer tes<br>'
+      +'<strong style="color:#6fe3a0;font-size:16px">'+_fmtMontant(LEGENDE_MONTANT)+' F CFA</strong></div>'
+    +'<div style="font-size:11px;color:var(--muted);margin-top:10px;font-family:\'Crimson Text\',Georgia,serif;font-style:italic">'
+      +'Tranche '+prochaine+' sur '+LEGENDE_TRANCHES+' · continue de jouer</div>',
+    teinte+"99");
+}
+
+// Envoi de la demande à KHALAM par WhatsApp, depuis le bouton opérateur.
+// Le numéro n'est PAS demandé ici : WhatsApp transmet celui de l'expéditeur,
+// et le message invite le joueur à le corriger s'il diffère de son compte.
+function _legEnvoyerWhatsApp(op){
+  if(!_legendeAtteinte()||!_legendeOuverte()) return;
+  var id=_appareilId();
+  var pseudo=String(S.nom||"Joueur").slice(0,14);
+  var num=_legendeTranchesPrises()+1;
+  // On note la tranche AVANT d'ouvrir WhatsApp : sinon un retour rapide
+  // permettrait de renvoyer la même demande plusieurs fois.
+  try{ localStorage.setItem("khalam_legende",String(num)); }catch(e){}
+  // La demande est aussi enregistrée dans la base, SANS le numéro.
+  try{
+    var ent=_supaEntetes(); ent["Prefer"]="return=minimal";
+    fetch(SUPA.url+"/rest/v1/retraits",{method:"POST",headers:ent,body:JSON.stringify([{
+      appareil:id, pseudo:pseudo, palier:num*LEGENDE_XP, montant:LEGENDE_MONTANT,
+      operateur:op, score:(S.stats&&S.stats.meilleurScore)||0,
+      parties:(S.stats&&S.stats.parties)||0,
+      minutes:Math.round(((S.stats&&S.stats.tempsJeu)||0)/60), statut:"en_attente"
+    }])}).catch(function(){});
+  }catch(e){}
+  var txt="Bonjour KHALAM 👋\nJe demande mon encaissement ÉQUILIBRE.\n\n"
+    +"Pseudo : "+pseudo+"\n"
+    +"XP : "+_fmtMontant(S.xp||0)+"\n"
+    +"Parties : "+((S.stats&&S.stats.parties)||0)+"\n"
+    +"Tranche : "+num+" sur "+LEGENDE_TRANCHES+"\n"
+    +"Montant : "+_fmtMontant(LEGENDE_MONTANT)+" F CFA\n"
+    +"Opérateur : "+op+"\n"
+    +"Mon numéro "+op+" : (ce numéro WhatsApp — corrige-le si besoin)\n"
+    +"Référence : "+String(id).slice(0,8);
+  try{ AUDIO.sfxBadge&&AUDIO.sfxBadge(); }catch(_){}
+  var ov=document.getElementById("encmsg-popup"); if(ov) ov.remove();
+  var ov2=document.getElementById("enc-popup"); if(ov2) ov2.remove();
+  window.open("https://wa.me/221773728383?text="+encodeURIComponent(txt),"_blank");
+  render();
+  setTimeout(function(){
+    _encMessage('<div style="font-size:32px;margin-bottom:6px">📨</div>'
+      +'<div style="font-family:\'Cinzel\',serif;font-size:15px;font-weight:900;color:#6fe3a0;margin-bottom:8px">Demande envoyée</div>'
+      +'<div style="font-size:12.5px;color:#cbbfd8;line-height:1.6">Tranche '+num+'/'+LEGENDE_TRANCHES+' · '
+      +_fmtMontant(LEGENDE_MONTANT)+' F CFA<br>'
+      +'<span style="font-size:11px;color:var(--muted)">Elle sera vérifiée puis traitée à la main. '
+      +'Le transfert peut prendre quelques jours.</span></div>', "rgba(69,201,122,0.5)");
+  }, 700);
 }
 
 function renderLegende(app){
