@@ -2211,7 +2211,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v97.78";
+const BUILD_TAG="v97.82";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -2464,9 +2464,21 @@ function envoyerScoreMondial(){
     // Gardiens vaincus : ce qui distingue vraiment un joueur assidu d'un joueur
     // chanceux. Borné à 15 pour coller à la contrainte de la table.
     var gardiens=Math.max(0,Math.min(15,(S.campagne&&S.campagne.progres)||0));
+    // Temps de jeu cumulé, en minutes.
+    var minutes=Math.max(0,Math.round(((S.stats&&S.stats.tempsJeu)||0)/60));
+    // Pays déduit du FUSEAU HORAIRE de l'appareil : aucune autorisation
+    // demandée, aucun GPS, aucune adresse. On ne connaît que la région du
+    // monde — « Africa/Dakar » devient « Dakar ». C'est annoncé sur la page
+    // Confidentialité. Une position précise exigerait le consentement
+    // explicite du joueur ; elle n'est pas collectée.
+    var zone="";
+    try{
+      var tz=Intl.DateTimeFormat().resolvedOptions().timeZone||"";
+      zone=tz.split("/").pop().replace(/_/g," ").slice(0,40);
+    }catch(e){}
     var corps=[{appareil:id, pseudo:pseudo, points:meilleur,
                 xp:Math.max(0,S.xp||0), parties:(S.stats&&S.stats.parties)||0,
-                gardiens:gardiens,
+                gardiens:gardiens, minutes:minutes, zone:zone,
                 maj:new Date().toISOString()}];
     var ent=_supaEntetes(); ent["Prefer"]="resolution=merge-duplicates";
     var _envoi=function(c){
@@ -2476,10 +2488,16 @@ function envoyerScoreMondial(){
     // Si la colonne `gardiens` n'a pas encore été créée, la base rejette tout
     // l'envoi : le score serait perdu. On renvoie alors sans elle.
     _envoi(corps).catch(function(){
+      // 1er repli : sans `gardiens`. 2e repli : le strict minimum, pour que
+      // le score ne soit jamais perdu si des colonnes manquent encore.
       var sans=[{appareil:id, pseudo:pseudo, points:meilleur,
                  xp:Math.max(0,S.xp||0), parties:(S.stats&&S.stats.parties)||0,
-                 maj:new Date().toISOString()}];
-      return _envoi(sans);
+                 minutes:minutes, zone:zone, maj:new Date().toISOString()}];
+      return _envoi(sans).catch(function(){
+        return _envoi([{appareil:id, pseudo:pseudo, points:meilleur,
+                        xp:Math.max(0,S.xp||0), parties:(S.stats&&S.stats.parties)||0,
+                        maj:new Date().toISOString()}]);
+      });
     }).catch(function(){});
   }catch(e){}
 }
@@ -3062,6 +3080,7 @@ function charger(){
       if(!Array.isArray(S.defisDone)) S.defisDone=[];
       if(!Array.isArray(S.questionsVues)) S.questionsVues=[];
       if(!S.cartesJouees || typeof S.cartesJouees!=="object") S.cartesJouees={};
+      if(S.stats && typeof S.stats==="object" && typeof S.stats.tempsJeu!=="number") S.stats.tempsJeu=0;
       if(!S.stats || typeof S.stats!=="object")
         S.stats={parties:0,victoires:0,defaites:0,egalites:0,meilleurScore:0,serie:0,meilleureSerie:0,piliers:{}};
       if(!S.campagne || typeof S.campagne!=="object") S.campagne={progres:0};
@@ -3117,6 +3136,16 @@ function enregistrerStat(resultat, monScore, profil){
     if(!S.stats) S.stats={parties:0,victoires:0,defaites:0,egalites:0,meilleurScore:0,serie:0,meilleureSerie:0,piliers:{}};
     var st=S.stats;
     st.parties=(st.parties||0)+1;
+    // ── TEMPS DE JEU ────────────────────────────────────────────────────
+    // Cumulé en secondes, partie après partie. Sert au tableau de bord pour
+    // distinguer un joueur qui s'attarde d'un joueur qui survole.
+    try{
+      if(S._debutPartie){
+        var _d=Math.round((Date.now()-S._debutPartie)/1000);
+        if(_d>0 && _d<7200) st.tempsJeu=(st.tempsJeu||0)+_d;   // 2 h max : garde-fou
+        S._debutPartie=0;
+      }
+    }catch(_){}
     if(resultat==="win"){ st.victoires=(st.victoires||0)+1; st.serie=(st.serie||0)+1; if(st.serie>(st.meilleureSerie||0)) st.meilleureSerie=st.serie; }
     else if(resultat==="lose"){ st.defaites=(st.defaites||0)+1; st.serie=0; }
     else { st.egalites=(st.egalites||0)+1; }
@@ -10985,7 +11014,7 @@ function render(){
   const _defil = _memeEcran ? (window.scrollY||document.documentElement.scrollTop||0) : 0;
   app.classList.toggle("no-fade", _memeEcran); // re-rendu du même écran → pas de ré-animation
   const fn={menu:renderMenu,selection:renderSelection,jeu:renderJeu,duel_menu:renderDuelMenu,duel_connecting:renderDuelConnecting,duel_lobby:renderDuelLobby,duel_jeu:renderDuelJeu,duel_resultat:renderDuelResultat,
-    resultat:renderResultat,classement:renderClassement,statistiques:renderStats,defis:renderDefis,
+    resultat:renderResultat,classement:renderClassement,gains:renderGains,statistiques:renderStats,defis:renderDefis,
     badges:renderBadges,regles:renderRegles,apropos:renderApropos,collection:renderCollection,themes:renderThemes,campagne:renderCampagne,gardien_intro:renderGardienIntro,temple:renderTemple,disciple_intro:renderDiscipleIntro,confidentialite:renderConfidentialite,
     }[S.ecran];
   // ── Double tampon ────────────────────────────────────────────────────
@@ -12055,6 +12084,7 @@ function _partieALegendaires(){
 
 const G={
   startJeu(survie=false, keepVies=false){
+    S._debutPartie=Date.now();     // chronomètre de la partie
     S._lastCampagne=null;
     S._lastDisciple=null;
     S._templeNext=null;
@@ -14175,6 +14205,159 @@ function _partagerSagesse(id){
   showToast("📋 "+c.name,"info",2000);
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// LES GAINS — paliers de score récompensés pendant une opération.
+//
+// ⚠️ CE QUE CE MODULE FAIT, ET CE QU'IL NE FAIT PAS
+// Il ne transfère AUCUN argent. Il enregistre une DEMANDE que l'auteur
+// traite ensuite à la main depuis son tableau de bord, puis paie via Wave
+// ou Orange Money. Aucune clé de paiement ne vit dans ce fichier — elle
+// serait lisible par tous, le dépôt étant public.
+//
+// ⚠️ LE NUMÉRO DE TÉLÉPHONE N'EST JAMAIS ENVOYÉ DANS LA BASE.
+// La clé d'accès Supabase est publique : tout ce que le tableau de bord
+// peut lire, n'importe qui peut le lire. Les numéros passeraient donc en
+// clair pour tout le monde. Ils transitent par WhatsApp, en privé ; seule
+// la demande (pseudo, palier, montant) est enregistrée pour le suivi.
+// ══════════════════════════════════════════════════════════════════════
+const GAINS_ACTIFS=false;          // ← passe à true pour ouvrir l'opération
+const GAINS_FIN="";                // ex. "2026-09-15" — date de clôture
+const PALIERS_GAIN=[
+  {seuil:400, montant:2000},
+  {seuil:600, montant:5000},
+  {seuil:800, montant:10000}
+];
+function _gainAtteint(){
+  var s=(S.stats&&S.stats.meilleurScore)||0, r=null;
+  PALIERS_GAIN.forEach(function(p){ if(s>=p.seuil) r=p; });
+  return r;   // le palier le plus haut atteint, ou null
+}
+function _gainDemande(){
+  try{ return JSON.parse(localStorage.getItem("khalam_retrait")||"null"); }catch(e){ return null; }
+}
+function _gainOperationOuverte(){
+  if(!GAINS_ACTIFS) return false;
+  if(!GAINS_FIN) return true;
+  try{ return Date.now() <= new Date(GAINS_FIN+"T23:59:59").getTime(); }catch(e){ return true; }
+}
+
+function renderGains(app){
+  var pal=_gainAtteint();
+  var dem=_gainDemande();
+  var s=(S.stats&&S.stats.meilleurScore)||0;
+  var ouvert=_gainOperationOuverte();
+
+  var corps;
+  if(!ouvert){
+    corps='<div style="text-align:center;border:1px dashed rgba(212,175,55,0.3);border-radius:16px;'
+      +'padding:26px 18px;background:rgba(10,6,20,0.45)">'
+      +'<div style="font-size:30px;margin-bottom:8px">🎁</div>'
+      +'<div style="font-family:\'Cinzel\',serif;font-size:15px;color:var(--goldL);margin-bottom:6px">Aucune opération en cours</div>'
+      +'<div style="font-size:11.5px;color:var(--muted);font-family:\'Crimson Text\',Georgia,serif;font-style:italic;line-height:1.6">'
+      +'Les opérations sont annoncées sur les réseaux de KHALAM.<br>Continue de jouer : ton meilleur score compte.</div></div>';
+  } else if(dem){
+    corps='<div style="text-align:center;border:1px solid rgba(69,201,122,0.4);border-radius:16px;'
+      +'padding:24px 18px;background:rgba(69,201,122,0.07)">'
+      +'<div style="font-size:30px;margin-bottom:8px">📨</div>'
+      +'<div style="font-family:\'Cinzel\',serif;font-size:16px;color:#6fe3a0;margin-bottom:6px">Demande envoyée</div>'
+      +'<div style="font-size:12px;color:#cbbfd8;line-height:1.6">'+dem.montant+' F CFA · '+esc(dem.operateur)+'<br>'
+      +'<span style="font-size:10.5px;color:var(--muted)">Elle sera vérifiée puis traitée à la main. '
+      +'Le transfert peut prendre quelques jours.</span></div></div>';
+  } else if(!pal){
+    var prochain=PALIERS_GAIN.find(function(p){ return s<p.seuil; })||PALIERS_GAIN[0];
+    corps='<div style="text-align:center;border:1px dashed rgba(212,175,55,0.3);border-radius:16px;'
+      +'padding:24px 18px;background:rgba(10,6,20,0.45)">'
+      +'<div style="font-size:30px;margin-bottom:8px">🎯</div>'
+      +'<div style="font-family:\'Cinzel\',serif;font-size:15px;color:var(--goldL);margin-bottom:8px">Pas encore</div>'
+      +'<div style="font-size:12px;color:#cbbfd8;line-height:1.6">Ton meilleur score : <strong style="color:var(--goldL)">'+s+' pts</strong><br>'
+      +'Premier palier à <strong style="color:var(--goldL)">'+prochain.seuil+' pts</strong> — encore '+(prochain.seuil-s)+' points.</div></div>';
+  } else {
+    corps='<div style="border:1px solid rgba(240,208,96,0.5);border-radius:16px;padding:22px 18px;'
+      +'background:linear-gradient(150deg,rgba(240,208,96,0.10),rgba(10,6,20,0.5));text-align:center">'
+      +'<div style="font-size:32px;margin-bottom:6px">🏆</div>'
+      +'<div style="font-family:\'Cinzel\',serif;font-size:17px;font-weight:900;color:var(--goldL)">Tu es bénéficiaire</div>'
+      +'<div style="font-size:26px;font-weight:900;color:#6fe3a0;font-family:\'Cinzel\',serif;margin:6px 0">'+pal.montant+' F CFA</div>'
+      +'<div style="font-size:11px;color:var(--muted);margin-bottom:16px">Palier '+pal.seuil+' pts atteint · ton score : '+s+' pts</div>'
+      +'<div style="text-align:left;font-size:12px;color:#e8e0f2;margin-bottom:7px">Où veux-tu le recevoir ?</div>'
+      +'<div style="display:flex;gap:8px;margin-bottom:12px">'
+        +'<button onclick="_gainOperateur(this,\'Wave\')" class="gop" data-op="Wave" style="flex:1;min-height:44px;border-radius:12px;cursor:pointer;'
+        +'background:rgba(240,208,96,0.28);border:1.5px solid rgba(240,208,96,0.6);color:var(--goldL);font-family:\'Cinzel\',serif;font-size:13px;font-weight:900">Wave</button>'
+        +'<button onclick="_gainOperateur(this,\'Orange Money\')" class="gop" data-op="Orange Money" style="flex:1;min-height:44px;border-radius:12px;cursor:pointer;'
+        +'background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:#cbbfd8;font-family:\'Cinzel\',serif;font-size:13px;font-weight:900">Orange Money</button>'
+      +'</div>'
+      +'<input id="gain-num" type="tel" inputmode="tel" maxlength="20" placeholder="Ton numéro (ex. 77 123 45 67)" '
+        +'style="width:100%;padding:13px 14px;border-radius:13px;border:1px solid rgba(212,175,55,0.4);'
+        +'background:rgba(0,0,0,0.4);color:var(--goldL);font-family:\'Cinzel\',serif;font-size:15px;text-align:center;margin-bottom:6px">'
+      +'<div id="gain-err" style="font-size:11px;color:#e05555;min-height:16px;margin-bottom:6px"></div>'
+      +'<button onclick="_gainDemander()" style="width:100%;min-height:50px;border-radius:14px;cursor:pointer;border:none;'
+        +'background:linear-gradient(135deg,#F6E4A0,#F0D060 30%,#D4AF37 60%,#B8912E);color:#241703;'
+        +'font-family:\'Cinzel\',serif;font-size:14px;font-weight:900;letter-spacing:1px">DEMANDER MON RETRAIT</button>'
+      +'<div style="font-size:9.5px;color:var(--muted);margin-top:10px;line-height:1.5">'
+      +'Ton numéro nous parvient par WhatsApp, il n\'est pas enregistré dans le jeu. '
+      +'Le transfert est effectué à la main après vérification.</div></div>';
+  }
+
+  app.innerHTML=`<div class="screen fade"><div class="w100">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px">
+      <button class="btn-ghost" style="width:auto;padding:8px 14px" onclick="S.ecran='menu';render()">←</button>
+      <h2 style="font-family:'Cinzel',serif;color:var(--goldL);font-size:20px">🎁 Mes gains</h2>
+    </div>
+    <div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin:0 0 16px 54px">Opérations KHALAM</div>
+    ${corps}
+    <div style="margin-top:18px;font-size:10px;color:var(--gold);letter-spacing:2px;margin-bottom:8px">✦ LES PALIERS</div>
+    ${PALIERS_GAIN.map(function(p){
+      var ok=s>=p.seuil;
+      return '<div style="display:flex;align-items:center;gap:10px;padding:11px 13px;border-radius:12px;margin-bottom:7px;'
+        +'background:'+(ok?"rgba(240,208,96,0.10)":"rgba(255,255,255,0.03)")+';'
+        +'border:1px solid '+(ok?"rgba(240,208,96,0.45)":"rgba(255,255,255,0.08)")+'">'
+        +'<span style="font-size:18px">'+(ok?"✅":"🔒")+'</span>'
+        +'<span style="flex:1;font-size:12.5px;color:'+(ok?"var(--goldL)":"var(--muted)")+'">'+p.seuil+' points</span>'
+        +'<span style="font-size:14px;font-weight:900;color:'+(ok?"#6fe3a0":"var(--muted)")+';font-family:\'Cinzel\',serif">'+p.montant+' F</span>'
+        +'</div>';
+    }).join("")}
+    <div style="font-size:9.5px;color:var(--muted);text-align:center;margin-top:14px;line-height:1.5">
+      Un seul retrait par joueur et par opération.<br>Tout score manifestement anormal est écarté.</div>
+  </div></div>`;
+}
+function _gainOperateur(el,op){
+  S._gainOp=op;
+  document.querySelectorAll(".gop").forEach(function(x){
+    var a=(x.getAttribute("data-op")===op);
+    x.style.background=a?"rgba(240,208,96,0.28)":"rgba(255,255,255,0.05)";
+    x.style.border=a?"1.5px solid rgba(240,208,96,0.6)":"1px solid rgba(255,255,255,0.12)";
+    x.style.color=a?"var(--goldL)":"#cbbfd8";
+  });
+  try{ AUDIO.sfxClickUnique(); }catch(_){}
+}
+function _gainDemander(){
+  var pal=_gainAtteint(); if(!pal) return;
+  var i=document.getElementById("gain-num");
+  var err=document.getElementById("gain-err");
+  var num=(i?i.value:"").replace(/[^0-9+]/g,"");
+  if(num.length<9){ if(err) err.textContent="Numéro incomplet."; return; }
+  var op=S._gainOp||"Wave";
+  var id=_appareilId();
+  var pseudo=String(S.nom||"Joueur").slice(0,14);
+  // 1. La DEMANDE part dans la base — sans le numéro.
+  try{
+    var ent=_supaEntetes(); ent["Prefer"]="return=minimal";
+    fetch(SUPA.url+"/rest/v1/retraits",{method:"POST",headers:ent,body:JSON.stringify([{
+      appareil:id, pseudo:pseudo, palier:pal.seuil, montant:pal.montant,
+      operateur:op, score:(S.stats&&S.stats.meilleurScore)||0,
+      parties:(S.stats&&S.stats.parties)||0,
+      minutes:Math.round(((S.stats&&S.stats.tempsJeu)||0)/60), statut:"en_attente"
+    }])}).catch(function(){});
+  }catch(e){}
+  // 2. Le NUMÉRO part par WhatsApp, en privé.
+  try{ localStorage.setItem("khalam_retrait",JSON.stringify({montant:pal.montant,operateur:op,le:Date.now()})); }catch(e){}
+  var txt="Bonjour KHALAM 👋\nJe demande mon retrait ÉQUILIBRE.\n\n"
+    +"Pseudo : "+pseudo+"\nPalier : "+pal.seuil+" pts\nMontant : "+pal.montant+" F CFA\n"
+    +"Opérateur : "+op+"\nNuméro : "+num+"\nRéférence : "+String(id).slice(0,8);
+  try{ AUDIO.sfxBadge&&AUDIO.sfxBadge(); }catch(_){}
+  window.open("https://wa.me/221773728383?text="+encodeURIComponent(txt),"_blank");
+  render();
+}
+
 function renderCollection(app){
   var vues=S.cartesVues||[];
   var total=REPONSES.length;
@@ -14263,6 +14446,7 @@ function renderConfidentialite(app){
         ${sect("📊","Statistiques d'usage anonymes","Nous utilisons un outil de mesure d'audience (Google Analytics) pour connaître le nombre de visites et de joueurs, de façon <strong>anonyme et agrégée</strong>. Ces statistiques ne permettent pas de t'identifier personnellement ; elles nous aident seulement à améliorer le jeu.")}
         ${sect("🍪","Cookies","L'outil de mesure d'audience peut déposer des cookies techniques pour compter les visites. Ils ne servent qu'aux statistiques, pas à de la publicité.")}
         ${sect("🌐","Mode Duel en ligne","En Duel 1v1, une connexion directe (pair-à-pair) relie les deux téléphones le temps de la partie. Aucun contenu de jeu n'est stocké sur un serveur.")}
+        ${sect("🏆","Classement mondial","Quand tu termines une partie, ton pseudo, ton meilleur score, ton niveau, ton nombre de parties, ton avancée en Campagne, ton temps de jeu cumulé et ta région (déduite du fuseau horaire de ton téléphone, jamais du GPS) sont envoyés sur un serveur pour alimenter le classement. Dans le classement affiché aux joueurs, <strong>seul ton propre pseudo t'est visible</strong> : celui des autres est masqué. Aucune position précise, aucune adresse, aucun contact n'est collecté.")}
         ${sect("🚫","Aucune vente de données","Nous ne vendons, ne louons et ne partageons aucune donnée personnelle. Le jeu est gratuit et sans publicité.")}
         ${sect("✉️","Contact","Une question sur tes données ? Écris au couple KHALAM via le bouton WhatsApp de la page À propos.")}
         <div style="text-align:center;font-size:10px;color:var(--muted);margin-top:8px">Dernière mise à jour : ${new Date().toLocaleDateString('fr-FR',{month:'long',year:'numeric'})} · le couple KHALAM</div>
@@ -14494,7 +14678,7 @@ function renderMenu(app){
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px">
         <button class="mtuile2 pl-t1" onclick="S.ecran='classement';render()"><span>Classement</span></button>
         <button class="mtuile2 pl-t2" onclick="S.ecran='statistiques';render()"><span>Stats</span></button>
-        <button class="mtuile2 pl-t3" onclick="contactEmail()"><span>WhatsApp</span></button>
+        <button class="mtuile2 pl-t3" onclick="S.ecran='gains';render()"><span>${_gainAtteint()&&_gainOperationOuverte()?"🎁 Gains !":"Gains"}</span></button>
         <button class="mtuile2 pl-t4" onclick="S.ecran='defis';render()"><span>Défis (${S.defisDone?S.defisDone.length:0}/${DEFIS.length})</span></button>
         <button class="mtuile2 pl-t5" onclick="S.ecran='badges';render()"><span>(${S.badgesTotal?S.badgesTotal.length:0}/${BADGES.length})</span></button>
         <button class="mtuile2 pl-t6" onclick="S.ecran='themes';render()"><span>Boutique</span></button>
@@ -15871,8 +16055,8 @@ function _chargerTableauBord(){
   // exécuté, la base rejette TOUTE la requête. On réessaie donc sans elle
   // plutôt que d'afficher un échec, et on retient la cause exacte.
   var _essai=function(avecGardiens){
-    var cols="appareil,pseudo,points,xp,parties"+(avecGardiens?",gardiens":"")+",maj";
-    return fetch(SUPA.url+"/rest/v1/classement?select="+cols+"&order=maj.desc&limit=500",
+    var cols="appareil,pseudo,points,xp,parties"+(avecGardiens?",gardiens,minutes,zone":"")+",maj";
+    return fetch(SUPA.url+"/rest/v1/classement?select="+cols+"&order=points.desc&limit=500",
                  {headers:_supaEntetes()})
       .then(function(r){
         if(r.ok) return r.json();
@@ -15887,8 +16071,79 @@ function _chargerTableauBord(){
         .catch(function(e2){ _rendreTableauBord(null,e2||e1); });
     });
 }
+// ── DEMANDES DE RETRAIT (tableau de bord) ─────────────────────────────
+// Les numéros ne sont PAS ici : ils arrivent par WhatsApp. Cette liste sert
+// au suivi — qui a demandé, combien, et si c'est payé.
+function _chargerRetraits(){
+  var z=document.getElementById("bord-retraits"); if(!z) return;
+  z.innerHTML='<div style="font-size:11px;color:var(--muted);text-align:center">⏳ Demandes de retrait…</div>';
+  fetch(SUPA.url+"/rest/v1/retraits?select=id,pseudo,palier,montant,operateur,score,parties,minutes,statut,cree_le&order=cree_le.desc&limit=200",
+        {headers:_supaEntetes()})
+    .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
+    .then(function(l){ _rendreRetraits(Array.isArray(l)?l:[]); })
+    .catch(function(){
+      z.innerHTML='<div style="font-size:10.5px;color:var(--muted);text-align:center;line-height:1.5">'
+        +'Table <code style="color:#8FD0E8">retraits</code> absente ou inaccessible.<br>'
+        +'Crée-la dans le SQL Editor pour suivre les demandes.</div>';
+    });
+}
+function _rendreRetraits(l){
+  var z=document.getElementById("bord-retraits"); if(!z) return;
+  var attente=l.filter(function(x){ return x.statut!=="paye"; });
+  var html='<div style="font-size:10px;color:var(--gold);letter-spacing:2px;margin-bottom:8px">'
+    +'✦ DEMANDES DE RETRAIT'+(attente.length?' · '+attente.length+' en attente':'')+'</div>';
+  if(!l.length){
+    html+='<div style="font-size:11px;color:var(--muted);text-align:center;padding:14px">Aucune demande pour l\'instant.</div>';
+    z.innerHTML=html; return;
+  }
+  html+=l.map(function(x){
+    var paye=(x.statut==="paye");
+    var d="—";
+    try{ d=new Date(x.cree_le).toLocaleDateString("fr-FR",{day:"2-digit",month:"short"}); }catch(_){}
+    // Mêmes repères d'anomalie que pour les joueurs : à regarder avant de payer.
+    var sus=[];
+    if((x.score||0)>=500 && (x.parties||0)<=2) sus.push("peu de parties");
+    if((x.parties||0)>=3 && (x.minutes||0)===0) sus.push("aucun temps de jeu");
+    if((x.score||0)>1200) sus.push("score invraisemblable");
+    return '<div style="display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:12px;margin-bottom:7px;'
+      +'background:'+(paye?"rgba(69,201,122,0.07)":(sus.length?"rgba(224,85,85,0.09)":"rgba(240,208,96,0.08)"))+';'
+      +'border:1px solid '+(paye?"rgba(69,201,122,0.3)":(sus.length?"rgba(224,85,85,0.45)":"rgba(240,208,96,0.4)"))+'">'
+      +'<div style="flex:1;min-width:0">'
+        +'<div style="font-size:12.5px;font-weight:700;color:var(--text)">'+(sus.length?'⚠️ ':'')+esc(x.pseudo)
+          +' <span style="font-size:10px;color:var(--muted);font-weight:400">· '+esc(x.operateur||"—")+'</span></div>'
+        +'<div style="font-size:9px;color:var(--muted)">'+(x.score||0)+' pts · '+(x.parties||0)+' parties · '
+          +(x.minutes||0)+' min · 📅 '+d+'</div>'
+        +(sus.length?'<div style="font-size:9px;color:#f08a8a;margin-top:2px">⚠️ '+sus.join(" · ")+'</div>':'')
+      +'</div>'
+      +'<div style="text-align:right">'
+        +'<div style="font-size:14px;font-weight:900;color:'+(paye?"#6fe3a0":"var(--goldL)")+';font-family:\'Cinzel\',serif">'+(x.montant||0)+' F</div>'
+        +(paye?'<div style="font-size:9px;color:#6fe3a0">✓ payé</div>'
+              :'<button onclick="_marquerPaye('+x.id+')" style="margin-top:3px;padding:4px 10px;border-radius:9px;cursor:pointer;'
+               +'background:rgba(69,201,122,0.15);border:1px solid rgba(69,201,122,0.45);color:#6fe3a0;font-size:9.5px;font-weight:800">Marquer payé</button>')
+      +'</div></div>';
+  }).join("");
+  z.innerHTML=html;
+}
+function _marquerPaye(id){
+  var ent=_supaEntetes(); ent["Prefer"]="return=minimal";
+  fetch(SUPA.url+"/rest/v1/retraits?id=eq."+id,
+        {method:"PATCH",headers:ent,body:JSON.stringify({statut:"paye"})})
+    .then(function(){ _chargerRetraits(); showToast("✓ Marqué payé","win",2000); })
+    .catch(function(){ showToast("⚠️ Échec de la mise à jour","info",2600); });
+}
+
+function _marquerToastFin(){}
+
 function _rendreTableauBord(liste, souci){
   var ov=document.getElementById("bord-panneau"); if(!ov) return;
+  // Tri de sécurité : la base trie déjà par points, mais on ne dépend pas
+  // d'elle. À score égal, le plus assidu passe devant.
+  if(Array.isArray(liste)){
+    liste=liste.slice().sort(function(a,b){
+      var d=(b.points||0)-(a.points||0);
+      return d!==0 ? d : ((b.parties||0)-(a.parties||0));
+    });
+  }
   var entete='<div style="display:flex;align-items:center;gap:10px;margin-bottom:14px">'
     +'<button onclick="fermerTableauBord()" class="btn-ghost" style="width:auto;padding:8px 14px">←</button>'
     +'<div><div style="font-family:\'Cinzel\',serif;font-size:18px;font-weight:900;color:var(--goldL)">🔐 Tableau de bord</div>'
@@ -15924,17 +16179,51 @@ function _rendreTableauBord(liste, souci){
       +'<div style="font-size:20px;font-weight:900;color:'+(c||"var(--goldL)")+';font-family:\'Cinzel\',serif">'+v+'</div>'
       +'<div style="font-size:8.5px;color:var(--muted);letter-spacing:1px;margin-top:2px">'+l+'</div></div>';
   };
+  // ── DÉTECTION D'ANOMALIES ─────────────────────────────────────────────
+  // Le score n'est vérifié nulle part côté serveur : n'importe qui peut en
+  // envoyer un faux. Avant de récompenser un joueur, il faut regarder si son
+  // profil tient debout. Ces règles ne PROUVENT rien — elles signalent ce qui
+  // mérite un coup d'œil. Un vrai contrôle demanderait une validation serveur.
+  var _analyser=function(e){
+    var d=[];
+    var pts=e.points||0, parties=e.parties||0, min=e.minutes||0, xp=e.xp||0;
+    // Un score se construit : peu de parties pour un gros score est suspect.
+    if(pts>=500 && parties<=2) d.push("gros score en "+parties+" partie"+(parties>1?"s":""));
+    // Une partie dure 2 à 5 minutes. Moins d'une minute par partie est impossible.
+    if(parties>=3 && min>0 && (min/parties)<1) d.push("moins d'1 min par partie");
+    // Temps nul avec des parties enregistrées : score envoyé sans jouer.
+    if(parties>=3 && min===0) d.push("aucun temps de jeu");
+    // L'XP suit les parties : ~100 à 400 par partie. Un écart énorme trahit.
+    if(parties>=1 && xp>parties*1500) d.push("XP disproportionnée");
+    // Le maximum théorique : 10 manches, pot max 60, doublements et jokers.
+    if(pts>1200) d.push("score au-dessus du maximum plausible");
+    return d;
+  };
+  var _suspects=liste.filter(function(e){ return _analyser(e).length>0; }).length;
+
   var lignes=liste.map(function(e,i){
-    var j=Math.floor((maintenant-new Date(e.maj||0).getTime())/86400000);
+    var _al=_analyser(e);
+    var t=new Date(e.maj||0).getTime();
+    var j=Math.floor((maintenant-t)/86400000);
     var frais=j<=7;
+    // Date lisible plutôt qu'un simple « il y a N jours ».
+    var dateTxt="—";
+    try{ if(t) dateTxt=new Date(t).toLocaleDateString("fr-FR",{day:"2-digit",month:"short",year:"2-digit"}); }catch(_){}
+    // Durée : heures et minutes, ou minutes seules.
+    var m=e.minutes||0;
+    var duree = m>=60 ? (Math.floor(m/60)+" h "+String(m%60).padStart(2,"0")) : (m+" min");
     return '<div style="display:flex;align-items:center;gap:9px;padding:9px 10px;border-radius:10px;margin-bottom:6px;'
-      +'background:'+(frais?"rgba(69,201,122,0.07)":"rgba(255,255,255,0.03)")+';'
-      +'border:1px solid '+(frais?"rgba(69,201,122,0.25)":"rgba(255,255,255,0.08)")+'">'
+      +'background:'+(_al.length?"rgba(224,85,85,0.09)":(frais?"rgba(69,201,122,0.07)":"rgba(255,255,255,0.03)"))+';'
+      +'border:1px solid '+(_al.length?"rgba(224,85,85,0.45)":(frais?"rgba(69,201,122,0.25)":"rgba(255,255,255,0.08)"))+'">'
       +'<div style="width:22px;font-size:10px;color:var(--muted)">'+(i+1)+'</div>'
       +'<div style="flex:1;min-width:0">'
-        +'<div style="font-size:12.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+esc(e.pseudo)+'</div>'
+        +'<div style="font-size:12.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'
+          +(_al.length?'⚠️ ':'')+esc(e.pseudo)
+          +(e.zone?' <span style="font-size:9px;color:#8FD0E8;font-weight:400">· 📍 '+esc(e.zone)+'</span>':'')+'</div>'
         +'<div style="font-size:9px;color:var(--muted)">'+(e.parties||0)+' parties · '+(e.xp||0)+' XP'
           +((e.gardiens||0)?' · ⚔ '+e.gardiens+'/15':'')+'</div>'
+        +'<div style="font-size:9px;color:var(--muted)">⏱ '+duree+' de jeu · 📅 '+dateTxt+'</div>'
+        +(_al.length?'<div style="font-size:9px;color:#f08a8a;margin-top:3px;line-height:1.4">⚠️ '+_al.join(' · ')+'</div>':'')
       +'</div>'
       +'<div style="text-align:right">'
         +'<div style="font-size:14px;font-weight:900;color:var(--goldL);font-family:\'Cinzel\',serif">'+(e.points||0)+'</div>'
@@ -15949,10 +16238,17 @@ function _rendreTableauBord(liste, souci){
       +vitrine(parties,"PARTIES TOTALES")+vitrine(gardiensMax+"/15","MEILLEURE CAMPAGNE")
       +vitrine(n?Math.round(parties/n):0,"PARTIES / JOUEUR")
     +'</div>'
-    +'<div style="font-size:10px;color:var(--gold);letter-spacing:2px;margin:0 2px 8px">✦ TOUS LES JOUEURS · du plus récent au plus ancien</div>'
+    // Bandeau de vigilance : n'apparaît que s'il y a matière à regarder.
+    +(_suspects?'<div style="border:1px solid rgba(224,85,85,0.45);background:rgba(224,85,85,0.08);'
+      +'border-radius:12px;padding:11px 13px;margin-bottom:14px;font-size:11px;color:#f08a8a;line-height:1.55">'
+      +'⚠️ <strong>'+_suspects+' profil'+(_suspects>1?'s':'')+' à vérifier</strong> avant toute récompense.<br>'
+      +'<span style="color:var(--muted);font-size:10px">Les scores ne sont pas contrôlés côté serveur : '
+      +'n\'importe qui peut en envoyer un faux. Ces repères signalent ce qui mérite un coup d\'œil — ils ne prouvent rien.</span></div>':"")
+    +'<div style="font-size:10px;color:var(--gold);letter-spacing:2px;margin:0 2px 8px">✦ TOUS LES JOUEURS · du meilleur score au plus faible</div>'
     +(n?lignes:'<div style="text-align:center;color:var(--muted);font-size:12px;padding:26px">Aucun joueur enregistré pour l\'instant.</div>')
     +'<div style="text-align:center;margin-top:14px">'
       +'<button onclick="_chargerTableauBord()" class="btn-ghost" style="width:auto;padding:9px 18px;font-size:12px">🔄 Actualiser</button></div>'
+    +'<div id="bord-retraits" style="margin-top:20px"></div>'
     // ── OUTIL : calculer l'empreinte d'un nouveau mot de passe ────────────
     // Permet de changer le code sans console ni intermédiaire : le mot de
     // passe est saisi ici, seule son empreinte s'affiche, et c'est elle seule
@@ -15972,6 +16268,8 @@ function _rendreTableauBord(liste, souci){
       +'</div>'
       +'<div id="bord-res"></div>'
     +'</div>';
+  // Les demandes de retrait se chargent après le tableau des joueurs.
+  try{ _chargerRetraits(); }catch(e){}
 }
 
 // Calcule l'empreinte du mot de passe saisi et propose de la copier.
