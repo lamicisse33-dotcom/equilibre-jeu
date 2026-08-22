@@ -2211,7 +2211,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v97.82";
+const BUILD_TAG="v97.86";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -2608,6 +2608,68 @@ const DOS=[
        s+='<path d="M'+cx+' '+(cy-7)+' L'+cx+' '+(cy+7)+'" stroke="'+t+'" stroke-width="1.6" opacity="'+o+'"/>';
        for(var k=-5;k<=5;k+=2.5) s+='<line x1="'+(cx-3)+'" y1="'+(cy+k)+'" x2="'+(cx+3)+'" y2="'+(cy+k)+'" stroke="'+t+'" stroke-width="0.6" opacity="'+(o*0.7)+'"/>';
      }
+     return s; }},
+
+  {id:"ndebele", nom:"Le Mur Ndebele", ic:"◫", prix:120,
+   fond:"linear-gradient(160deg,#0e1c2a,#050b12)", trait:"#F0D060",
+   desc:"Peinture murale ndebele, angles et couleurs franches.",
+   svg:function(t){
+     var s="";
+     for(var y=0;y<5;y++) for(var x=0;x<4;x++){
+       var px=x*25, py=y*28;
+       s+='<rect x="'+(px+3)+'" y="'+(py+3)+'" width="19" height="22" fill="none" stroke="'+t+'" stroke-width="1.2" opacity="0.65"/>';
+       if((x+y)%2)
+         s+='<path d="M'+(px+7)+' '+(py+7)+' L'+(px+18)+' '+(py+7)+' L'+(px+18)+' '+(py+21)+' Z" fill="'+t+'" opacity="0.42"/>';
+       else
+         s+='<rect x="'+(px+8)+'" y="'+(py+9)+'" width="9" height="10" fill="'+t+'" opacity="0.30"/>';
+     }
+     return s; }},
+
+  {id:"fleuve", nom:"Le Fleuve", ic:"〰", prix:150,
+   fond:"linear-gradient(160deg,#07202a,#030d14)", trait:"#5FD3D0",
+   desc:"Les méandres du Sénégal, vus du ciel.",
+   svg:function(t){
+     var s="";
+     for(var i=0;i<7;i++){
+       var y=14+i*18, amp=9+((i%3)*4);
+       s+='<path d="M2 '+y+' Q20 '+(y-amp)+' 38 '+y+' T74 '+y+' T110 '+y+'" fill="none" stroke="'+t
+         +'" stroke-width="'+(1.6-(i%2)*0.7).toFixed(1)+'" opacity="'+(0.65-i*0.05).toFixed(2)+'" stroke-linecap="round"/>';
+     }
+     for(var k=0;k<9;k++)
+       s+='<circle cx="'+(12+(k*11)%80)+'" cy="'+(22+(k*17)%100)+'" r="1.7" fill="'+t+'" opacity="0.5"/>';
+     return s; }},
+
+  {id:"baobab", nom:"Le Baobab", ic:"🌳", prix:200,
+   fond:"linear-gradient(160deg,#251a0e,#0d0805)", trait:"#D9A441",
+   desc:"L'arbre qui tient seul au milieu de la plaine.",
+   svg:function(t){
+     var g='stroke="'+t+'" fill="none" stroke-linecap="round"';
+     var s='<path d="M50 122 L50 66" '+g+' stroke-width="7" opacity="0.8"/>';
+     [[-1,26],[1,26],[-1,15],[1,15],[0,34]].forEach(function(b,i){
+       var x=50+b[0]*b[1], y=66-i*4;
+       s+='<path d="M50 '+(y+6)+' Q'+((50+x)/2)+' '+(y-10)+' '+x+' '+(y-22)+'" '+g+' stroke-width="'+(3.4-i*0.4).toFixed(1)+'" opacity="0.75"/>';
+       for(var k=0;k<3;k++)
+         s+='<path d="M'+x+' '+(y-22)+' L'+(x+(k-1)*9)+' '+(y-34)+'" '+g+' stroke-width="1.5" opacity="0.55"/>';
+     });
+     s+='<path d="M18 122 L82 122" '+g+' stroke-width="1.2" opacity="0.4"/>';
+     return s; }},
+
+  {id:"etoiles", nom:"La Nuit des Ancêtres", ic:"✦", prix:250,
+   fond:"radial-gradient(ellipse at 50% 30%,#1a1642,#080618 70%,#040209)", trait:"#E8DCFF",
+   desc:"Le ciel sous lequel les anciens comptaient les saisons.",
+   svg:function(t){
+     var s="", pts=[[22,20],[44,14],[63,26],[80,18],[30,44],[52,38],[72,52],[18,64],[40,70],[62,80],[84,72],[28,96],[50,104],[70,110],[86,96]];
+     pts.forEach(function(p,i){
+       var r=(i%4===0)?2.6:1.5;
+       s+='<circle cx="'+p[0]+'" cy="'+p[1]+'" r="'+r+'" fill="'+t+'" opacity="'+(i%3?0.55:0.9)+'"/>';
+       if(i%4===0)
+         s+='<path d="M'+p[0]+' '+(p[1]-6)+' L'+p[0]+' '+(p[1]+6)+' M'+(p[0]-6)+' '+p[1]+' L'+(p[0]+6)+' '+p[1]
+           +'" stroke="'+t+'" stroke-width="0.7" opacity="0.45"/>';
+     });
+     [[0,1],[1,2],[2,3],[4,5],[5,6],[7,8],[8,9],[9,10],[11,12],[12,13],[13,14]].forEach(function(l){
+       s+='<line x1="'+pts[l[0]][0]+'" y1="'+pts[l[0]][1]+'" x2="'+pts[l[1]][0]+'" y2="'+pts[l[1]][1]
+         +'" stroke="'+t+'" stroke-width="0.5" opacity="0.28"/>';
+     });
      return s; }},
 
   {id:"phenix", nom:"La Plume du Phénix", ic:"🔥", prix:null,
@@ -3136,6 +3198,18 @@ function enregistrerStat(resultat, monScore, profil){
     if(!S.stats) S.stats={parties:0,victoires:0,defaites:0,egalites:0,meilleurScore:0,serie:0,meilleureSerie:0,piliers:{}};
     var st=S.stats;
     st.parties=(st.parties||0)+1;
+    // ── PARRAINAGE : le parrain est crédité à la PREMIÈRE partie du filleul ──
+    // Pas à l'installation : un lien ouvert et refermé ne rapporte rien.
+    // Le parrain reçoit ses cauris via le lien de retour ; ici on marque
+    // simplement que le filleul a joué, pour ne le compter qu'une fois.
+    try{
+      if(st.parties===1 && localStorage.getItem("khalam_parrain") && !localStorage.getItem("khalam_parrain_ok")){
+        localStorage.setItem("khalam_parrain_ok","1");
+        setTimeout(function(){
+          showToast("🤝 Ton parrain vient d'être récompensé — merci !","win",3600);
+        }, 3200);
+      }
+    }catch(_){}
     // ── TEMPS DE JEU ────────────────────────────────────────────────────
     // Cumulé en secondes, partie après partie. Sert au tableau de bord pour
     // distinguer un joueur qui s'attarde d'un joueur qui survole.
@@ -11014,9 +11088,12 @@ function render(){
   const _defil = _memeEcran ? (window.scrollY||document.documentElement.scrollTop||0) : 0;
   app.classList.toggle("no-fade", _memeEcran); // re-rendu du même écran → pas de ré-animation
   const fn={menu:renderMenu,selection:renderSelection,jeu:renderJeu,duel_menu:renderDuelMenu,duel_connecting:renderDuelConnecting,duel_lobby:renderDuelLobby,duel_jeu:renderDuelJeu,duel_resultat:renderDuelResultat,
-    resultat:renderResultat,classement:renderClassement,gains:renderGains,statistiques:renderStats,defis:renderDefis,
+    resultat:renderResultat,classement:renderClassement,parrainage:renderParrainage,statistiques:renderStats,defis:renderDefis,
     badges:renderBadges,regles:renderRegles,apropos:renderApropos,collection:renderCollection,themes:renderThemes,campagne:renderCampagne,gardien_intro:renderGardienIntro,temple:renderTemple,disciple_intro:renderDiscipleIntro,confidentialite:renderConfidentialite,
     }[S.ecran];
+  // Un écran retiré du jeu (ancienne sauvegarde, lien périmé) ne doit pas
+  // laisser une page blanche : on retombe sur le menu.
+  if(!fn){ S.ecran="menu"; return render(); }
   // ── Double tampon ────────────────────────────────────────────────────
   // L'écran est construit hors document, puis comparé au précédent. Si le
   // résultat est identique — ce qui arrive très souvent, render() étant
@@ -14206,156 +14283,101 @@ function _partagerSagesse(id){
 }
 
 // ══════════════════════════════════════════════════════════════════════
-// LES GAINS — paliers de score récompensés pendant une opération.
-//
-// ⚠️ CE QUE CE MODULE FAIT, ET CE QU'IL NE FAIT PAS
-// Il ne transfère AUCUN argent. Il enregistre une DEMANDE que l'auteur
-// traite ensuite à la main depuis son tableau de bord, puis paie via Wave
-// ou Orange Money. Aucune clé de paiement ne vit dans ce fichier — elle
-// serait lisible par tous, le dépôt étant public.
-//
-// ⚠️ LE NUMÉRO DE TÉLÉPHONE N'EST JAMAIS ENVOYÉ DANS LA BASE.
-// La clé d'accès Supabase est publique : tout ce que le tableau de bord
-// peut lire, n'importe qui peut le lire. Les numéros passeraient donc en
-// clair pour tout le monde. Ils transitent par WhatsApp, en privé ; seule
-// la demande (pseudo, palier, montant) est enregistrée pour le suivi.
+// LE PARRAINAGE — faire connaître le jeu par ceux qui l'aiment.
+// Le parrain partage un lien ; le filleul l'ouvre, et les deux reçoivent
+// des cauris. Rien n'est promis en argent : la récompense est la monnaie
+// du jeu, celle qui sert déjà à la Boutique.
+// Tout se joue côté appareil : pas de compte, pas de base, aucune donnée
+// personnelle échangée. Le lien ne porte que le code du parrain.
 // ══════════════════════════════════════════════════════════════════════
-const GAINS_ACTIFS=false;          // ← passe à true pour ouvrir l'opération
-const GAINS_FIN="";                // ex. "2026-09-15" — date de clôture
-const PALIERS_GAIN=[
-  {seuil:400, montant:2000},
-  {seuil:600, montant:5000},
-  {seuil:800, montant:10000}
-];
-function _gainAtteint(){
-  var s=(S.stats&&S.stats.meilleurScore)||0, r=null;
-  PALIERS_GAIN.forEach(function(p){ if(s>=p.seuil) r=p; });
-  return r;   // le palier le plus haut atteint, ou null
+const PARRAIN_GAIN=150;       // cauris pour le parrain, par filleul
+const PARRAIN_BIENVENUE=200;  // cauris offerts au filleul
+
+function _monCodeParrain(){
+  try{
+    var id=_appareilId()||"";
+    return _empreinte("khalam-"+id).toUpperCase().slice(0,6);
+  }catch(e){ return "------"; }
 }
-function _gainDemande(){
-  try{ return JSON.parse(localStorage.getItem("khalam_retrait")||"null"); }catch(e){ return null; }
+function _lienParrain(){
+  return "https://tonequilibre.khalam.app/?p="+_monCodeParrain();
 }
-function _gainOperationOuverte(){
-  if(!GAINS_ACTIFS) return false;
-  if(!GAINS_FIN) return true;
-  try{ return Date.now() <= new Date(GAINS_FIN+"T23:59:59").getTime(); }catch(e){ return true; }
+function _verifierParrainage(){
+  try{
+    var u=new URLSearchParams(location.search||"");
+    var code=(u.get("p")||"").toUpperCase().replace(/[^A-Z0-9]/g,"").slice(0,6);
+    if(!code) return;
+    if(code===_monCodeParrain()) return;                     // pas d'auto-parrainage
+    if(localStorage.getItem("khalam_parrain")) return;       // une seule fois
+    if((S.stats&&S.stats.parties>0)||(S.xp||0)>0) return;    // réservé aux nouveaux
+    localStorage.setItem("khalam_parrain",code);
+    S.cauris=(S.cauris||0)+PARRAIN_BIENVENUE;
+    sauvegarder();
+    setTimeout(function(){
+      showToast("🎁 Bienvenue ! +"+PARRAIN_BIENVENUE+" cauris offerts par ton parrain","win",4200);
+    }, 2200);
+  }catch(e){}
+}
+function _mesFilleuls(){
+  try{ return parseInt(localStorage.getItem("khalam_filleuls")||"0",10)||0; }catch(e){ return 0; }
+}
+function _partagerParrainage(){
+  var txt="Rejoins-moi sur ÉQUILIBRE ⚖️\n"
+    +"Le jeu de cartes des 4 Piliers de Vie.\n\n"
+    +"Avec mon lien, tu reçois "+PARRAIN_BIENVENUE+" cauris de bienvenue :\n"
+    +_lienParrain();
+  try{
+    if(navigator.share){ navigator.share({text:txt}).catch(function(){}); return; }
+    if(navigator.clipboard){ navigator.clipboard.writeText(txt); showToast("📋 Lien copié — partage-le !","win",2600); return; }
+  }catch(e){}
+  window.open("https://wa.me/?text="+encodeURIComponent(txt),"_blank");
 }
 
-function renderGains(app){
-  var pal=_gainAtteint();
-  var dem=_gainDemande();
-  var s=(S.stats&&S.stats.meilleurScore)||0;
-  var ouvert=_gainOperationOuverte();
-
-  var corps;
-  if(!ouvert){
-    corps='<div style="text-align:center;border:1px dashed rgba(212,175,55,0.3);border-radius:16px;'
-      +'padding:26px 18px;background:rgba(10,6,20,0.45)">'
-      +'<div style="font-size:30px;margin-bottom:8px">🎁</div>'
-      +'<div style="font-family:\'Cinzel\',serif;font-size:15px;color:var(--goldL);margin-bottom:6px">Aucune opération en cours</div>'
-      +'<div style="font-size:11.5px;color:var(--muted);font-family:\'Crimson Text\',Georgia,serif;font-style:italic;line-height:1.6">'
-      +'Les opérations sont annoncées sur les réseaux de KHALAM.<br>Continue de jouer : ton meilleur score compte.</div></div>';
-  } else if(dem){
-    corps='<div style="text-align:center;border:1px solid rgba(69,201,122,0.4);border-radius:16px;'
-      +'padding:24px 18px;background:rgba(69,201,122,0.07)">'
-      +'<div style="font-size:30px;margin-bottom:8px">📨</div>'
-      +'<div style="font-family:\'Cinzel\',serif;font-size:16px;color:#6fe3a0;margin-bottom:6px">Demande envoyée</div>'
-      +'<div style="font-size:12px;color:#cbbfd8;line-height:1.6">'+dem.montant+' F CFA · '+esc(dem.operateur)+'<br>'
-      +'<span style="font-size:10.5px;color:var(--muted)">Elle sera vérifiée puis traitée à la main. '
-      +'Le transfert peut prendre quelques jours.</span></div></div>';
-  } else if(!pal){
-    var prochain=PALIERS_GAIN.find(function(p){ return s<p.seuil; })||PALIERS_GAIN[0];
-    corps='<div style="text-align:center;border:1px dashed rgba(212,175,55,0.3);border-radius:16px;'
-      +'padding:24px 18px;background:rgba(10,6,20,0.45)">'
-      +'<div style="font-size:30px;margin-bottom:8px">🎯</div>'
-      +'<div style="font-family:\'Cinzel\',serif;font-size:15px;color:var(--goldL);margin-bottom:8px">Pas encore</div>'
-      +'<div style="font-size:12px;color:#cbbfd8;line-height:1.6">Ton meilleur score : <strong style="color:var(--goldL)">'+s+' pts</strong><br>'
-      +'Premier palier à <strong style="color:var(--goldL)">'+prochain.seuil+' pts</strong> — encore '+(prochain.seuil-s)+' points.</div></div>';
-  } else {
-    corps='<div style="border:1px solid rgba(240,208,96,0.5);border-radius:16px;padding:22px 18px;'
-      +'background:linear-gradient(150deg,rgba(240,208,96,0.10),rgba(10,6,20,0.5));text-align:center">'
-      +'<div style="font-size:32px;margin-bottom:6px">🏆</div>'
-      +'<div style="font-family:\'Cinzel\',serif;font-size:17px;font-weight:900;color:var(--goldL)">Tu es bénéficiaire</div>'
-      +'<div style="font-size:26px;font-weight:900;color:#6fe3a0;font-family:\'Cinzel\',serif;margin:6px 0">'+pal.montant+' F CFA</div>'
-      +'<div style="font-size:11px;color:var(--muted);margin-bottom:16px">Palier '+pal.seuil+' pts atteint · ton score : '+s+' pts</div>'
-      +'<div style="text-align:left;font-size:12px;color:#e8e0f2;margin-bottom:7px">Où veux-tu le recevoir ?</div>'
-      +'<div style="display:flex;gap:8px;margin-bottom:12px">'
-        +'<button onclick="_gainOperateur(this,\'Wave\')" class="gop" data-op="Wave" style="flex:1;min-height:44px;border-radius:12px;cursor:pointer;'
-        +'background:rgba(240,208,96,0.28);border:1.5px solid rgba(240,208,96,0.6);color:var(--goldL);font-family:\'Cinzel\',serif;font-size:13px;font-weight:900">Wave</button>'
-        +'<button onclick="_gainOperateur(this,\'Orange Money\')" class="gop" data-op="Orange Money" style="flex:1;min-height:44px;border-radius:12px;cursor:pointer;'
-        +'background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.12);color:#cbbfd8;font-family:\'Cinzel\',serif;font-size:13px;font-weight:900">Orange Money</button>'
-      +'</div>'
-      +'<input id="gain-num" type="tel" inputmode="tel" maxlength="20" placeholder="Ton numéro (ex. 77 123 45 67)" '
-        +'style="width:100%;padding:13px 14px;border-radius:13px;border:1px solid rgba(212,175,55,0.4);'
-        +'background:rgba(0,0,0,0.4);color:var(--goldL);font-family:\'Cinzel\',serif;font-size:15px;text-align:center;margin-bottom:6px">'
-      +'<div id="gain-err" style="font-size:11px;color:#e05555;min-height:16px;margin-bottom:6px"></div>'
-      +'<button onclick="_gainDemander()" style="width:100%;min-height:50px;border-radius:14px;cursor:pointer;border:none;'
-        +'background:linear-gradient(135deg,#F6E4A0,#F0D060 30%,#D4AF37 60%,#B8912E);color:#241703;'
-        +'font-family:\'Cinzel\',serif;font-size:14px;font-weight:900;letter-spacing:1px">DEMANDER MON RETRAIT</button>'
-      +'<div style="font-size:9.5px;color:var(--muted);margin-top:10px;line-height:1.5">'
-      +'Ton numéro nous parvient par WhatsApp, il n\'est pas enregistré dans le jeu. '
-      +'Le transfert est effectué à la main après vérification.</div></div>';
-  }
+function renderParrainage(app){
+  var code=_monCodeParrain();
+  var n=_mesFilleuls();
+  var parrain=null;
+  try{ parrain=localStorage.getItem("khalam_parrain"); }catch(e){}
 
   app.innerHTML=`<div class="screen fade"><div class="w100">
-    <div style="display:flex;align-items:center;gap:12px;margin-bottom:6px">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:4px">
       <button class="btn-ghost" style="width:auto;padding:8px 14px" onclick="S.ecran='menu';render()">←</button>
-      <h2 style="font-family:'Cinzel',serif;color:var(--goldL);font-size:20px">🎁 Mes gains</h2>
+      <h2 style="font-family:'Cinzel',serif;color:var(--goldL);font-size:20px">🤝 Parrainage</h2>
     </div>
-    <div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin:0 0 16px 54px">Opérations KHALAM</div>
-    ${corps}
-    <div style="margin-top:18px;font-size:10px;color:var(--gold);letter-spacing:2px;margin-bottom:8px">✦ LES PALIERS</div>
-    ${PALIERS_GAIN.map(function(p){
-      var ok=s>=p.seuil;
-      return '<div style="display:flex;align-items:center;gap:10px;padding:11px 13px;border-radius:12px;margin-bottom:7px;'
-        +'background:'+(ok?"rgba(240,208,96,0.10)":"rgba(255,255,255,0.03)")+';'
-        +'border:1px solid '+(ok?"rgba(240,208,96,0.45)":"rgba(255,255,255,0.08)")+'">'
-        +'<span style="font-size:18px">'+(ok?"✅":"🔒")+'</span>'
-        +'<span style="flex:1;font-size:12.5px;color:'+(ok?"var(--goldL)":"var(--muted)")+'">'+p.seuil+' points</span>'
-        +'<span style="font-size:14px;font-weight:900;color:'+(ok?"#6fe3a0":"var(--muted)")+';font-family:\'Cinzel\',serif">'+p.montant+' F</span>'
-        +'</div>';
+    <div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin:0 0 16px 54px">Fais découvrir ÉQUILIBRE</div>
+
+    <div style="border:1px solid rgba(240,208,96,0.45);border-radius:18px;padding:22px 18px;text-align:center;
+      background:linear-gradient(150deg,rgba(240,208,96,0.10),rgba(10,6,20,0.5));margin-bottom:16px">
+      <div style="font-size:30px;margin-bottom:6px">🤝</div>
+      <div style="font-size:12px;color:#cbbfd8;line-height:1.65;margin-bottom:16px">
+        Ton ami reçoit <strong style="color:var(--goldL)">${PARRAIN_BIENVENUE} cauris</strong> de bienvenue.<br>
+        Tu reçois <strong style="color:var(--goldL)">${PARRAIN_GAIN} cauris</strong> dès qu'il joue sa première partie.</div>
+      <div style="font-size:9px;color:var(--muted);letter-spacing:2px;margin-bottom:5px">TON CODE</div>
+      <div style="font-family:'Cinzel',serif;font-size:26px;font-weight:900;color:var(--goldL);letter-spacing:5px;
+        background:rgba(0,0,0,0.35);border-radius:12px;padding:11px 0;margin-bottom:14px;user-select:all">${code}</div>
+      <button onclick="_partagerParrainage()" style="width:100%;min-height:52px;border-radius:15px;cursor:pointer;border:none;
+        background:linear-gradient(135deg,#F6E4A0,#F0D060 30%,#D4AF37 60%,#B8912E);color:#241703;
+        font-family:'Cinzel',serif;font-size:14px;font-weight:900;letter-spacing:1px;
+        box-shadow:0 6px 22px rgba(212,175,55,0.4)">📤 PARTAGER MON LIEN</button>
+    </div>
+
+    ${parrain?`<div style="border:1px solid rgba(69,201,122,0.35);background:rgba(69,201,122,0.07);
+      border-radius:13px;padding:12px 14px;text-align:center;font-size:11.5px;color:#6fe3a0;margin-bottom:14px">
+      ✅ Tu as été parrainé par <strong>${esc(parrain)}</strong></div>`:""}
+
+    <div style="font-size:10px;color:var(--gold);letter-spacing:2px;margin-bottom:8px">✦ COMMENT ÇA MARCHE</div>
+    ${[["1","Partage ton lien à un ami qui ne connaît pas encore le jeu."],
+       ["2","Il l'ouvre et installe ÉQUILIBRE : "+PARRAIN_BIENVENUE+" cauris lui sont offerts."],
+       ["3","Dès sa première partie, tu reçois "+PARRAIN_GAIN+" cauris."]].map(function(e){
+      return '<div style="display:flex;gap:11px;align-items:flex-start;padding:10px 12px;border-radius:11px;'
+        +'margin-bottom:6px;background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.07)">'
+        +'<span style="font-family:\'Cinzel\',serif;font-size:15px;font-weight:900;color:var(--goldL);flex-shrink:0">'+e[0]+'</span>'
+        +'<span style="font-size:11.5px;color:#cbbfd8;line-height:1.5">'+e[1]+'</span></div>';
     }).join("")}
-    <div style="font-size:9.5px;color:var(--muted);text-align:center;margin-top:14px;line-height:1.5">
-      Un seul retrait par joueur et par opération.<br>Tout score manifestement anormal est écarté.</div>
+    <div style="font-size:9.5px;color:var(--muted);text-align:center;margin-top:12px;line-height:1.5">
+      Les cauris servent à la Boutique — dos de cartes, voix du Guide.<br>
+      Ce ne sont pas de l'argent et ils ne se retirent pas.</div>
   </div></div>`;
-}
-function _gainOperateur(el,op){
-  S._gainOp=op;
-  document.querySelectorAll(".gop").forEach(function(x){
-    var a=(x.getAttribute("data-op")===op);
-    x.style.background=a?"rgba(240,208,96,0.28)":"rgba(255,255,255,0.05)";
-    x.style.border=a?"1.5px solid rgba(240,208,96,0.6)":"1px solid rgba(255,255,255,0.12)";
-    x.style.color=a?"var(--goldL)":"#cbbfd8";
-  });
-  try{ AUDIO.sfxClickUnique(); }catch(_){}
-}
-function _gainDemander(){
-  var pal=_gainAtteint(); if(!pal) return;
-  var i=document.getElementById("gain-num");
-  var err=document.getElementById("gain-err");
-  var num=(i?i.value:"").replace(/[^0-9+]/g,"");
-  if(num.length<9){ if(err) err.textContent="Numéro incomplet."; return; }
-  var op=S._gainOp||"Wave";
-  var id=_appareilId();
-  var pseudo=String(S.nom||"Joueur").slice(0,14);
-  // 1. La DEMANDE part dans la base — sans le numéro.
-  try{
-    var ent=_supaEntetes(); ent["Prefer"]="return=minimal";
-    fetch(SUPA.url+"/rest/v1/retraits",{method:"POST",headers:ent,body:JSON.stringify([{
-      appareil:id, pseudo:pseudo, palier:pal.seuil, montant:pal.montant,
-      operateur:op, score:(S.stats&&S.stats.meilleurScore)||0,
-      parties:(S.stats&&S.stats.parties)||0,
-      minutes:Math.round(((S.stats&&S.stats.tempsJeu)||0)/60), statut:"en_attente"
-    }])}).catch(function(){});
-  }catch(e){}
-  // 2. Le NUMÉRO part par WhatsApp, en privé.
-  try{ localStorage.setItem("khalam_retrait",JSON.stringify({montant:pal.montant,operateur:op,le:Date.now()})); }catch(e){}
-  var txt="Bonjour KHALAM 👋\nJe demande mon retrait ÉQUILIBRE.\n\n"
-    +"Pseudo : "+pseudo+"\nPalier : "+pal.seuil+" pts\nMontant : "+pal.montant+" F CFA\n"
-    +"Opérateur : "+op+"\nNuméro : "+num+"\nRéférence : "+String(id).slice(0,8);
-  try{ AUDIO.sfxBadge&&AUDIO.sfxBadge(); }catch(_){}
-  window.open("https://wa.me/221773728383?text="+encodeURIComponent(txt),"_blank");
-  render();
 }
 
 function renderCollection(app){
@@ -14678,10 +14700,11 @@ function renderMenu(app){
       <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:8px">
         <button class="mtuile2 pl-t1" onclick="S.ecran='classement';render()"><span>Classement</span></button>
         <button class="mtuile2 pl-t2" onclick="S.ecran='statistiques';render()"><span>Stats</span></button>
-        <button class="mtuile2 pl-t3" onclick="S.ecran='gains';render()"><span>${_gainAtteint()&&_gainOperationOuverte()?"🎁 Gains !":"Gains"}</span></button>
+        <button class="mtuile2 pl-t3" onclick="contactEmail()"><span>Contact</span></button>
         <button class="mtuile2 pl-t4" onclick="S.ecran='defis';render()"><span>Défis (${S.defisDone?S.defisDone.length:0}/${DEFIS.length})</span></button>
         <button class="mtuile2 pl-t5" onclick="S.ecran='badges';render()"><span>(${S.badgesTotal?S.badgesTotal.length:0}/${BADGES.length})</span></button>
         <button class="mtuile2 pl-t6" onclick="S.ecran='themes';render()"><span>Boutique</span></button>
+        <button class="mtuile2 pl-t2" onclick="S.ecran='parrainage';render()"><span>🤝 Parrainage</span></button>
       </div>
       <button class="mlame2 pl-lame" onclick="S.ecran='collection';render()">
         <span>Collection — ${(S.cartesVues?S.cartesVues.length:0)}/${REPONSES.length} cartes</span>
@@ -16071,69 +16094,6 @@ function _chargerTableauBord(){
         .catch(function(e2){ _rendreTableauBord(null,e2||e1); });
     });
 }
-// ── DEMANDES DE RETRAIT (tableau de bord) ─────────────────────────────
-// Les numéros ne sont PAS ici : ils arrivent par WhatsApp. Cette liste sert
-// au suivi — qui a demandé, combien, et si c'est payé.
-function _chargerRetraits(){
-  var z=document.getElementById("bord-retraits"); if(!z) return;
-  z.innerHTML='<div style="font-size:11px;color:var(--muted);text-align:center">⏳ Demandes de retrait…</div>';
-  fetch(SUPA.url+"/rest/v1/retraits?select=id,pseudo,palier,montant,operateur,score,parties,minutes,statut,cree_le&order=cree_le.desc&limit=200",
-        {headers:_supaEntetes()})
-    .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); })
-    .then(function(l){ _rendreRetraits(Array.isArray(l)?l:[]); })
-    .catch(function(){
-      z.innerHTML='<div style="font-size:10.5px;color:var(--muted);text-align:center;line-height:1.5">'
-        +'Table <code style="color:#8FD0E8">retraits</code> absente ou inaccessible.<br>'
-        +'Crée-la dans le SQL Editor pour suivre les demandes.</div>';
-    });
-}
-function _rendreRetraits(l){
-  var z=document.getElementById("bord-retraits"); if(!z) return;
-  var attente=l.filter(function(x){ return x.statut!=="paye"; });
-  var html='<div style="font-size:10px;color:var(--gold);letter-spacing:2px;margin-bottom:8px">'
-    +'✦ DEMANDES DE RETRAIT'+(attente.length?' · '+attente.length+' en attente':'')+'</div>';
-  if(!l.length){
-    html+='<div style="font-size:11px;color:var(--muted);text-align:center;padding:14px">Aucune demande pour l\'instant.</div>';
-    z.innerHTML=html; return;
-  }
-  html+=l.map(function(x){
-    var paye=(x.statut==="paye");
-    var d="—";
-    try{ d=new Date(x.cree_le).toLocaleDateString("fr-FR",{day:"2-digit",month:"short"}); }catch(_){}
-    // Mêmes repères d'anomalie que pour les joueurs : à regarder avant de payer.
-    var sus=[];
-    if((x.score||0)>=500 && (x.parties||0)<=2) sus.push("peu de parties");
-    if((x.parties||0)>=3 && (x.minutes||0)===0) sus.push("aucun temps de jeu");
-    if((x.score||0)>1200) sus.push("score invraisemblable");
-    return '<div style="display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:12px;margin-bottom:7px;'
-      +'background:'+(paye?"rgba(69,201,122,0.07)":(sus.length?"rgba(224,85,85,0.09)":"rgba(240,208,96,0.08)"))+';'
-      +'border:1px solid '+(paye?"rgba(69,201,122,0.3)":(sus.length?"rgba(224,85,85,0.45)":"rgba(240,208,96,0.4)"))+'">'
-      +'<div style="flex:1;min-width:0">'
-        +'<div style="font-size:12.5px;font-weight:700;color:var(--text)">'+(sus.length?'⚠️ ':'')+esc(x.pseudo)
-          +' <span style="font-size:10px;color:var(--muted);font-weight:400">· '+esc(x.operateur||"—")+'</span></div>'
-        +'<div style="font-size:9px;color:var(--muted)">'+(x.score||0)+' pts · '+(x.parties||0)+' parties · '
-          +(x.minutes||0)+' min · 📅 '+d+'</div>'
-        +(sus.length?'<div style="font-size:9px;color:#f08a8a;margin-top:2px">⚠️ '+sus.join(" · ")+'</div>':'')
-      +'</div>'
-      +'<div style="text-align:right">'
-        +'<div style="font-size:14px;font-weight:900;color:'+(paye?"#6fe3a0":"var(--goldL)")+';font-family:\'Cinzel\',serif">'+(x.montant||0)+' F</div>'
-        +(paye?'<div style="font-size:9px;color:#6fe3a0">✓ payé</div>'
-              :'<button onclick="_marquerPaye('+x.id+')" style="margin-top:3px;padding:4px 10px;border-radius:9px;cursor:pointer;'
-               +'background:rgba(69,201,122,0.15);border:1px solid rgba(69,201,122,0.45);color:#6fe3a0;font-size:9.5px;font-weight:800">Marquer payé</button>')
-      +'</div></div>';
-  }).join("");
-  z.innerHTML=html;
-}
-function _marquerPaye(id){
-  var ent=_supaEntetes(); ent["Prefer"]="return=minimal";
-  fetch(SUPA.url+"/rest/v1/retraits?id=eq."+id,
-        {method:"PATCH",headers:ent,body:JSON.stringify({statut:"paye"})})
-    .then(function(){ _chargerRetraits(); showToast("✓ Marqué payé","win",2000); })
-    .catch(function(){ showToast("⚠️ Échec de la mise à jour","info",2600); });
-}
-
-function _marquerToastFin(){}
-
 function _rendreTableauBord(liste, souci){
   var ov=document.getElementById("bord-panneau"); if(!ov) return;
   // Tri de sécurité : la base trie déjà par points, mais on ne dépend pas
@@ -16248,7 +16208,7 @@ function _rendreTableauBord(liste, souci){
     +(n?lignes:'<div style="text-align:center;color:var(--muted);font-size:12px;padding:26px">Aucun joueur enregistré pour l\'instant.</div>')
     +'<div style="text-align:center;margin-top:14px">'
       +'<button onclick="_chargerTableauBord()" class="btn-ghost" style="width:auto;padding:9px 18px;font-size:12px">🔄 Actualiser</button></div>'
-    +'<div id="bord-retraits" style="margin-top:20px"></div>'
+
     // ── OUTIL : calculer l'empreinte d'un nouveau mot de passe ────────────
     // Permet de changer le code sans console ni intermédiaire : le mot de
     // passe est saisi ici, seule son empreinte s'affiche, et c'est elle seule
@@ -16268,8 +16228,6 @@ function _rendreTableauBord(liste, souci){
       +'</div>'
       +'<div id="bord-res"></div>'
     +'</div>';
-  // Les demandes de retrait se chargent après le tableau des joueurs.
-  try{ _chargerRetraits(); }catch(e){}
 }
 
 // Calcule l'empreinte du mot de passe saisi et propose de la copier.
@@ -16567,6 +16525,7 @@ function verifierPartieEnCours(){
   render();
   // Tout premier lancement : on demande le prénom et l'emblème. Placé APRÈS
   // les reprises de partie, pour ne jamais se superposer à elles.
+  try{ _verifierParrainage(); }catch(e){}
   try{ _accueilNouveau(); }catch(e){}
 }
 
