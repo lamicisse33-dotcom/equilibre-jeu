@@ -54,6 +54,7 @@
   gtag('config', 'G-3JV4HCZD6N');
 </script>
 <!-- PeerJS intégré directement -->
+<style>html,body{background:#07040f;margin:0}</style>
 <meta http-equiv="Content-Security-Policy" content="default-src * 'self' 'unsafe-inline' 'unsafe-eval' data: blob:; script-src * 'self' 'unsafe-inline' 'unsafe-eval'; connect-src * 'self'; img-src * 'self' data: blob:; style-src * 'self' 'unsafe-inline';"/>
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover"/>
 <meta name="apple-mobile-web-app-capable" content="yes"/>
@@ -491,6 +492,24 @@ body.hab-clair [style*="background:rgba(0,0,0,0.35"]{background:rgba(74,56,22,0.
   color:#F5EDDA;font-family:'Cinzel',serif;font-weight:900;font-size:12px;letter-spacing:0.5px;
   text-shadow:0 2px 6px rgba(0,0,0,0.85);filter:drop-shadow(0 4px 10px rgba(0,0,0,0.5));}
 .mtuile2 span{line-height:1.1;text-align:center;}
+/* Annonce du gain : clignote en rouge, jaune, vert. Posée dans l'espace
+   libre de la ligne « JOUER », elle n'ajoute aucune hauteur au menu. */
+@keyframes annonceGain{
+  0%,  100% { color:#ff5a5a; text-shadow:0 0 8px rgba(255,90,90,0.75); }
+  33%       { color:#F0D060; text-shadow:0 0 8px rgba(240,208,96,0.75); }
+  66%       { color:#45c97a; text-shadow:0 0 8px rgba(69,201,122,0.75); }
+}
+.annonce-gain{
+  font-family:'Cinzel',serif; font-size:15px; font-weight:900; letter-spacing:0.5px;
+  animation:annonceGain 2.4s ease-in-out infinite;
+}
+/* Sur les écrans étroits (moins de 360 px), l'annonce viendrait toucher le
+   titre « JOUER » : elle se réduit pour garder l'air entre les deux. */
+@media (max-width:359px){ .annonce-gain{ font-size:12px; letter-spacing:0; } }
+@media (prefers-reduced-motion:reduce){
+  /* Un joueur qui a demandé moins d'animations garde un texte fixe. */
+  .annonce-gain{ animation:none; color:#F0D060; }
+}
 .mtuile2:active{transform:scale(0.97);}
 .mlame2{width:100%;aspect-ratio:882/155;border:none;cursor:pointer;margin-top:10px;
   background-color:transparent;background-position:center;background-size:100% 100%;background-repeat:no-repeat;display:flex;align-items:center;justify-content:center;text-align:center;
@@ -1683,6 +1702,43 @@ html.lite .bd-ball{transition:opacity 0.2s ease;}
 
 </head>
 <body>
+<div id="preload" style="position:fixed;inset:0;z-index:99999;background:#07040f;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px">
+  <div style="font-size:44px;line-height:1">⚖️</div>
+  <div style="font-family:Georgia,serif;font-size:17px;font-weight:900;color:#F0D060;letter-spacing:4px">ÉQUILIBRE</div>
+  <div style="width:190px;height:6px;border-radius:3px;background:rgba(255,255,255,0.10);overflow:hidden">
+    <div id="preload-barre" style="height:100%;width:0%;background:linear-gradient(90deg,#C9A227,#F6E4A0);transition:width .25s linear"></div>
+  </div>
+  <div id="preload-pct" style="font-family:Georgia,serif;font-size:13px;color:#9d92b5;letter-spacing:1px">0 %</div>
+  <div style="font-family:Georgia,serif;font-size:10.5px;color:#6b6480;font-style:italic">Chargement du jeu…</div>
+</div>
+<script>
+/* Compteur de chargement. Il avance à l'aveugle — le navigateur ne donne pas
+   de progression réelle sur un fichier déjà en cours de lecture — puis saute
+   à 100 % quand le jeu est prêt. Mieux vaut un compteur honnête qui attend
+   qu'un écran blanc qui laisse croire à une panne. */
+(function(){
+  var p=0, barre=document.getElementById("preload-barre"), txt=document.getElementById("preload-pct");
+  var t=setInterval(function(){
+    if(p<92) p+=Math.max(1, Math.round((92-p)/12));
+    if(barre) barre.style.width=p+"%";
+    if(txt) txt.textContent=p+" %";
+  },90);
+  window.__preloadFini=function(){
+    clearInterval(t);
+    if(barre) barre.style.width="100%";
+    if(txt) txt.textContent="100 %";
+    var el=document.getElementById("preload");
+    if(!el) return;
+    el.style.transition="opacity .35s ease";
+    el.style.opacity="0";
+    setTimeout(function(){ try{ el.remove(); }catch(e){} }, 380);
+  };
+  // Filet de sécurité : si le jeu ne signale jamais qu'il est prêt,
+  // l'écran s'efface quand même au bout de 20 s.
+  setTimeout(function(){ try{ window.__preloadFini(); }catch(e){} }, 20000);
+})();
+</script>
 <div id="app"></div>
 
 <!-- ══ ÉCRAN D'ACCUEIL ANIMÉ (splash) — overlay auto-disparaissant ══ -->
@@ -2214,7 +2270,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v98.10";
+const BUILD_TAG="v98.14";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -13320,7 +13376,16 @@ const G={
     DEFIS.forEach(d=>{
       if(!S.defisDone.includes(d.id)){
         const ok=d.check(j.historique,j.s1,j.s2,S.diff,j.maxStreak);
-        if(ok){S.defisDone.push(d.id);bonusXP+=d.xp;showToast(`${d.icon} Défi accompli ! +${d.xp} XP`,"badge",3500);}
+        // Un défi comme « Scorer 150+ pts » se valide même en ayant perdu :
+        // c'est cohérent, mais « Défi accompli ! » juste après un écran
+        // DÉFAITE sonnait comme une contradiction. On le dit autrement.
+        if(ok){
+          S.defisDone.push(d.id); bonusXP+=d.xp;
+          var _perdu=(j.s1<j.s2);
+          showToast(_perdu
+            ? `${d.icon} Défaite, mais défi accompli : +${d.xp} XP`
+            : `${d.icon} Défi accompli ! +${d.xp} XP`, "badge", 3500);
+        }
       }
     });
     S.xp+=bonusXP;
@@ -13333,7 +13398,8 @@ const G={
         S.defiJour.faitLe=_jn;
         var _bj=_dj.xp+20;
         S.xp+=_bj;
-        showToast(_dj.icon+" Défi du jour réussi ! +"+_bj+" XP · série 🔥"+S.defiJour.serie+" j","badge",4200,true);
+        showToast((j.s1<j.s2 ? _dj.icon+" Défaite, mais défi du jour réussi : +" : _dj.icon+" Défi du jour réussi ! +")
+          +_bj+" XP · série 🔥"+S.defiJour.serie+" j","badge",4200,true);
       }
     }catch(e){ if(window.__logErr) window.__logErr(e,"defiJour"); }
     // Badge battu expert — AVANT checkBadges
@@ -15433,7 +15499,14 @@ function renderMenu(app){
 
     <!-- ══ JOUER ══ -->
     <div style="padding:0 16px;margin-bottom:14px">
-      <div style="font-size:9px;color:var(--muted);letter-spacing:3px;margin-bottom:10px">⚔️ JOUER</div>
+      <!-- L'annonce se pose SUR la ligne « JOUER », centrée dans l'espace
+           restant : la hauteur du bandeau ne change pas d'un pixel.
+           Le titre garde sa place à gauche, l'annonce occupe le milieu. -->
+      <div style="position:relative;display:flex;align-items:center;margin-bottom:10px;min-height:18px">
+        <div style="font-size:9px;color:var(--muted);letter-spacing:3px;flex-shrink:0;position:relative;z-index:2">⚔️ JOUER</div>
+        <div class="annonce-gain" style="position:absolute;left:0;right:0;text-align:center;
+          white-space:nowrap;pointer-events:none">100 000 F CFA À GAGNER</div>
+      </div>
       <div style="display:flex;flex-direction:column;gap:10px">
         <!-- 3 plaques ciselées (fresques : images de la Campagne) -->
         <div class="plq-img">
@@ -17538,6 +17611,8 @@ document.addEventListener("visibilitychange",function(){
 });
 
 try{ verifierPartieEnCours(); }catch(e){ if(window.__logErr) window.__logErr(e,"init verifierPartieEnCours"); }
+// Le jeu est prêt : on efface l'écran de chargement.
+try{ if(window.__preloadFini) window.__preloadFini(); }catch(e){}
 
 
 function renderSelection(app){
