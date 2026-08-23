@@ -2270,7 +2270,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v98.14";
+const BUILD_TAG="v98.15";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -14907,22 +14907,14 @@ function _encaissement(){
             +'style="width:100%;min-height:50px;border-radius:15px;cursor:pointer;border:none;'
             +'background:rgba(255,255,255,0.08);border:1px solid rgba(255,255,255,0.16);color:var(--muted);'
             +'font-family:\'Cinzel\',serif;font-size:13px;font-weight:900;letter-spacing:1px">FERMER</button>'
-          // Deux chemins, pas un seul. La Campagne rapporte un bonus d'XP
-          // en plus de la partie (vaincre un Gardien ajoute son XP propre) :
-          // n'offrir que le Solo envoyait vers le mode le MOINS rentable
-          // pour l'objectif affiché juste au-dessus.
-          : '<div style="display:flex;gap:8px">'
-            +'<button onclick="document.getElementById(\'enc-popup\').remove();S.ecran=\'campagne\';render()" '
-              +'style="flex:1;min-height:52px;border-radius:15px;cursor:pointer;border:none;'
-              +'background:linear-gradient(135deg,#F6E4A0,#F0D060 30%,#D4AF37 60%,#B8912E);color:#241703;'
-              +'font-family:\'Cinzel\',serif;font-size:12.5px;font-weight:900;line-height:1.15">'
-              +'⚔ CAMPAGNE<br><span style="font-size:9px;font-weight:700;opacity:0.85">plus d\'XP</span></button>'
-            +'<button onclick="document.getElementById(\'enc-popup\').remove();G.startJeu(false)" '
-              +'style="flex:1;min-height:52px;border-radius:15px;cursor:pointer;'
-              +'background:rgba(240,208,96,0.12);border:1.5px solid rgba(240,208,96,0.45);color:var(--goldL);'
-              +'font-family:\'Cinzel\',serif;font-size:12.5px;font-weight:900;line-height:1.15">'
-              +'▶ SOLO<br><span style="font-size:9px;font-weight:700;opacity:0.8">partie rapide</span></button>'
-            +'</div>'))
+          // Un seul bouton vers le menu : le joueur y choisit lui-même
+          // Solo, Campagne ou Duel. Deux boutons ici forçaient un choix
+          // qu'il vaut mieux lui laisser prendre devant tous ses modes.
+          : '<button onclick="document.getElementById(\'enc-popup\').remove();S.ecran=\'menu\';render()" '
+            +'style="width:100%;min-height:52px;border-radius:15px;cursor:pointer;border:none;'
+            +'background:linear-gradient(135deg,#F6E4A0,#F0D060 30%,#D4AF37 60%,#B8912E);color:#241703;'
+            +'font-family:\'Cinzel\',serif;font-size:14px;font-weight:900;letter-spacing:1px">'
+            +'\u25B6 JOUER</button>'))
     +((fini||!_ouverte)?'':'<button onclick="document.getElementById(\'enc-popup\').remove()" '
       +'style="width:100%;min-height:40px;margin-top:8px;border-radius:12px;cursor:pointer;'
       +'background:transparent;border:1px solid rgba(255,255,255,0.14);color:var(--muted);font-size:12px">Fermer</button>')
@@ -15481,7 +15473,10 @@ function renderMenu(app){
     <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:0 16px 14px">
       ${[
         {b:"vitrine", v:meilleurScore+" pts",l:"Meilleur score"},
-        {b:"vitrine2",v:partiesJouees,l:"Parties"},
+        // L'XP prend la place des parties : c'est elle qui ouvre les tranches
+        // d'encaissement et les paliers de la Voie. Le nombre de parties reste
+        // consultable dans l'écran Stats.
+        {b:"vitrine2",v:_fmtMontant(S.xp||0),l:"XP totale"},
         {b:"vitrine3",v:(S.defisDone?S.defisDone.length:0)+"/"+DEFIS.length,l:"Défis"},
       ].map(x=>`<div class="mvit pl-${x.b}"><div class="mvit-in">
         <div style="font-size:21px;font-weight:900;color:#F0D060;font-family:Cinzel,serif;line-height:1;text-shadow:0 2px 8px rgba(0,0,0,0.9)">${x.v}</div>
