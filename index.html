@@ -2270,7 +2270,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v98.15";
+const BUILD_TAG="v98.19";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -2851,7 +2851,7 @@ function acheterDos(id){
 // ── VERSION TEST ─────────────────────────────────────────────────────
 // true  : tout est offert — habillages ET thèmes accessibles sans condition.
 // false : l'économie des cauris et les niveaux reprennent leurs droits.
-const MODE_TEST=true;
+const MODE_TEST=false;
 
 const HABILLAGES=[
   // ── RAYON VIDÉ (v97.43) — les 6 habillages payants ont été retirés. ──
@@ -5110,30 +5110,32 @@ const CARTES_MERITEES=[
   // parties, un joueur l'obtenait donc dès sa première heure. Chaque carte
   // exige désormais aussi un seuil d'XP — la preuve qu'on a joué longtemps,
   // pas seulement qu'on a eu un bon jour.
-  //   ≈ 340 XP par partie : 2000 XP ≈ 6 parties, 25 000 XP ≈ 75 parties.
+  // Seuils échelonnés de 10 000 en 10 000 : la 1re carte à 10 000 XP, la 2e à
+  //   20 000, la 3e à 30 000, la 4e à 40 000.
+  //   ≈ 340 XP par partie : 10 000 XP ≈ 30 parties, 40 000 XP ≈ 118 parties.
   {id:"aplomb", nom:"L'Aplomb", ic:"⚖", pts:null,   // vaut la mise adverse +1
-   xpMin:2000,
-   comment:"2 000 XP et une partie avec les 4 piliers à moins de 20 pts d'écart",
+   xpMin:10000,
+   comment:"10 000 XP et une partie avec les 4 piliers à moins de 20 pts d'écart",
    cit:"Ni le plus haut, ni le plus bas. Le plus juste.",
-   cond:function(){ return (S.xp||0)>=2000 && !!(S.exploits&&S.exploits.aplomb); }},
+   cond:function(){ return (S.xp||0)>=10000 && !!(S.exploits&&S.exploits.aplomb); }},
 
   {id:"braise", nom:"La Braise", ic:"🔥", pts:45,
-   xpMin:8000,
-   comment:"8 000 XP et 10 victoires d'affilée",
+   xpMin:20000,
+   comment:"20 000 XP et 10 victoires d'affilée",
    cit:"Le feu qui ne s'éteint pas entre deux parties.",
-   cond:function(){ return (S.xp||0)>=8000 && ((S.stats&&S.stats.meilleureSerie)||0)>=10; }},
+   cond:function(){ return (S.xp||0)>=20000 && ((S.stats&&S.stats.meilleureSerie)||0)>=10; }},
 
   {id:"patience", nom:"La Patience", ic:"🌿", pts:40,
-   xpMin:20000,
-   comment:"20 000 XP et 100 parties jouées",
+   xpMin:30000,
+   comment:"30 000 XP et 100 parties jouées",
    cit:"Elle n'a jamais couru. Elle est arrivée quand même.",
-   cond:function(){ return (S.xp||0)>=20000 && ((S.stats&&S.stats.parties)||0)>=100; }},
+   cond:function(){ return (S.xp||0)>=30000 && ((S.stats&&S.stats.parties)||0)>=100; }},
 
   {id:"sceau", nom:"Le Sceau des Gardiens", ic:"⚔", pts:60,
-   xpMin:30000,
-   comment:"30 000 XP et les 15 Gardiens vaincus",
+   xpMin:40000,
+   comment:"40 000 XP et les 15 Gardiens vaincus",
    cit:"Quinze portes franchies. Celle-ci s'ouvre d'elle-même.",
-   cond:function(){ return (S.xp||0)>=30000 && ((S.campagne&&S.campagne.progres)||0)>=15; }}
+   cond:function(){ return (S.xp||0)>=40000 && ((S.campagne&&S.campagne.progres)||0)>=15; }}
 ];
 
 function carteMeritee(cb, id){
@@ -5177,14 +5179,14 @@ function _verifierAplomb(profil){
 function validesAvecSpeciales(j){
   if(!j||!j.cb) return [];
   var base=j.mainRepJ1.filter(function(c){return c.combo===j.cb;});
-  if(j.legendaires && j.manche>=6){
+  if(j.legendaires && j.manche>=(j.mancheLeg||6)){
     if(!j.supremeUse && !j._supremeMasque) base=base.concat([carteSupreme(j.cb)]);
     if(!j.fantomeUse && !j._fantomeMasque) base=base.concat([carteFantome(j.cb)]);
   }
   // Cartes méritées : disponibles dès la manche 6 de TOUTE partie (pas seulement
   // celles à légendaires), une seule fois chacune. Elles récompensent un exploit
   // déjà accompli — rien à débourser, rien à tirer au sort.
-  if(j.manche>=6){
+  if(j.manche>=(j.mancheLeg||6)){
     j.meriteesUse=j.meriteesUse||{};
     meriteesDebloquees().forEach(function(m){
       if(!j.meriteesUse[m.id]) base=base.concat([carteMeritee(j.cb,m.id)]);
@@ -12285,13 +12287,37 @@ function showJokerOverlay(joker, ptsReveal, who, callback){
 // ── Rythme des cartes légendaires : une partie sur trois ──────────────────
 // Le compteur est sauvegardé : il survit à la fermeture de l'app. La 3e, la 6e,
 // la 9e partie… portent la Suprême et le Fantôme, les autres non.
+// Les cartes légendaires se font rares : 2 parties sur 10 au lieu d'une sur
+// trois. Un compteur cyclique plutôt qu'un tirage au sort, pour que la
+// promesse soit tenue : sur dix parties, il y en aura exactement deux.
 function _partieALegendaires(){
   try{
     S.cptParties=(S.cptParties||0)+1;
-    var oui=(S.cptParties % 3 === 0);
+    // Deux positions tirées au hasard dans chaque bloc de dix parties.
+    var pos=(S.cptParties-1)%10;
+    if(pos===0){
+      var a=Math.floor(Math.random()*10), b2=Math.floor(Math.random()*10);
+      while(b2===a) b2=Math.floor(Math.random()*10);
+      S.legBloc=[a,b2];
+    }
+    if(!Array.isArray(S.legBloc)||S.legBloc.length!==2) S.legBloc=[2,7];
+    var oui=(S.legBloc.indexOf(pos)>=0);
     try{ sauvegarder(); }catch(_){}
     return oui;
   }catch(e){ return false; }
+}
+// La manche où les légendaires se révèlent : tirée au sort parmi celles qui
+// ne portent AUCUN bonus. Elles arrivaient toujours à la manche 6, parfois
+// en plein Bonus du Sage — la cinématique attendait, ou se posait dessus.
+function _mancheLegendaires(j){
+  try{
+    var libres=[];
+    for(var m=3; m<=Math.max(3,(j.total||10)-1); m++){
+      if(!(j.bonusManches && j.bonusManches.has(m))) libres.push(m);
+    }
+    if(!libres.length) return 6;                 // repli : l'ancienne manche
+    return libres[Math.floor(Math.random()*libres.length)];
+  }catch(e){ return 6; }
 }
 
 const G={
@@ -12339,6 +12365,8 @@ const G={
       repIAVues:[],
     };
     S.jeu.bonusManches = initBonusManches();
+    // Manche des légendaires : choisie APRÈS les bonus, parmi les manches libres.
+    S.jeu.mancheLeg = _mancheLegendaires(S.jeu);
     S.jeu.evenements = initEvenements();
     // ── Modificateur SOLO (~25%, Solo uniquement : ni Campagne, ni Survie, ni Tournoi) ──
     S.jeu.modif=null;
@@ -12406,6 +12434,10 @@ const G={
     // La Manche du Destin avait été tirée sur l'ancien total : si elle tombe
     // au-delà, elle n'arriverait jamais.
     if(j.modifDestinManche&&j.modifDestinManche>j.total) j.modifDestinManche=Math.max(2,j.total-1);
+    // Même correction pour la manche des légendaires : elle avait été tirée
+    // sur le total provisoire (12 ou 16). Sur une partie de 10 manches, elle
+    // pouvait tomber à 11 — les cartes ne seraient jamais apparues.
+    j.mancheLeg=_mancheLegendaires(j);
     j.mainJokJ1=[...j.allJokJ1];
     // Lancer animation distribution avant de passer à choixBase
     showCardDealAnimation(j.mainRepJ1, function(){
@@ -12693,7 +12725,7 @@ const G={
       }
     }
     // ── Cartes spéciales de l'IA (dès la manche 6, une de chaque par partie) ──
-    if(j.legendaires && j.manche>=6 && S.diff!=="Débutant"){
+    if(j.legendaires && j.manche>=(j.mancheLeg||6) && S.diff!=="Débutant"){
       var _pJ=cJ1?cJ1.pts:-1;
       var _bestIA=cIA?cIA.pts:-1;
       if(!j.supremeUseIA && _pJ>=0 && _bestIA<=_pJ && 50>_pJ){
@@ -13268,13 +13300,13 @@ const G={
     const prochain=j.premier==="j1"?"ia":"j1";
     j.premier=prochain;j.manche++;
     // Révélation cinématique des cartes spéciales à l'entrée de la manche 6 (une fois par partie)
-    if(j.legendaires && j.manche===6 && !j._specialesRevelees){ j._specialesRevelees=true; setTimeout(function(){ animerCartesSpeciales(); }, 350); }
+    if(j.legendaires && j.manche===(j.mancheLeg||6) && !j._specialesRevelees){ j._specialesRevelees=true; setTimeout(function(){ animerCartesSpeciales(); }, 350); }
     // ── Annonce des CARTES MÉRITÉES ─────────────────────────────────────
     // Elles arrivent en main à la manche 6 comme les légendaires, mais sans
     // cinématique : rien ne signalait au joueur qu'une carte qu'il a GAGNÉE
     // vient d'entrer dans son jeu. Une seule annonce par partie, et seulement
     // s'il en possède au moins une.
-    if(j.manche===6 && !j._meriteesAnnoncees){
+    if(j.manche===(j.mancheLeg||6) && !j._meriteesAnnoncees){
       j._meriteesAnnoncees=true;
       var _mes=meriteesDebloquees();
       if(_mes.length){
@@ -17439,6 +17471,28 @@ function verifierPartieEnCours(){
   render();
   // Tout premier lancement : on demande le prénom et l'emblème. Placé APRÈS
   // les reprises de partie, pour ne jamais se superposer à elles.
+  // ── OUVERTURE DE L'ÉCONOMIE ─────────────────────────────────────────
+  // MODE_TEST passe à false : la boutique se ferme et les cauris comptent.
+  // Les joueurs qui testaient depuis des semaines avaient 0 cauri — ils se
+  // retrouveraient les mains vides du jour au lendemain. On leur verse une
+  // fois ce qu'ils AURAIENT gagné : 12 cauris par partie, 28 de plus par
+  // victoire. Exactement le barème normal, appliqué rétroactivement.
+  try{
+    var _ouv="economie-2026-08";
+    if(localStorage.getItem("khalam_economie")!==_ouv){
+      localStorage.setItem("khalam_economie",_ouv);
+      var _st=S.stats||{};
+      var _p=Math.max(0,_st.parties||0), _v=Math.max(0,_st.victoires||0);
+      var _du=_p*12 + _v*28;
+      if(_du>0){
+        S.cauris=(S.cauris||0)+_du;
+        try{ sauvegarder(); }catch(_){}
+        setTimeout(function(){
+          showToast("🐚 +"+_fmtMontant(_du)+" cauris pour tes "+_p+" parties déjà jouées !","win",5200);
+        }, 3000);
+      }
+    }
+  }catch(e){}
   try{ _verifierParrainage(); }catch(e){}
   try{ _accueilNouveau(); }catch(e){}
 }
