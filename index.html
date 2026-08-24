@@ -2270,7 +2270,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v98.23";
+const BUILD_TAG="v98.27";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -17314,33 +17314,104 @@ function bolitoCarte(valides, carteAdverse){
 // Le « joueur » est piloté par la même logique que l'IA : il ouvre le pilier
 // où sa main est la plus forte, puis pose la meilleure carte du combo.
 // ══════════════════════════════════════════════════════════════════════
-var DEMO={actif:false, timer:null, parties:0, victoires:0, defaites:0, nulles:0, depart:0, _sig:"", _fige:0};
+// vitesse : 1 = rythme humain (~75 s/partie), 4 = accéléré, 12 = très rapide.
+// À 628 XP par partie, atteindre 100 000 XP demande ~159 parties :
+// 3 h 20 au rythme humain, 50 min à 4×, 17 min à 12×.
+var DEMO={actif:false, timer:null, parties:0, victoires:0, defaites:0, nulles:0,
+          depart:0, _sig:"", _fige:0, vitesse:1};
 
 function demoBasculer(){
   if(DEMO.actif) demoArreter(); else demoDemarrer();
 }
 function demoDemarrer(){
   if(DEMO.actif) return;
+  // Les navigateurs ralentissent fortement les minuteurs d'un onglet caché.
+  // Une longue démo doit donc tourner écran allumé, application au premier
+  // plan. On le dit plutôt que de laisser croire à un blocage.
+  try{ showToast("▶ Démo lancée — garde l'écran allumé et l'app au premier plan","info",5200); }catch(e){}
   DEMO.actif=true; DEMO.parties=0; DEMO.victoires=0; DEMO.defaites=0; DEMO.nulles=0;
-  DEMO.depart=Date.now();
+  DEMO.depart=Date.now(); DEMO._sig=""; DEMO._fige=0;
+  // Mila joue à la place de l'auteur, contre Bolito — l'IA Expert du jeu.
+  // On garde le vrai pseudo pour le rétablir à l'arrêt.
+  DEMO._nomAvant=S.nom; DEMO._diffAvant=S.diff;
+  S.nom="Mila"; S.diff="Expert";
   try{ var o=document.getElementById("bord-panneau"); if(o) o.remove(); }catch(e){}
   _demoPanneau();
   _demoMaj();
   try{ G.startJeu(false); }catch(e){}
   // 400 ms : assez lent pour suivre à l'œil, assez rapide pour enchaîner
   // une partie complète en une trentaine de secondes.
-  DEMO.timer=setInterval(_demoPas, 400);
+  // Rythme humain : Mila ne joue pas au métronome. Chaque décision demande
+  // un temps différent, et une part d'hésitation s'y ajoute.
+  _demoProchain(1400);
+  // Battement de secours toutes les 3 s, pour qu'aucune rupture ne soit fatale.
+  if(DEMO.battement) clearInterval(DEMO.battement);
+  DEMO.battement=setInterval(_demoBattement, 3000);
 }
 function demoArreter(){
   DEMO.actif=false;
-  if(DEMO.timer){ clearInterval(DEMO.timer); DEMO.timer=null; }
+  if(DEMO.timer){ clearTimeout(DEMO.timer); DEMO.timer=null; }
+  if(DEMO.battement){ clearInterval(DEMO.battement); DEMO.battement=null; }
+  // On rend son pseudo et sa difficulté à l'auteur.
+  try{
+    if(DEMO._nomAvant) S.nom=DEMO._nomAvant;
+    if(DEMO._diffAvant) S.diff=DEMO._diffAvant;
+    sauvegarder();
+  }catch(e){}
   var p=document.getElementById("demo-hud"); if(p) p.remove();
+}
+// Programme le prochain geste de Mila. Le délai varie de ±35 % autour de la
+// valeur demandée : sans cette irrégularité, on sent la machine.
+// Si l'application revient au premier plan et que la démo s'est endormie,
+// on relance le fil : le minuteur d'un onglet caché peut être suspendu.
+document.addEventListener("visibilitychange",function(){
+  try{
+    if(document.visibilityState==="visible" && DEMO.actif && !DEMO.timer){
+      _demoProchain(600);
+    }
+  }catch(e){}
+});
+function _demoProchain(ms){
+  if(!DEMO.actif) return;
+  if(DEMO.timer) clearTimeout(DEMO.timer);
+  var v=Math.max(1,DEMO.vitesse||1);
+  // L'hésitation reste, même accélérée : le jeu doit garder son irrégularité.
+  var d=Math.max(60, Math.round(ms*(0.65+Math.random()*0.7)/v));
+  DEMO.timer=setTimeout(function(){ _demoPas(); }, d);
+}
+function demoVitesse(v){
+  DEMO.vitesse=v;
+  var t=document.getElementById("demo-vit");
+  if(t) t.textContent="×"+v;
+  _demoMaj();
 }
 // Un pas de jeu : on regarde où en est la partie et on joue le coup suivant.
 function _demoPas(){
   if(!DEMO.actif) return;
+  // Le minuteur vient de s'écouler : on le libère tout de suite. Sans ça, il
+  // restait « occupé » et le filet de fin de fonction ne reprogrammait rien —
+  // la démo s'arrêtait dès qu'un état ne correspondait à aucune branche.
+  DEMO.timer=null;
   try{
     var j=S.jeu;
+    // Détecteur de blocage, placé AVANT les branches : chacune sort par un
+    // return, il n'était jamais atteint en fin de fonction. Si l'état ne
+    // bouge pas pendant 8 gestes, on force le passage.
+    if(j){
+      var _sig=S.ecran+"/"+j.phase+"/"+j.manche;
+      if(_sig===DEMO._sig){ DEMO._fige=(DEMO._fige||0)+1; }
+      else { DEMO._sig=_sig; DEMO._fige=0; }
+      if(DEMO._fige>=8){
+        DEMO._fige=0;
+        try{
+          if(G._apresInt){ clearTimeout(G._apresInt); G._apresInt=null; }
+          document.querySelectorAll(".active").forEach(function(e){ e.classList.remove("active"); });
+          if(j.manche>=j.total) G.finPartie(); else G._doMancheSuivante(j);
+        }catch(e){}
+        _demoProchain(1200);
+        return;
+      }
+    }
     // Fin de partie : on relance.
     if(!j || S.ecran==="resultat"){
       if(S.ecran==="resultat"){
@@ -17350,16 +17421,18 @@ function _demoPas(){
       }
       _demoMaj();
       try{ G.startJeu(false); }catch(e){}
+      _demoProchain(2600);          // souffler entre deux parties
       return;
     }
     // Écrans qui attendent un geste : on les franchit.
     var ov=document.getElementById("enc-popup")||document.getElementById("encmsg-popup")
           ||document.getElementById("accueil-popup")||document.getElementById("reprise-popup");
-    if(ov){ ov.remove(); return; }
+    if(ov){ ov.remove(); _demoProchain(700); return; }
     // Sélection des cartes : on garde les dix plus fortes.
     if(!j.selValidee){
       j.selTemp=[...j.allRepJ1].sort(function(a,b){return b.pts-a.pts;}).slice(0,10);
       try{ G.confirmerSelection(); }catch(e){}
+      _demoProchain(3200);          // Mila étudie sa main avant d'écarter
       return;
     }
     // Tableau de Bonus à l'écran : on répond, puis on le referme. Sans la
@@ -17367,9 +17440,17 @@ function _demoPas(){
     var _bo=document.getElementById("bonus-overlay");
     if(_bo && _bo.classList.contains("active")){
       if(typeof BONUS!=="undefined" && BONUS.current && !BONUS.answered){
-        try{ BONUS.answer(Math.floor(Math.random()*4)); }catch(e){}
+        // Mila LIT le bonus au lieu de répondre au hasard : elle choisit la
+        // réponse qui rapporte le plus, comme le ferait Bolito.
+        try{
+          var _q=BONUS.current, _pts=_q.rep.map(function(r){return r.pts;});
+          var _best=_pts.indexOf(Math.max.apply(null,_pts));
+          BONUS.answer(_best>=0?_best:0);
+        }catch(e){}
+        _demoProchain(2800);        // elle a lu la question, puis répondu
       } else {
         try{ _bo.click(); }catch(e){}
+        _demoProchain(1500);
       }
       return;
     }
@@ -17386,49 +17467,48 @@ function _demoPas(){
     if(j.phase==="choixBase" && !j.b1 && !j.b2){
       var choix=bolitoPilier(j.mainRepJ1, null);
       if(choix){ try{ G.choisirBase(choix); }catch(e){} }
+      _demoProchain(2200);          // choisir son pilier demande réflexion
       return;
     }
     // Bolito a ouvert : on complète le combo, même logique.
     if(j.phase==="iaChoisitBase" && j.b2 && !j.b1){
       var ch=bolitoPilier(j.mainRepJ1, j.b2);
       if(ch){ try{ G.j1RepondIA(ch); }catch(e){} }
+      _demoProchain(2400);          // répondre à Bolito demande d'y penser
       return;
     }
     // Écran de décision des jokers : la démo n'en utilise aucun et résout.
     if(j.phase==="apresReponses"){
       try{ G.resoudre(j.repChoisie, j.repIA, null); }catch(e){}
+      _demoProchain(1600);          // elle regarde le résultat de la manche
       return;
     }
     // Fin de manche : on enchaîne.
     if(j.phase==="fin"){
       try{ G.mancheSuivante(); }catch(e){}
-      return;
-    }
-    // Détecteur de blocage : si l'état ne change pas pendant 8 tours, un
-    // minuteur ou une séquence attend quelque chose que la démo ne sait pas
-    // franchir. On force alors le passage à la manche suivante.
-    var _sig=S.ecran+"/"+j.phase+"/"+j.manche;
-    if(_sig===DEMO._sig){ DEMO._fige=(DEMO._fige||0)+1; }
-    else { DEMO._sig=_sig; DEMO._fige=0; }
-    if(DEMO._fige>=8){
-      DEMO._fige=0;
-      try{
-        if(G._apresInt){ clearTimeout(G._apresInt); G._apresInt=null; }
-        document.querySelectorAll(".active").forEach(function(e){ e.classList.remove("active"); });
-        if(j.manche>=j.total) G.finPartie(); else G._doMancheSuivante(j);
-      }catch(e){}
+      _demoProchain(1800);
       return;
     }
     // Notre carte — logique de Bolito. Si l'IA a déjà posé (c'est elle qui
     // avait ouvert), on répond en la voyant ; sinon on pose la plus forte.
     if(j.phase==="afficheBases" && j.cb && !j.repChoisie){
       var v=validesAvecSpeciales(j);
-      if(!v.length) return;
+      if(!v.length){ _demoProchain(1200); return; }   // rien à jouer : on repasse
       var c2=bolitoCarte(v, (j.iaDabord && j.repIA) ? j.repIA : null);
       if(c2){ try{ G.selRep(c2.id, true); }catch(e){} }
+      _demoProchain(2000);          // poser sa carte, après avoir pesé
       return;
     }
   }catch(e){}
+  // Filet : quel que soit le chemin, le prochain geste est programmé.
+  if(DEMO.actif && !DEMO.timer) _demoProchain(1400);
+}
+// Second filet, indépendant du premier : un battement lent qui relance la
+// démo si le fil s'est rompu malgré tout. C'est lui qui garantit qu'une
+// démo de plusieurs heures ne s'arrête jamais en silence.
+function _demoBattement(){
+  if(!DEMO.actif) return;
+  if(!DEMO.timer) _demoProchain(800);
 }
 function _demoPanneau(){
   var d=document.createElement("div");
@@ -17437,8 +17517,19 @@ function _demoPanneau(){
     +"border:1px solid rgba(240,208,96,0.5);border-radius:12px;padding:9px 12px;"
     +"font-family:monospace;font-size:11px;color:#F0D060;line-height:1.5;"
     +"box-shadow:0 6px 20px rgba(0,0,0,0.8)";
-  d.innerHTML='<div id="demo-txt">démarrage…</div>'
-    +'<button onclick="demoArreter()" style="width:100%;margin-top:6px;padding:5px;border-radius:8px;'
+  d.innerHTML='<div style="font-size:9.5px;color:#8FD0E8;letter-spacing:1px;margin-bottom:3px">'
+    +'MILA vs BOLITO <span id="demo-vit" style="color:var(--goldL)">×1</span></div>'
+    +'<div id="demo-txt">démarrage…</div>'
+    // Réglage de vitesse : 100 000 XP demandent ~159 parties, soit 3 h 20 au
+    // rythme humain. L'accéléré permet de vérifier la chaîne en une heure.
+    +'<div style="display:flex;gap:4px;margin-top:6px">'
+      +[1,4,12].map(function(v){
+        return '<button onclick="demoVitesse('+v+')" style="flex:1;padding:4px;border-radius:7px;cursor:pointer;'
+          +'background:rgba(240,208,96,0.12);border:1px solid rgba(240,208,96,0.4);'
+          +'color:var(--goldL);font-size:10px;font-weight:800">×'+v+'</button>';
+      }).join("")
+    +'</div>'
+    +'<button onclick="demoArreter()" style="width:100%;margin-top:5px;padding:5px;border-radius:8px;'
     +'cursor:pointer;background:rgba(224,85,85,0.18);border:1px solid rgba(224,85,85,0.5);'
     +'color:#f08a8a;font-size:10px;font-weight:800">■ ARRÊTER</button>';
   document.body.appendChild(d);
@@ -17447,9 +17538,18 @@ function _demoMaj(){
   var t=document.getElementById("demo-txt"); if(!t) return;
   var min=Math.max(1,Math.round((Date.now()-DEMO.depart)/60000));
   var taux=DEMO.parties?Math.round(DEMO.victoires/DEMO.parties*100):0;
-  t.innerHTML="▶ DÉMO · "+DEMO.parties+" parties<br>"
-    +"V "+DEMO.victoires+" · D "+DEMO.defaites+" · N "+DEMO.nulles+"<br>"
-    +taux+" % · "+min+" min · "+Math.round(DEMO.parties/min)+"/min";
+  var xp=S.xp||0;
+  var reste=Math.max(0,100000-xp);
+  var parMin=DEMO.parties/min;
+  // Estimation du temps restant, calculée sur le rythme réellement observé.
+  var eta = (parMin>0 && DEMO.parties>0)
+    ? Math.round(reste/(xp/Math.max(1,DEMO.parties))/parMin)+" min"
+    : "—";
+  t.innerHTML="▶ "+DEMO.parties+" parties<br>"
+    +"Mila "+DEMO.victoires+" · Bolito "+DEMO.defaites+" · N "+DEMO.nulles+"<br>"
+    +taux+" % · "+Math.round(parMin*10)/10+"/min<br>"
+    +'<span style="color:#6fe3a0">'+_fmtMontant(xp)+" / 100 000 XP</span><br>"
+    +'<span style="color:#8FD0E8">reste ~'+eta+"</span>";
 }
 
 function _regFermer(){
