@@ -2270,7 +2270,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v98.23";
+const BUILD_TAG="v98.19";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -3019,7 +3019,6 @@ function sauvegarder(){
       theme:S.theme,
       diff:S.diff,
       avatar:S.avatar,
-      modeTable:S.modeTable,
       modeLeger:S.modeLeger,
       voixGuide:S.voixGuide,
       musique:S.musique,
@@ -3171,7 +3170,6 @@ function charger(){
     if(d.stats) S.stats=d.stats;
     if(d.nom)        S.nom=d.nom;
     if(d.theme)      S.theme=d.theme;
-    if(typeof d.modeTable==="boolean") S.modeTable=d.modeTable;
     if(typeof d.cauris==="number") S.cauris=d.cauris;
     if(d.habillage)  S.habillage=d.habillage;
     if(d.habAchetes) S.habAchetes=d.habAchetes;
@@ -5295,7 +5293,6 @@ const ptsShadow=pts=>pts>=40?`0 0 12px ${pc(pts)},0 0 24px ${pc(pts)}55`:"none";
 // ════════════════════════════════════════════════
 let S={
   ecran:"menu",
-  modeTable:false,   // MODE TABLE : le plateau remplace l'écran de jeu classique
   modeLeger:false,
   nom:"Joueur",
   avatar:"⚖️",diff:"Intermédiaire",theme:"t1",
@@ -11173,7 +11170,7 @@ function render(){
   const _memeEcran = (S.ecran===_lastEcran);
   const _defil = _memeEcran ? (window.scrollY||document.documentElement.scrollTop||0) : 0;
   app.classList.toggle("no-fade", _memeEcran); // re-rendu du même écran → pas de ré-animation
-  const fn={menu:renderMenu,selection:renderSelection,jeu:(S.modeTable?renderJeuTable:renderJeu),duel_menu:renderDuelMenu,duel_connecting:renderDuelConnecting,duel_lobby:renderDuelLobby,duel_jeu:renderDuelJeu,duel_resultat:renderDuelResultat,
+  const fn={menu:renderMenu,selection:renderSelection,jeu:renderJeu,duel_menu:renderDuelMenu,duel_connecting:renderDuelConnecting,duel_lobby:renderDuelLobby,duel_jeu:renderDuelJeu,duel_resultat:renderDuelResultat,
     resultat:renderResultat,classement:renderClassement,parrainage:renderParrainage,legende:renderLegende,statistiques:renderStats,defis:renderDefis,
     badges:renderBadges,regles:renderRegles,apropos:renderApropos,collection:renderCollection,themes:renderThemes,campagne:renderCampagne,gardien_intro:renderGardienIntro,temple:renderTemple,disciple_intro:renderDiscipleIntro,confidentialite:renderConfidentialite,
     }[S.ecran];
@@ -17665,9 +17662,6 @@ document.addEventListener("visibilitychange",function(){
 try{ verifierPartieEnCours(); }catch(e){ if(window.__logErr) window.__logErr(e,"init verifierPartieEnCours"); }
 // Le jeu est prêt : on efface l'écran de chargement.
 try{ if(window.__preloadFini) window.__preloadFini(); }catch(e){}
-// Choix de l'espace de jeu : la fenêtre attend sous le splash et se découvre
-// quand celui-ci s'efface.
-try{ _choixEspaceJeu(); }catch(e){ if(window.__logErr) window.__logErr(e,"choix espace"); }
 
 
 function renderSelection(app){
@@ -17809,429 +17803,6 @@ function coachOnboarding(phase){
   }
   return '<div style="background:linear-gradient(135deg,rgba(212,175,55,0.16),rgba(155,89,182,0.12));border:1px solid rgba(212,175,55,0.5);border-radius:12px;padding:7px 11px;margin-bottom:8px;font-size:11.5px;color:#f3e9c8;line-height:1.4;text-align:center;animation:celebPop 0.4s ease">'
     +'<strong style="color:var(--goldL);font-family:\'Cinzel\',serif">👋 Guide</strong> · '+t+'</div>';
-}
-
-
-
-/* ══ Fenêtre de choix de l'espace de jeu, juste après le démarrage ══
-   Elle se pose sous le splash (z-index inférieur) : elle apparaît donc
-   au moment exact où l'écran d'accueil s'efface. */
-function _choixEspaceJeu(){
-  if(document.getElementById("choix-espace")) return;
-  var ov=document.createElement("div");
-  ov.id="choix-espace";
-  ov.style.cssText="position:fixed;inset:0;z-index:99000;display:flex;align-items:center;"
-    +"justify-content:center;padding:22px;background:radial-gradient(ellipse at 50% 40%,#241148 0%,#0c0620 62%,#050310 100%)";
-  function plaque(titre,sous,icone,val,or_){
-    return '<button onclick="_prendreEspace('+val+')" style="width:100%;display:flex;align-items:center;'
-      +'gap:13px;text-align:left;padding:15px 16px;margin-top:11px;border-radius:16px;cursor:pointer;'
-      +'border:1px solid '+(or_?'rgba(240,208,96,0.55)':'rgba(185,140,255,0.40)')+';'
-      +'background:'+(or_?'linear-gradient(135deg,rgba(201,162,39,0.22),rgba(156,123,24,0.10))':'rgba(20,12,40,0.72)')+';'
-      +'box-shadow:0 6px 20px rgba(0,0,0,0.55)">'
-      +'<span style="font-size:27px;line-height:1;flex-shrink:0">'+icone+'</span>'
-      +'<span style="min-width:0;display:flex;flex-direction:column;gap:3px">'
-      +'<span style="font-family:\'Cinzel\',serif;font-size:15px;font-weight:900;letter-spacing:1.5px;color:#F0D060">'+titre+'</span>'
-      +'<span style="font-size:11px;color:#c3b6dd;line-height:1.35">'+sous+'</span></span></button>';
-  }
-  ov.innerHTML='<div style="width:100%;max-width:330px;text-align:center">'
-    +'<div style="font-size:34px;line-height:1;margin-bottom:6px">\u2696\ufe0f</div>'
-    +'<div style="font-family:\'Cinzel\',serif;font-size:19px;font-weight:900;letter-spacing:2px;color:#F0D060">'
-    +'O\u00d9 VEUX-TU JOUER ?</div>'
-    +'<div style="font-size:11px;color:#9C93AD;margin-top:5px">Choisis ton espace de jeu pour cette session</div>'
-    +plaque("MODE TABLE","Le plateau vu du dessus, tout tient sur un seul \u00e9cran","\ud83c\udfb4",true,true)
-    +plaque("MODE EXPERT","L\'\u00e9cran de jeu classique, les cartes en grand","\u2694\ufe0f",false,false)
-    +'<div style="font-size:10px;color:#6f6484;margin-top:14px;line-height:1.4">'
-    +'En cours de partie, le \ud83c\udccf en haut \u00e0 gauche te ram\u00e8ne \u00e0 l\'autre vue.</div></div>';
-  document.body.appendChild(ov);
-}
-function _prendreEspace(v){
-  S.modeTable=!!v;
-  try{ sauvegarder(); }catch(e){}
-  try{ AUDIO.sfxConfirm(); }catch(e){}
-  var ov=document.getElementById("choix-espace");
-  if(ov){ ov.style.transition="opacity .3s ease"; ov.style.opacity="0";
-    setTimeout(function(){ try{ ov.remove(); }catch(_){} },320); }
-  render();
-}
-
-/* ═══════════════════════════════════════════════════════════════════════
-   MODE TABLE — plateau alternatif (branchement du prototype table-pli)
-   ─────────────────────────────────────────────────────────────────────
-   La table n'est QU'UNE VUE. Elle lit S.jeu et appelle exactement les
-   mêmes fonctions G.* que l'écran classique : mêmes cartes, mêmes points,
-   mêmes règles, même XP, même Campagne. AUCUNE règle n'est redéfinie ici.
-
-   Déroulé d'une manche sur la table :
-     1. les 4 piliers sont posés au centre — on en touche un ;
-     2. les deux piliers choisis quittent le centre, la table se libère ;
-     3. la carte vole de la main jusqu'à la table (l'IA descend d'en haut) ;
-     4. au verdict, les 4 piliers reviennent à leur place et les cartes du
-        pli se rangent SOUS le pilier du gagnant, où elles s'empilent.
-
-   Le plateau est dessiné dans un cadre fixe 390×844 puis mis à l'échelle
-   de l'écran : il ne se tasse sur aucun téléphone.
-   Repli : la moindre erreur de rendu renvoie sur l'écran classique.
-   ═══════════════════════════════════════════════════════════════════════ */
-var TBL_BUILD="table-plateau-v2";
-var TBL_W=390, TBL_H=844;
-
-function tblEchelle(){
-  var w=window.innerWidth||TBL_W, h=window.innerHeight||TBL_H;
-  return { w:w, h:h, s:Math.min(w/TBL_W, h/TBL_H) };
-}
-
-/* Les animations vivent dans l'entête : posées une seule fois. */
-function tblStyles(){
-  if(document.getElementById("tbl-anim")) return;
-  var st=document.createElement("style");
-  st.id="tbl-anim";
-  st.textContent=
-   "@keyframes tblVolMoi{0%{opacity:0;transform:translateY(232px) scale(.40) rotate(-14deg)}"
-  +"16%{opacity:1}58%{transform:translateY(-26px) scale(1.20) rotate(5deg)}"
-  +"80%{transform:translateY(12px) scale(.94) rotate(-1deg)}"
-  +"100%{opacity:1;transform:translateY(0) scale(1) rotate(0)}}"
-  +"@keyframes tblVolIA{0%{opacity:0;transform:translateY(-232px) scale(.40) rotate(14deg)}"
-  +"16%{opacity:1}58%{transform:translateY(26px) scale(1.20) rotate(-5deg)}"
-  +"80%{transform:translateY(-12px) scale(.94) rotate(1deg)}"
-  +"100%{opacity:1;transform:translateY(0) scale(1) rotate(0)}}"
-  +"@keyframes tblDepot{0%{opacity:0;transform:translateY(-46px) scale(2.1)}"
-  +"62%{opacity:1;transform:translateY(3px) scale(1.06)}"
-  +"100%{opacity:1;transform:translateY(0) scale(1)}}"
-  +"@keyframes tblRetourPilier{0%{opacity:0;transform:scale(.72)}100%{opacity:1;transform:scale(1)}}"
-  +"@keyframes tblHalo{0%{opacity:.75;transform:translate(-50%,-50%) scale(.35)}"
-  +"100%{opacity:0;transform:translate(-50%,-50%) scale(2.2)}}";
-  document.head.appendChild(st);
-}
-
-/* Carte rendue par le moteur de l'index (carteRepHTML), remise à la taille
-   voulue. --kv:1 : dans le cadre fixe, c'est l'échelle globale qui adapte. */
-function tblCarte(c,opts,w){
-  opts=opts||{}; w=w||62;
-  var h=Math.round(w*1.4);
-  return '<div style="width:'+w+'px;height:'+h+'px;overflow:hidden;border-radius:9px">'
-    +'<div style="--card-w:110px;--card-h:156px;--kv:1;width:110px;height:156px;'
-    +'transform:scale('+(w/110).toFixed(3)+','+(h/156).toFixed(3)+');transform-origin:top left">'
-    +carteRepHTML(c,opts)+'</div></div>';
-}
-function tblJoker(jk,w,onClick,used){
-  w=w||58; var h=Math.round(w*1.345);
-  return '<div style="width:'+w+'px;height:'+h+'px;overflow:hidden;border-radius:10px;'
-    +(used?'opacity:.35;filter:saturate(.2);':'cursor:pointer;')+'">'
-    +'<div style="--card-w:110px;--card-h:156px;--kv:1;width:110px;height:156px;display:flex;'
-    +'transform:scale('+(w/110).toFixed(3)+','+(h/156).toFixed(3)+');transform-origin:top left">'
-    +jokerCardHTML(jk,{onClick:(used?"":(onClick||""))})+'</div></div>';
-}
-function tblPastille(lbl,pts,col,pil){
-  return '<span style="display:inline-flex;align-items:center;gap:6px;background:rgba(8,4,20,.72);'
-    +'border:1px solid '+col+'66;border-radius:20px;padding:3px 11px">'
-    +(pil?emblemeMini(pil,14):'')
-    +'<span style="font-family:Cinzel,serif;font-size:8px;letter-spacing:1.5px;color:#b9a9d8">'+lbl+'</span>'
-    +'<span style="font-family:Cinzel,serif;font-size:14px;font-weight:900;color:'+col+'">'+pts+'</span></span>';
-}
-
-/* Les plis déjà remportés, rangés sous le pilier de leur vainqueur.
-   Tout est déduit de j.historique : rien n'est stocké en double. */
-function tblDepots(j){
-  var d={}, h=j.historique||[];
-  PILIERS.forEach(function(p){ d[p]=[]; });
-  h.forEach(function(m,i){
-    var neuf=(i===h.length-1);
-    function pose(pil,carte,qui){
-      if(!pil || !d[pil] || !carte) return;
-      d[pil].push({c:carte, q:qui, n:neuf});
-    }
-    if(m.gagnant===1){ pose(m.b1,m.cJ1,"toi"); pose(m.b1,m.cIA,"toi"); }
-    else if(m.gagnant===2){ pose(m.b2,m.cIA,"ia"); pose(m.b2,m.cJ1,"ia"); }
-    else { pose(m.b1,m.cJ1,"toi"); pose(m.b2,m.cIA,"ia"); }   // égalité : chacun garde la sienne
-  });
-  return d;
-}
-
-/* La pile rangée sous un pilier. La dernière carte tombe en s'animant. */
-function tblPile(liste,anime){
-  if(!liste.length) return '<div style="height:34px"></div>';
-  var vus=liste.slice(-4), sup=liste.length-vus.length, out='';
-  vus.forEach(function(o,k){
-    var col=(o.q==="toi")?"#7CFC9A":"#FF9AA8";
-    var an=(anime&&o.n)?'animation:tblDepot .62s cubic-bezier(.3,1.4,.5,1) both;':'';
-    out+='<div style="margin-left:'+(k?-16:0)+'px;border-radius:5px;'+an
-      +'box-shadow:0 0 0 1px '+col+'88,0 3px 7px rgba(0,0,0,.6)">'
-      +tblCarte(o.c,{},26)+'</div>';
-  });
-  return '<div style="display:flex;align-items:flex-end;justify-content:center;height:34px">'+out
-    +(sup>0?'<span style="font-family:Cinzel,serif;font-size:8px;color:#E6CE7A;margin-left:3px">+'+sup+'</span>':'')
-    +'</div>';
-}
-
-/* La rangée des 4 piliers, avec leurs plis en dessous.
-   Elle n'est posée QUE hors combat : dès que les deux piliers sont choisis,
-   elle quitte la table pour laisser la place aux cartes. */
-function tblRangee(j,dep){
-  var ph=j.phase, choix=(ph==="choixBase"||ph==="iaChoisitBase"), retour=(ph==="fin");
-  var col=PILIERS.map(function(p){
-    var carte, note='';
-    if(choix && ph==="choixBase"){
-      var nb=j.mainRepJ1.filter(function(c){ return c.combo.indexOf(p)!==-1; }).length;
-      carte=nb? pilierCard(p,{size:"xs",onClick:"AUDIO.sfxClickUnique();G.choisirBase('"+p+"')"})
-              : pilierCard(p,{size:"xs",disabled:true});
-      note='<span style="font-family:Cinzel,serif;font-size:7px;color:'+(nb?PILIER[p].accent:'#6f6484')+'">'
-        +(nb?(nb+' carte'+(nb>1?'s':'')):'aucune')+'</span>';
-    }else if(choix){
-      if(p===j.b2){
-        carte=pilierCard(p,{size:"xs",played:true});
-        note='<span style="font-family:Cinzel,serif;font-size:7px;color:#F0D060;letter-spacing:1px">IA</span>';
-      }else{
-        var nb2=j.mainRepJ1.filter(function(c){ return c.combo===mkCombo(p,j.b2); }).length;
-        carte=nb2? pilierCard(p,{size:"xs",onClick:"AUDIO.sfxClickUnique();G.j1RepondIA('"+p+"')"})
-                 : pilierCard(p,{size:"xs",disabled:true});
-        note='<span style="font-family:Cinzel,serif;font-size:7px;color:'+(nb2?PILIER[p].accent:'#6f6484')+'">'
-          +(nb2?(nb2+' carte'+(nb2>1?'s':'')):'aucune')+'</span>';
-      }
-    }else{
-      var gagne=retour && j.historique && j.historique.length
-        && (function(m){ return (m.gagnant===1&&m.b1===p)||(m.gagnant===2&&m.b2===p); })(j.historique[j.historique.length-1]);
-      carte='<div style="'+(gagne?'box-shadow:0 0 0 2px #F0D060,0 0 22px rgba(240,208,96,.6);border-radius:7px;':'')+'">'
-        +pilierCard(p,{size:"xs"})+'</div>';
-    }
-    var n=dep[p].length;
-    return '<div style="display:flex;flex-direction:column;align-items:center;gap:3px'
-      +(retour?';animation:tblRetourPilier .38s ease both':'')+'">'
-      +carte+note
-      +tblPile(dep[p],retour)
-      +(n?'<span style="font-family:Cinzel,serif;font-size:8px;font-weight:900;color:'+PILIER[p].accent+'">'+n+'</span>':'')
-      +'</div>';
-  }).join('');
-  return '<div style="position:absolute;top:'+(retour?'56%':'50%')+';left:6px;right:6px;'
-    +'transform:translateY(-50%);display:flex;justify-content:center;align-items:flex-start;gap:5px;z-index:26">'
-    +col+'</div>';
-}
-
-/* Main du joueur, en éventail.
-   C'est la main qui dicte le choix du pilier : hors combat, elle est donc
-   posée bien à plat, en pleine lumière et sans chevauchement. Quand l'IA
-   a déjà annoncé son pilier, les cartes qui pourraient répondre s'allument
-   et se soulèvent — la main montre elle-même quel pilier prendre.
-   En combat, les cartes du combo montent et sont cliquables : un toucher
-   les joue, exactement comme sur l'écran classique. */
-function tblMain(j,valides){
-  var ph=j.phase;
-  var enJeu=(ph==="afficheBases" && !j.phaseEchange);
-  var ids={}; valides.forEach(function(c){ ids[c.id]=true; });
-
-  /* ── Hors combat : toute la main est lisible ────────────────────────── */
-  if(!enJeu && !j.phaseEchange){
-    var m=j.mainRepJ1||[], n=m.length, out='';
-    if(!n) return '';
-    var w=(n<=6)?80:(n<=8?74:68);
-    var sp=(n>1)?Math.min(w-6, 296/(n-1)):0;
-    var ang=Math.min(3.4, 22/Math.max(1,n));
-    m.forEach(function(c,k){
-      var off=k-(n-1)/2;
-      // Pilier annoncé par l'IA : les cartes capables de répondre se signalent.
-      var utile=(ph==="iaChoisitBase" && j.b2 && c.combo.indexOf(j.b2)!==-1);
-      var bas=26-Math.pow(Math.abs(off),1.6)*2.6+(utile?26:0);
-      var ombre=utile
-        ? 'box-shadow:0 0 0 2px #F0D060,0 0 16px rgba(240,208,96,.75),0 8px 18px rgba(0,0,0,.6);'
-        : 'box-shadow:0 6px 14px rgba(0,0,0,.55);';
-      out+='<div style="position:absolute;left:calc(50% + '+(off*sp).toFixed(0)+'px);'
-        +'bottom:'+bas.toFixed(0)+'px;transform:translateX(-50%) rotate('+(off*ang).toFixed(1)+'deg);'
-        +'transform-origin:bottom center;z-index:'+(utile?200+k:100+k)+';border-radius:10px;'+ombre
-        +'transition:bottom .22s ease,transform .22s ease">'+tblCarte(c,{},w)+'</div>';
-    });
-    return out;
-  }
-
-  /* ── En combat : le combo devant, le reste en retrait ───────────────── */
-  var liste;
-  if(j.phaseEchange){
-    liste=j.mainRepJ1.filter(function(c){ return c.combo===j.cb; })
-      .map(function(c){ return {c:c, jouable:true, click:"G.confirmerEchange('"+c.id+"')"}; });
-  }else{
-    liste=valides.map(function(c){ return {c:c, jouable:true, click:"G.selRep('"+c.id+"')"}; })
-      .concat(j.mainRepJ1.filter(function(c){ return !ids[c.id]; })
-        .map(function(c){ return {c:c, jouable:false, click:""}; }));
-  }
-  var av=liste.filter(function(o){ return o.jouable; });
-  var ar=liste.filter(function(o){ return !o.jouable; });
-  var n1=av.length, n2=ar.length, hand='';
-  var sp1=n1>1?Math.min(48,272/(n1-1)):0, an1=Math.min(4,24/Math.max(1,n1));
-  av.forEach(function(o,k){
-    var off=k-(n1-1)/2;
-    var dx=off*sp1, rot=off*an1, bas=58-Math.pow(Math.abs(off),1.6)*3.2;
-    var col=(o.c.special==="supreme")?'#FF6B6B':(o.c.special==="fantome"?'#B084FF':'#C9A227');
-    hand+='<div onclick="'+o.click+'" style="position:absolute;left:calc(50% + '+dx.toFixed(0)+'px);'
-      +'bottom:'+bas.toFixed(0)+'px;transform:translateX(-50%) rotate('+rot.toFixed(1)+'deg);'
-      +'transform-origin:bottom center;z-index:'+(220+k)+';cursor:pointer;border-radius:10px;'
-      +'box-shadow:0 0 0 2px '+col+',0 0 15px '+col+'aa,0 8px 18px rgba(0,0,0,.6);'
-      +'transition:bottom .2s ease,transform .2s ease">'+tblCarte(o.c,{},74)+'</div>';
-  });
-  var sp2=n2>1?Math.min(24,252/(n2-1)):0;
-  ar.forEach(function(o,k){
-    var off=k-(n2-1)/2;
-    hand+='<div style="position:absolute;left:calc(50% + '+(off*sp2).toFixed(0)+'px);bottom:-10px;'
-      +'transform:translateX(-50%) rotate('+(off*1.4).toFixed(1)+'deg);'
-      +'transform-origin:bottom center;z-index:'+k+';filter:brightness(.55) saturate(.7);border-radius:8px;'
-      +'box-shadow:0 5px 12px rgba(0,0,0,.5)">'+tblCarte(o.c,{},54)+'</div>';
-  });
-  return hand;
-}
-
-/* Une carte posée sur la table, avec son vol depuis la main (ou depuis
-   le haut pour l'IA) et l'onde de choc à l'atterrissage. */
-function tblPosee(c,qui,w,pos){
-  var kf=(qui==="ia")?"tblVolIA":"tblVolMoi";
-  var halo='<div style="position:absolute;top:50%;left:50%;width:96px;height:96px;border-radius:50%;'
-    +'border:2px solid rgba(240,208,96,.85);box-shadow:0 0 22px rgba(240,208,96,.6);'
-    +'animation:tblHalo .55s ease-out .58s both;pointer-events:none"></div>';
-  return '<div style="position:absolute;'+pos+';left:50%;transform:translateX(-50%);z-index:24">'
-    +halo+'<div style="animation:'+kf+' .92s cubic-bezier(.42,.05,.24,1) both">'
-    +(qui==="ia"?'<div style="transform:rotate(180deg)">'+tblCarte(c,{},w)+'</div>':tblCarte(c,{},w))
-    +'</div></div>';
-}
-
-function tblPlateau(j){
-  var D=tblEchelle();
-  var iaPr=IA_PROFILS[S.diff]||IA_PROFILS.Intermédiaire;
-  var ph=j.phase;
-  var valides=(ph==="afficheBases")?validesAvecSpeciales(j):[];
-  var dep=tblDepots(j);
-  var combat=(ph==="afficheBases"||ph==="apresReponses");
-
-  /* ── Bandeau du haut ── */
-  var haut='<div style="position:absolute;top:5px;left:0;right:0;text-align:center;z-index:50">'
-    +'<span style="font-family:Cinzel,serif;font-size:9px;letter-spacing:2px;color:#b98cff">'
-    +'MANCHE '+j.manche+' / '+j.total+' · '+iaPr.icon+' '+esc(iaPr.nom).toUpperCase()+'</span></div>'
-    +'<div onclick="MULTI_CONFIRM_MENU()" style="position:absolute;top:2px;right:7px;z-index:55;'
-    +'cursor:pointer;font-size:15px;opacity:.85">🏠</div>'
-    +'<div onclick="S.modeTable=false;sauvegarder();render()" title="Vue classique" '
-    +'style="position:absolute;top:2px;left:7px;z-index:55;cursor:pointer;font-size:15px;opacity:.85">🃏</div>';
-
-  /* ── Zone adverse : identité et atouts en dos ── */
-  var dosIA='';
-  for(var i=0;i<(j.mainJokJ2||[]).length;i++){
-    dosIA+='<div style="width:20px;height:27px;border-radius:4px;background:linear-gradient(160deg,#2a1c48,#0d0722);'
-      +'border:1px solid #C9A22766;margin-left:-7px"></div>';
-  }
-  var opp='<div style="position:absolute;top:26px;left:0;right:0;height:100px;display:flex;'
-    +'flex-direction:column;align-items:center;justify-content:center;gap:2px;z-index:20">'
-    +'<div style="font-size:21px;line-height:1">'+iaPr.icon+'</div>'
-    +'<div style="font-family:Cinzel,serif;font-size:10px;font-weight:900;color:'+iaPr.couleur+'">'
-    +esc(iaPr.nom).toUpperCase()+'</div>'
-    +'<div style="display:flex;justify-content:center;margin-top:3px;padding-left:7px">'+dosIA+'</div>'
-    +'</div>';
-
-  /* ── Les cartes posées sur la table ── */
-  var advCarte='', maCarte='';
-  if(combat){
-    if(j.repIA && (ph==="apresReponses"||j.iaDabord)) advCarte=tblPosee(j.repIA,"ia",76,"top:24px");
-    else advCarte='<div style="position:absolute;top:24px;left:50%;transform:translateX(-50%);z-index:22;'
-      +'width:76px;height:106px;border-radius:9px;border:1px dashed rgba(201,162,39,.30)"></div>';
-    if(j.repChoisie && ph==="apresReponses") maCarte=tblPosee(j.repChoisie,"toi",76,"bottom:24px");
-    else maCarte='<div style="position:absolute;bottom:24px;left:50%;transform:translateX(-50%);z-index:22;'
-      +'width:76px;height:106px;border-radius:9px;border:1px dashed rgba(201,162,39,.30)"></div>';
-  }else if(ph==="fin"){
-    /* Verdict : les deux cartes se rangent en haut, la table rend sa place aux piliers */
-    var pj=(j.repChoisie&&j.repChoisie.pts)||0, pi=(j.repIA&&j.repIA.pts)||0;
-    advCarte='<div style="position:absolute;top:12px;left:0;right:0;display:flex;justify-content:center;'
-      +'align-items:center;gap:14px;z-index:24">'
-      +(j.repChoisie?'<div style="box-shadow:0 0 0 1px #7CFC9A88;border-radius:8px">'+tblCarte(j.repChoisie,{},58)+'</div>':'')
-      +'<span style="font-family:Cinzel,serif;font-size:11px;font-weight:900;color:#E6CE7A">'+pj+' · '+pi+'</span>'
-      +(j.repIA?'<div style="box-shadow:0 0 0 1px #FF9AA888;border-radius:8px">'+tblCarte(j.repIA,{},58)+'</div>':'')
-      +'</div>';
-  }
-
-  /* ── Bandeau de consigne ── */
-  var txt='', btn='';
-  if(j.phaseEchange){ txt='🔄 ÉCHANGE — touche la carte à sacrifier';
-    btn='<button onclick="G.annulerEchange()" style="margin-top:4px;font-family:Cinzel,serif;'
-      +'font-weight:900;background:#3a2a55;border:1px solid #b98cff88;color:#e6dcff;padding:5px 16px;'
-      +'border-radius:12px;font-size:10px;cursor:pointer;letter-spacing:1px">ANNULER</button>'; }
-  else if(ph==="choixBase")     txt='⚖ CHOISIS TON PILIER — il ouvrira le combo';
-  else if(ph==="j1AChoisi")     txt='⚖ '+String(j.b1||'').toUpperCase()+' JOUÉ — l\'IA répond…';
-  else if(ph==="iaChoisitBase") txt='⚖ L\'IA A PRIS '+String(j.b2||'').toUpperCase()+' — réponds par un pilier';
-  else if(ph==="afficheBases"){
-    txt='⚔ COMBO '+String(j.cb||'').toUpperCase().replace('+',' + ');
-    if(valides.length===0){
-      txt='⚔ COMBO '+String(j.cb||'').toUpperCase().replace('+',' + ')+' — aucune carte';
-      if(j.mainJokJ1.find(function(x){ return x.id==="j4"; })){
-        btn='<button onclick="G.passerTour()" style="margin-top:4px;font-family:Cinzel,serif;font-weight:900;'
-          +'background:#5a2233;border:1px solid #FF7C9A;color:#fff;padding:5px 16px;border-radius:12px;'
-          +'font-size:10px;cursor:pointer;letter-spacing:1px">PASSER</button>';
-      }
-    }
-  }
-  else if(ph==="apresReponses") txt='⚡ LES DEUX RÉPONSES SONT POSÉES';
-  else if(ph==="fin")           txt=String(j.msg||'').replace(/<[^>]*>/g,'');
-  var prompt='<div style="position:absolute;bottom:302px;left:0;right:0;text-align:center;z-index:45">'
-    +'<span style="font-family:Cinzel,serif;font-size:'+(ph==="fin"?9:10)+'px;font-weight:900;color:#C9A227;'
-    +'background:linear-gradient(90deg,transparent,#C9A22726,transparent);border-top:1px solid #C9A22755;'
-    +'border-bottom:1px solid #C9A22755;padding:3px 8px;display:block;letter-spacing:1px;line-height:1.35">'
-    +txt+'</span>'+btn+'</div>';
-
-  /* ── Jokers : les mêmes, aux mêmes moments que sur l'écran classique ── */
-  var jok='';
-  if(ph==="afficheBases" && !j.phaseEchange){
-    var j3=j.mainJokJ1.find(function(x){ return x.id==="j3"; });
-    var j4=j.mainJokJ1.find(function(x){ return x.id==="j4"; });
-    if(j3) jok+=tblJoker(j3,58,"G.useEspion()");
-    if(j4) jok+=tblJoker(j4,58,(valides.length===0?"G.useEchangeLibre()":"G.useEchange()"));
-  }else if(ph==="apresReponses"){
-    var offs=j.mainJokJ1.filter(function(x){ return x.id==="j1"||x.id==="j2"; });
-    var tot=((j.repChoisie&&j.repChoisie.pts)||0)+((j.repIA&&j.repIA.pts)||0);
-    offs.forEach(function(jk){ jok+=tblJoker(jk,58,"G.appliquerJoker('"+jk.id+"')"); });
-    jok+='<button onclick="G.appliquerJoker(null)" style="font-family:Cinzel,serif;font-weight:900;'
-      +'background:linear-gradient(135deg,#C9A227,#9C7B18);border:none;color:#fff;padding:9px 16px;'
-      +'border-radius:12px;cursor:pointer;letter-spacing:1px;font-size:11px;align-self:center">'
-      +(offs.length?'SANS JOKER →':'RÉSULTAT →')+'</button>';
-    if(offs.length) jok+='<div style="position:absolute;bottom:-13px;left:0;right:0;text-align:center;'
-      +'font-size:8.5px;color:#9a8fc0">pot de '+tot+' pts</div>';
-  }
-  var jokRow='<div style="position:absolute;bottom:224px;left:0;right:0;display:flex;justify-content:center;'
-    +'gap:11px;z-index:40">'+jok+'</div>';
-
-  /* ── Espion : les 3 cartes révélées ── */
-  var espion='';
-  if(j.espionActif && j.repIAVues && j.repIAVues.length){
-    espion='<div style="position:absolute;top:132px;left:0;right:0;display:flex;justify-content:center;'
-      +'gap:5px;z-index:30">'+j.repIAVues.map(function(c){ return tblCarte(c,{},40); }).join('')+'</div>';
-  }
-
-  var tapis='<div style="position:absolute;top:128px;left:14px;right:14px;bottom:330px;border-radius:26px;'
-    +'background:radial-gradient(60% 50% at 50% 50%, rgba(201,162,39,.10), rgba(20,10,40,.2) 60%, rgba(8,4,20,.5));'
-    +'border:1px solid rgba(201,162,39,.28);box-shadow:inset 0 0 60px rgba(0,0,0,.55), 0 0 30px rgba(201,162,39,.08)">'
-    +'<div style="position:absolute;top:5px;left:0;right:0;text-align:center;z-index:30">'
-    +tblPastille('IA',j.s2,'#FF9AA8',j.b2)+'</div>'
-    +'<div style="position:absolute;bottom:5px;left:0;right:0;text-align:center;z-index:30">'
-    +tblPastille(esc(String(S.nom||'TOI').toUpperCase()),j.s1,'#7CFC9A',j.b1)+'</div>'
-    +(combat?'<div style="position:absolute;top:50%;left:50%;width:170px;height:170px;transform:translate(-50%,-50%);'
-      +'border-radius:50%;background:radial-gradient(circle, rgba(240,208,96,.14), transparent 68%)"></div>':'')
-    +(combat?'':tblRangee(j,dep))
-    +advCarte+maCarte+'</div>';
-
-  var pied='<div style="position:absolute;bottom:4px;left:0;right:0;text-align:center;z-index:60">'
-    +'<span style="font-family:Cinzel,serif;font-size:9px;letter-spacing:2px;color:#E6CE7A">✦ COUPLE KHALAM ✦</span></div>';
-
-  return '<div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;'
-    +'overflow:hidden;background:#080414;z-index:1">'
-    +'<div style="width:390px;height:844px;flex:0 0 auto;transform:scale('+D.s.toFixed(4)+');'
-    +'transform-origin:center center;overflow:hidden;position:relative;'
-    +'font-family:\'Crimson Text\',Georgia,serif;color:#efeaf7;'
-    +'background:radial-gradient(120% 55% at 50% 50%, #2a1c48 0%, #160d2c 42%, #080414 100%)">'
-    +haut+opp+tapis+espion+prompt+jokRow
-    +'<div style="position:absolute;bottom:44px;left:0;right:0;height:188px">'+tblMain(j,valides)+'</div>'
-    +pied+'</div></div>';
-}
-
-function renderJeuTable(app){
-  var j=S.jeu;
-  if(!j) return renderJeu(app);
-  try{
-    tblStyles();
-    app.innerHTML=tblPlateau(j);
-  }catch(e){
-    if(window.__logErr) window.__logErr(e,"table:"+j.phase);
-    renderJeu(app);
-  }
 }
 
 function renderJeu(app){
