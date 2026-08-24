@@ -2270,7 +2270,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v98.19";
+const BUILD_TAG="v98.20";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -3019,6 +3019,7 @@ function sauvegarder(){
       theme:S.theme,
       diff:S.diff,
       avatar:S.avatar,
+      modeTable:S.modeTable,
       modeLeger:S.modeLeger,
       voixGuide:S.voixGuide,
       musique:S.musique,
@@ -3170,6 +3171,7 @@ function charger(){
     if(d.stats) S.stats=d.stats;
     if(d.nom)        S.nom=d.nom;
     if(d.theme)      S.theme=d.theme;
+    if(typeof d.modeTable==="boolean") S.modeTable=d.modeTable;
     if(typeof d.cauris==="number") S.cauris=d.cauris;
     if(d.habillage)  S.habillage=d.habillage;
     if(d.habAchetes) S.habAchetes=d.habAchetes;
@@ -5293,6 +5295,7 @@ const ptsShadow=pts=>pts>=40?`0 0 12px ${pc(pts)},0 0 24px ${pc(pts)}55`:"none";
 // ════════════════════════════════════════════════
 let S={
   ecran:"menu",
+  modeTable:false,   // MODE TABLE : le plateau remplace l'écran de jeu classique
   modeLeger:false,
   nom:"Joueur",
   avatar:"⚖️",diff:"Intermédiaire",theme:"t1",
@@ -11170,7 +11173,7 @@ function render(){
   const _memeEcran = (S.ecran===_lastEcran);
   const _defil = _memeEcran ? (window.scrollY||document.documentElement.scrollTop||0) : 0;
   app.classList.toggle("no-fade", _memeEcran); // re-rendu du même écran → pas de ré-animation
-  const fn={menu:renderMenu,selection:renderSelection,jeu:renderJeu,duel_menu:renderDuelMenu,duel_connecting:renderDuelConnecting,duel_lobby:renderDuelLobby,duel_jeu:renderDuelJeu,duel_resultat:renderDuelResultat,
+  const fn={menu:renderMenu,selection:renderSelection,jeu:(S.modeTable?renderJeuTable:renderJeu),duel_menu:renderDuelMenu,duel_connecting:renderDuelConnecting,duel_lobby:renderDuelLobby,duel_jeu:renderDuelJeu,duel_resultat:renderDuelResultat,
     resultat:renderResultat,classement:renderClassement,parrainage:renderParrainage,legende:renderLegende,statistiques:renderStats,defis:renderDefis,
     badges:renderBadges,regles:renderRegles,apropos:renderApropos,collection:renderCollection,themes:renderThemes,campagne:renderCampagne,gardien_intro:renderGardienIntro,temple:renderTemple,disciple_intro:renderDiscipleIntro,confidentialite:renderConfidentialite,
     }[S.ecran];
@@ -15565,6 +15568,24 @@ function renderMenu(app){
         </div>
         
 
+        <!-- ══ ESPACE DE JEU : écran classique ou plateau ══ -->
+        <div style="display:flex;gap:7px;align-items:center;margin-top:8px;padding:9px 11px;
+          border-radius:13px;background:rgba(20,12,40,0.62);border:1px solid rgba(240,208,96,0.30)">
+          <div style="flex:1;min-width:0">
+            <div style="font-size:9px;letter-spacing:2px;color:#c8bcd8">ESPACE DE JEU</div>
+            <div style="font-size:10px;color:#9C93AD;margin-top:2px">${S.modeTable?"La table, vue du dessus":"Écran classique, cartes en grand"}</div>
+          </div>
+          ${[["EXPERT",false],["TABLE",true]].map(function(o){
+            var on=(!!S.modeTable===o[1]);
+            return '<button onclick="S.modeTable='+o[1]+';sauvegarder();AUDIO.sfxClickUnique();render()" '
+              +'style="font-family:\'Cinzel\',serif;font-size:10px;font-weight:900;letter-spacing:1px;'
+              +'padding:7px 12px;border-radius:10px;cursor:pointer;flex-shrink:0;'
+              +'border:1px solid '+(on?'#F0D060':'rgba(240,208,96,0.28)')+';'
+              +'background:'+(on?'linear-gradient(135deg,#C9A227,#9C7B18)':'rgba(8,5,18,0.6)')+';'
+              +'color:'+(on?'#12082e':'#cbb8ee')+'">'+o[0]+'</button>';
+          }).join("")}
+        </div>
+
         ${(function(){
           var e=epreuveDuJour();
           // Plaque de l'Épreuve du jour, découpée dans la planche.
@@ -17804,6 +17825,275 @@ function coachOnboarding(phase){
   return '<div style="background:linear-gradient(135deg,rgba(212,175,55,0.16),rgba(155,89,182,0.12));border:1px solid rgba(212,175,55,0.5);border-radius:12px;padding:7px 11px;margin-bottom:8px;font-size:11.5px;color:#f3e9c8;line-height:1.4;text-align:center;animation:celebPop 0.4s ease">'
     +'<strong style="color:var(--goldL);font-family:\'Cinzel\',serif">👋 Guide</strong> · '+t+'</div>';
 }
+
+
+/* ═══════════════════════════════════════════════════════════════════════
+   MODE TABLE — plateau alternatif (branchement du prototype table-pli)
+   ─────────────────────────────────────────────────────────────────────
+   La table n'est QU'UNE VUE. Elle lit S.jeu et appelle exactement les
+   mêmes fonctions G.* que l'écran classique : mêmes cartes, mêmes points,
+   mêmes règles, même XP, même Campagne. AUCUNE règle n'est redéfinie ici.
+   Le plateau est dessiné dans un cadre fixe 390×844 puis mis à l'échelle
+   de l'écran : il ne se tasse sur aucun téléphone.
+   Repli : la moindre erreur de rendu renvoie sur l'écran classique.
+   ═══════════════════════════════════════════════════════════════════════ */
+var TBL_BUILD="table-plateau-v1";
+var TBL_W=390, TBL_H=844;
+
+function tblEchelle(){
+  var w=window.innerWidth||TBL_W, h=window.innerHeight||TBL_H;
+  return { w:w, h:h, s:Math.min(w/TBL_W, h/TBL_H) };
+}
+
+/* Carte rendue par le moteur de l'index (carteRepHTML), remise à la taille
+   voulue. --kv:1 : dans le cadre fixe, c'est l'échelle globale qui adapte. */
+function tblCarte(c,opts,w){
+  opts=opts||{}; w=w||62;
+  var h=Math.round(w*1.4);
+  return '<div style="width:'+w+'px;height:'+h+'px;overflow:hidden;border-radius:9px">'
+    +'<div style="--card-w:110px;--card-h:156px;--kv:1;width:110px;height:156px;'
+    +'transform:scale('+(w/110).toFixed(3)+','+(h/156).toFixed(3)+');transform-origin:top left">'
+    +carteRepHTML(c,opts)+'</div></div>';
+}
+function tblJoker(jk,w,onClick,used){
+  w=w||58; var h=Math.round(w*1.345);
+  return '<div style="width:'+w+'px;height:'+h+'px;overflow:hidden;border-radius:10px;'
+    +(used?'opacity:.35;filter:saturate(.2);':'cursor:pointer;')+'">'
+    +'<div style="--card-w:110px;--card-h:156px;--kv:1;width:110px;height:156px;display:flex;'
+    +'transform:scale('+(w/110).toFixed(3)+','+(h/156).toFixed(3)+');transform-origin:top left">'
+    +jokerCardHTML(jk,{onClick:(used?"":(onClick||""))})+'</div></div>';
+}
+function tblPastille(lbl,pts,col){
+  return '<span style="display:inline-flex;align-items:center;gap:6px;background:rgba(8,4,20,.72);'
+    +'border:1px solid '+col+'66;border-radius:20px;padding:3px 11px">'
+    +'<span style="font-family:Cinzel,serif;font-size:8px;letter-spacing:1.5px;color:#b9a9d8">'+lbl+'</span>'
+    +'<span style="font-family:Cinzel,serif;font-size:14px;font-weight:900;color:'+col+'">'+pts+'</span></span>';
+}
+
+/* Ligne des 4 piliers, au centre du tapis.
+   - Phase de choix : les cartes de pilier sont cliquables (mêmes handlers).
+   - Sinon : emblèmes + nombre de manches déjà gagnées sur ce pilier. */
+function tblPiliers(j){
+  var ph=j.phase, out='';
+  if(ph==="choixBase" || ph==="iaChoisitBase"){
+    out=PILIERS.map(function(p){
+      var nb, bloque, cb;
+      if(ph==="choixBase"){
+        nb=j.mainRepJ1.filter(function(c){ return c.combo.indexOf(p)!==-1; }).length;
+        bloque=(nb===0);
+        cb="G.choisirBase('"+p+"')";
+      }else{
+        if(p===j.b2){
+          return '<div style="display:flex;flex-direction:column;align-items:center;gap:3px">'
+            +pilierCard(p,{size:"xs",played:true})
+            +'<div style="font-family:Cinzel,serif;font-size:7px;color:#F0D060;letter-spacing:1px">IA</div></div>';
+        }
+        nb=j.mainRepJ1.filter(function(c){ return c.combo===mkCombo(p,j.b2); }).length;
+        bloque=(nb===0);
+        cb="G.j1RepondIA('"+p+"')";
+      }
+      return '<div style="display:flex;flex-direction:column;align-items:center;gap:3px'
+        +(bloque?';opacity:.32;filter:grayscale(.8)':'')+'">'
+        +(bloque?pilierCard(p,{size:"xs",disabled:true})
+                :pilierCard(p,{size:"xs",onClick:"AUDIO.sfxClickUnique();"+cb}))
+        +'<div style="font-family:Cinzel,serif;font-size:7px;color:'+(bloque?'#6f6484':PILIER[p].accent)+'">'
+        +(bloque?'aucune':(nb+' carte'+(nb>1?'s':'')))+'</div></div>';
+    }).join('');
+    return '<div style="position:absolute;top:50%;left:8px;right:8px;transform:translateY(-50%);'
+      +'display:flex;justify-content:center;gap:6px;z-index:26">'+out+'</div>';
+  }
+  out=PILIERS.map(function(p){
+    var n=(j.piliers&&j.piliers[p])||0;
+    return '<div style="display:flex;flex-direction:column;align-items:center;gap:2px;opacity:'+(n?1:.5)+'">'
+      +emblemeMini(p,20)
+      +'<span style="font-family:Cinzel,serif;font-size:9px;font-weight:900;color:'+PILIER[p].accent+'">'+n+'</span></div>';
+  }).join('');
+  return '<div style="position:absolute;top:50%;left:0;right:0;transform:translateY(-50%);'
+    +'display:flex;justify-content:center;gap:26px;z-index:12;opacity:.75">'+out+'</div>';
+}
+
+/* Main du joueur, en éventail. Les cartes du combo montent et sont
+   cliquables — un toucher les joue, exactement comme sur l'écran
+   classique (G.selRep enchaîne sur G.jouerRep). */
+function tblMain(j,valides){
+  var enJeu=(j.phase==="afficheBases" && !j.phaseEchange);
+  var ids={}; valides.forEach(function(c){ ids[c.id]=true; });
+  var liste, hand='';
+  if(j.phaseEchange){
+    liste=j.mainRepJ1.filter(function(c){ return c.combo===j.cb; })
+      .map(function(c){ return {c:c, jouable:true, click:"G.confirmerEchange('"+c.id+"')"}; });
+  }else{
+    liste=valides.map(function(c){ return {c:c, jouable:true, click:"G.selRep('"+c.id+"')"}; })
+      .concat(j.mainRepJ1.filter(function(c){ return !ids[c.id]; })
+        .map(function(c){ return {c:c, jouable:false, click:""}; }));
+  }
+  var av=liste.filter(function(o){ return o.jouable; });
+  var ar=liste.filter(function(o){ return !o.jouable; });
+  var n1=av.length, n2=ar.length;
+  var sp1=n1>1?Math.min(48,272/(n1-1)):0, an1=Math.min(4,24/Math.max(1,n1));
+  av.forEach(function(o,k){
+    var off=k-(n1-1)/2;
+    var dx=off*sp1, rot=off*an1, bas=(enJeu||j.phaseEchange)?58:34;
+    bas-=Math.pow(Math.abs(off),1.6)*3.2;
+    var col=(o.c.special==="supreme")?'#FF6B6B':(o.c.special==="fantome"?'#B084FF':'#C9A227');
+    hand+='<div onclick="'+o.click+'" style="position:absolute;left:calc(50% + '+dx.toFixed(0)+'px);'
+      +'bottom:'+bas.toFixed(0)+'px;transform:translateX(-50%) rotate('+rot.toFixed(1)+'deg);'
+      +'transform-origin:bottom center;z-index:'+(220+k)+';cursor:pointer;border-radius:10px;'
+      +'box-shadow:0 0 0 2px '+col+',0 0 15px '+col+'aa,0 8px 18px rgba(0,0,0,.6);'
+      +'transition:bottom .2s ease,transform .2s ease">'+tblCarte(o.c,{},74)+'</div>';
+  });
+  var sp2=n2>1?Math.min(22,250/(n2-1)):0;
+  ar.forEach(function(o,k){
+    var off=k-(n2-1)/2;
+    hand+='<div style="position:absolute;left:calc(50% + '+(off*sp2).toFixed(0)+'px);bottom:'
+      +((enJeu||j.phaseEchange)?-14:6)+'px;transform:translateX(-50%) rotate('+(off*1.4).toFixed(1)+'deg);'
+      +'transform-origin:bottom center;z-index:'+k+';filter:brightness(.45) saturate(.6);border-radius:8px;'
+      +'box-shadow:0 5px 12px rgba(0,0,0,.5)">'+tblCarte(o.c,{},52)+'</div>';
+  });
+  return hand;
+}
+
+function tblPlateau(j){
+  var D=tblEchelle();
+  var iaPr=IA_PROFILS[S.diff]||IA_PROFILS.Intermédiaire;
+  var ph=j.phase;
+  var valides=(ph==="afficheBases")?validesAvecSpeciales(j):[];
+  var masque=(j.twist==="aveugle"||j.twist==="ultime"||(j.modif==="brouillard"&&j.manche%2===0));
+
+  /* ── Bandeau du haut ── */
+  var haut='<div style="position:absolute;top:5px;left:0;right:0;text-align:center;z-index:50">'
+    +'<span style="font-family:Cinzel,serif;font-size:9px;letter-spacing:2px;color:#b98cff">'
+    +'MANCHE '+j.manche+' / '+j.total+' · '+iaPr.icon+' '+esc(iaPr.nom).toUpperCase()+'</span></div>'
+    +'<div onclick="MULTI_CONFIRM_MENU()" style="position:absolute;top:2px;right:7px;z-index:55;'
+    +'cursor:pointer;font-size:15px;opacity:.85">🏠</div>'
+    +'<div onclick="S.modeTable=false;sauvegarder();render()" title="Vue classique" '
+    +'style="position:absolute;top:2px;left:7px;z-index:55;cursor:pointer;font-size:15px;opacity:.85">🃏</div>';
+
+  /* ── Zone adverse ── */
+  var advJok=(j.mainJokJ2||[]).length;
+  var dosIA='';
+  for(var i=0;i<advJok;i++){
+    dosIA+='<div style="width:20px;height:27px;border-radius:4px;background:linear-gradient(160deg,#2a1c48,#0d0722);'
+      +'border:1px solid #C9A22766;margin-left:-7px"></div>';
+  }
+  var opp='<div style="position:absolute;top:30px;left:0;right:0;height:118px;display:flex;'
+    +'align-items:center;justify-content:center;gap:12px;z-index:20">'
+    +'<div style="text-align:center">'
+    +'<div style="font-size:19px;line-height:1">'+iaPr.icon+'</div>'
+    +'<div style="font-family:Cinzel,serif;font-size:9px;font-weight:900;color:'+iaPr.couleur+'">'
+    +esc(iaPr.nom).toUpperCase()+'</div>'
+    +'<div style="display:flex;justify-content:center;margin-top:3px;padding-left:7px">'+dosIA+'</div>'
+    +'</div>'
+    +(j.b2?'<div style="transform:rotate(180deg)">'+pilierCard(j.b2,{size:"xs",played:true})+'</div>':'')
+    +'</div>';
+
+  /* ── Cartes en combat, posées sur le tapis ── */
+  var advCarte='', maCarte='';
+  if(j.repIA && (ph==="apresReponses"||(ph==="afficheBases"&&j.iaDabord))){
+    advCarte='<div style="position:absolute;top:26px;left:50%;transform:translateX(-50%);z-index:24">'
+      +'<div style="transform:rotate(180deg)">'+tblCarte(j.repIA,{},76)+'</div></div>';
+  }else if(ph==="apresReponses"||ph==="afficheBases"){
+    advCarte='<div style="position:absolute;top:26px;left:50%;transform:translateX(-50%);z-index:22;'
+      +'width:76px;height:106px;border-radius:9px;border:1px dashed rgba(201,162,39,.32)"></div>';
+  }
+  if(j.repChoisie && ph==="apresReponses"){
+    maCarte='<div style="position:absolute;bottom:26px;left:50%;transform:translateX(-50%);z-index:24">'
+      +tblCarte(j.repChoisie,{},76)+'</div>';
+  }
+
+  /* ── Bandeau de consigne ── */
+  var txt='', btn='';
+  if(j.phaseEchange){ txt='🔄 ÉCHANGE — touche la carte à sacrifier';
+    btn='<button onclick="G.annulerEchange()" style="margin-top:4px;font-family:Cinzel,serif;'
+      +'font-weight:900;background:#3a2a55;border:1px solid #b98cff88;color:#e6dcff;padding:5px 16px;'
+      +'border-radius:12px;font-size:10px;cursor:pointer;letter-spacing:1px">ANNULER</button>'; }
+  else if(ph==="choixBase")     txt='⚖ CHOISIS TON PILIER — il ouvrira le combo';
+  else if(ph==="j1AChoisi")     txt='⚖ '+String(j.b1||'').toUpperCase()+' JOUÉ — l\'IA répond…';
+  else if(ph==="iaChoisitBase") txt='⚖ L\'IA A PRIS '+String(j.b2||'').toUpperCase()+' — réponds par un pilier';
+  else if(ph==="afficheBases"){
+    txt='⚔ COMBO '+String(j.cb||'').toUpperCase().replace('+',' + ');
+    if(valides.length===0){
+      txt='⚔ COMBO '+String(j.cb||'').toUpperCase().replace('+',' + ')+' — aucune carte';
+      if(j.mainJokJ1.find(function(x){ return x.id==="j4"; })){
+        btn='<button onclick="G.passerTour()" style="margin-top:4px;font-family:Cinzel,serif;font-weight:900;'
+          +'background:#5a2233;border:1px solid #FF7C9A;color:#fff;padding:5px 16px;border-radius:12px;'
+          +'font-size:10px;cursor:pointer;letter-spacing:1px">PASSER</button>';
+      }
+    }
+  }
+  else if(ph==="apresReponses") txt='⚡ LES DEUX RÉPONSES SONT POSÉES';
+  var prompt='<div style="position:absolute;bottom:302px;left:0;right:0;text-align:center;z-index:45">'
+    +'<span style="font-family:Cinzel,serif;font-size:10px;font-weight:900;color:#C9A227;'
+    +'background:linear-gradient(90deg,transparent,#C9A22726,transparent);border-top:1px solid #C9A22755;'
+    +'border-bottom:1px solid #C9A22755;padding:3px 0;display:block;letter-spacing:1px">'+txt+'</span>'
+    +btn+'</div>';
+
+  /* ── Jokers : les mêmes, aux mêmes moments que sur l'écran classique ── */
+  var jok='';
+  if(ph==="afficheBases" && !j.phaseEchange){
+    var j3=j.mainJokJ1.find(function(x){ return x.id==="j3"; });
+    var j4=j.mainJokJ1.find(function(x){ return x.id==="j4"; });
+    if(j3) jok+=tblJoker(j3,58,"G.useEspion()");
+    if(j4) jok+=tblJoker(j4,58,(valides.length===0?"G.useEchangeLibre()":"G.useEchange()"));
+  }else if(ph==="apresReponses"){
+    var offs=j.mainJokJ1.filter(function(x){ return x.id==="j1"||x.id==="j2"; });
+    var tot=((j.repChoisie&&j.repChoisie.pts)||0)+((j.repIA&&j.repIA.pts)||0);
+    offs.forEach(function(jk){ jok+=tblJoker(jk,58,"G.appliquerJoker('"+jk.id+"')"); });
+    jok+='<button onclick="G.appliquerJoker(null)" style="font-family:Cinzel,serif;font-weight:900;'
+      +'background:linear-gradient(135deg,#C9A227,#9C7B18);border:none;color:#fff;padding:9px 16px;'
+      +'border-radius:12px;cursor:pointer;letter-spacing:1px;font-size:11px;align-self:center">'
+      +(offs.length?'SANS JOKER →':'RÉSULTAT →')+'</button>';
+    if(offs.length) jok+='<div style="position:absolute;bottom:-13px;left:0;right:0;text-align:center;'
+      +'font-size:8.5px;color:#9a8fc0">pot de '+tot+' pts</div>';
+  }
+  var jokRow='<div style="position:absolute;bottom:224px;left:0;right:0;display:flex;justify-content:center;'
+    +'gap:11px;z-index:40">'+jok+'</div>';
+
+  /* ── Espion : les 3 cartes révélées, posées sur le côté du tapis ── */
+  var espion='';
+  if(j.espionActif && j.repIAVues && j.repIAVues.length){
+    espion='<div style="position:absolute;top:154px;left:0;right:0;display:flex;justify-content:center;'
+      +'gap:5px;z-index:30">'+j.repIAVues.map(function(c){ return tblCarte(c,{},44); }).join('')+'</div>';
+  }
+
+  var tapis='<div style="position:absolute;top:152px;left:14px;right:14px;bottom:330px;border-radius:26px;'
+    +'background:radial-gradient(60% 50% at 50% 50%, rgba(201,162,39,.10), rgba(20,10,40,.2) 60%, rgba(8,4,20,.5));'
+    +'border:1px solid rgba(201,162,39,.28);box-shadow:inset 0 0 60px rgba(0,0,0,.55), 0 0 30px rgba(201,162,39,.08)">'
+    +'<div style="position:absolute;top:7px;left:0;right:0;text-align:center;z-index:30">'
+    +tblPastille('IA',j.s2,'#FF9AA8')+'</div>'
+    +'<div style="position:absolute;bottom:7px;left:0;right:0;text-align:center;z-index:30">'
+    +tblPastille(esc(String(S.nom||'TOI').toUpperCase()),j.s1,'#7CFC9A')+'</div>'
+    +tblPiliers(j)
+    +'<div style="position:absolute;top:50%;left:50%;width:170px;height:170px;transform:translate(-50%,-50%);'
+    +'border-radius:50%;background:radial-gradient(circle, rgba(240,208,96,.14), transparent 68%)"></div>'
+    +advCarte+maCarte+'</div>';
+
+  var pied='<div style="position:absolute;bottom:4px;left:0;right:0;text-align:center;z-index:60">'
+    +'<span style="font-family:Cinzel,serif;font-size:9px;letter-spacing:2px;color:#E6CE7A">✦ COUPLE KHALAM ✦</span></div>';
+
+  return '<div style="position:fixed;inset:0;display:flex;align-items:center;justify-content:center;'
+    +'overflow:hidden;background:#080414;z-index:1">'
+    +'<div style="width:390px;height:844px;flex:0 0 auto;transform:scale('+D.s.toFixed(4)+');'
+    +'transform-origin:center center;overflow:hidden;position:relative;'
+    +'font-family:\'Crimson Text\',Georgia,serif;color:#efeaf7;'
+    +'background:radial-gradient(120% 55% at 50% 50%, #2a1c48 0%, #160d2c 42%, #080414 100%)">'
+    +haut+opp+tapis+espion+prompt+jokRow
+    +'<div style="position:absolute;bottom:44px;left:0;right:0;height:188px">'+tblMain(j,valides)+'</div>'
+    +pied+'</div></div>';
+}
+
+function renderJeuTable(app){
+  var j=S.jeu;
+  // Pas de partie, ou écran de fin de manche : on rend l'écran classique,
+  // qui porte tout le détail du verdict, l'XP et les enchaînements.
+  if(!j || j.phase==="fin") return renderJeu(app);
+  try{ app.innerHTML=tblPlateau(j); }
+  catch(e){
+    if(window.__logErr) window.__logErr(e,"table:"+j.phase);
+    renderJeu(app);
+  }
+}
+
 
 function renderJeu(app){
   const j=S.jeu;
