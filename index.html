@@ -2270,7 +2270,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v98.20";
+const BUILD_TAG="v98.21";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -15568,24 +15568,6 @@ function renderMenu(app){
         </div>
         
 
-        <!-- ══ ESPACE DE JEU : écran classique ou plateau ══ -->
-        <div style="display:flex;gap:7px;align-items:center;margin-top:8px;padding:9px 11px;
-          border-radius:13px;background:rgba(20,12,40,0.62);border:1px solid rgba(240,208,96,0.30)">
-          <div style="flex:1;min-width:0">
-            <div style="font-size:9px;letter-spacing:2px;color:#c8bcd8">ESPACE DE JEU</div>
-            <div style="font-size:10px;color:#9C93AD;margin-top:2px">${S.modeTable?"La table, vue du dessus":"Écran classique, cartes en grand"}</div>
-          </div>
-          ${[["EXPERT",false],["TABLE",true]].map(function(o){
-            var on=(!!S.modeTable===o[1]);
-            return '<button onclick="S.modeTable='+o[1]+';sauvegarder();AUDIO.sfxClickUnique();render()" '
-              +'style="font-family:\'Cinzel\',serif;font-size:10px;font-weight:900;letter-spacing:1px;'
-              +'padding:7px 12px;border-radius:10px;cursor:pointer;flex-shrink:0;'
-              +'border:1px solid '+(on?'#F0D060':'rgba(240,208,96,0.28)')+';'
-              +'background:'+(on?'linear-gradient(135deg,#C9A227,#9C7B18)':'rgba(8,5,18,0.6)')+';'
-              +'color:'+(on?'#12082e':'#cbb8ee')+'">'+o[0]+'</button>';
-          }).join("")}
-        </div>
-
         ${(function(){
           var e=epreuveDuJour();
           // Plaque de l'Épreuve du jour, découpée dans la planche.
@@ -17683,6 +17665,9 @@ document.addEventListener("visibilitychange",function(){
 try{ verifierPartieEnCours(); }catch(e){ if(window.__logErr) window.__logErr(e,"init verifierPartieEnCours"); }
 // Le jeu est prêt : on efface l'écran de chargement.
 try{ if(window.__preloadFini) window.__preloadFini(); }catch(e){}
+// Choix de l'espace de jeu : la fenêtre attend sous le splash et se découvre
+// quand celui-ci s'efface.
+try{ _choixEspaceJeu(); }catch(e){ if(window.__logErr) window.__logErr(e,"choix espace"); }
 
 
 function renderSelection(app){
@@ -17826,6 +17811,48 @@ function coachOnboarding(phase){
     +'<strong style="color:var(--goldL);font-family:\'Cinzel\',serif">👋 Guide</strong> · '+t+'</div>';
 }
 
+
+
+/* ══ Fenêtre de choix de l'espace de jeu, juste après le démarrage ══
+   Elle se pose sous le splash (z-index inférieur) : elle apparaît donc
+   au moment exact où l'écran d'accueil s'efface. */
+function _choixEspaceJeu(){
+  if(document.getElementById("choix-espace")) return;
+  var ov=document.createElement("div");
+  ov.id="choix-espace";
+  ov.style.cssText="position:fixed;inset:0;z-index:99000;display:flex;align-items:center;"
+    +"justify-content:center;padding:22px;background:radial-gradient(ellipse at 50% 40%,#241148 0%,#0c0620 62%,#050310 100%)";
+  function plaque(titre,sous,icone,val,or_){
+    return '<button onclick="_prendreEspace('+val+')" style="width:100%;display:flex;align-items:center;'
+      +'gap:13px;text-align:left;padding:15px 16px;margin-top:11px;border-radius:16px;cursor:pointer;'
+      +'border:1px solid '+(or_?'rgba(240,208,96,0.55)':'rgba(185,140,255,0.40)')+';'
+      +'background:'+(or_?'linear-gradient(135deg,rgba(201,162,39,0.22),rgba(156,123,24,0.10))':'rgba(20,12,40,0.72)')+';'
+      +'box-shadow:0 6px 20px rgba(0,0,0,0.55)">'
+      +'<span style="font-size:27px;line-height:1;flex-shrink:0">'+icone+'</span>'
+      +'<span style="min-width:0;display:flex;flex-direction:column;gap:3px">'
+      +'<span style="font-family:\'Cinzel\',serif;font-size:15px;font-weight:900;letter-spacing:1.5px;color:#F0D060">'+titre+'</span>'
+      +'<span style="font-size:11px;color:#c3b6dd;line-height:1.35">'+sous+'</span></span></button>';
+  }
+  ov.innerHTML='<div style="width:100%;max-width:330px;text-align:center">'
+    +'<div style="font-size:34px;line-height:1;margin-bottom:6px">\u2696\ufe0f</div>'
+    +'<div style="font-family:\'Cinzel\',serif;font-size:19px;font-weight:900;letter-spacing:2px;color:#F0D060">'
+    +'O\u00d9 VEUX-TU JOUER ?</div>'
+    +'<div style="font-size:11px;color:#9C93AD;margin-top:5px">Choisis ton espace de jeu pour cette session</div>'
+    +plaque("MODE TABLE","Le plateau vu du dessus, tout tient sur un seul \u00e9cran","\ud83c\udfb4",true,true)
+    +plaque("MODE EXPERT","L\'\u00e9cran de jeu classique, les cartes en grand","\u2694\ufe0f",false,false)
+    +'<div style="font-size:10px;color:#6f6484;margin-top:14px;line-height:1.4">'
+    +'En cours de partie, le \ud83c\udccf en haut \u00e0 gauche te ram\u00e8ne \u00e0 l\'autre vue.</div></div>';
+  document.body.appendChild(ov);
+}
+function _prendreEspace(v){
+  S.modeTable=!!v;
+  try{ sauvegarder(); }catch(e){}
+  try{ AUDIO.sfxConfirm(); }catch(e){}
+  var ov=document.getElementById("choix-espace");
+  if(ov){ ov.style.transition="opacity .3s ease"; ov.style.opacity="0";
+    setTimeout(function(){ try{ ov.remove(); }catch(_){} },320); }
+  render();
+}
 
 /* ═══════════════════════════════════════════════════════════════════════
    MODE TABLE — plateau alternatif (branchement du prototype table-pli)
