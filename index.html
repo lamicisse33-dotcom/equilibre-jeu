@@ -2270,7 +2270,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v98.27";
+const BUILD_TAG="v98.29";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -15531,6 +15531,14 @@ function renderMenu(app){
 
     <!-- ══ JOUER ══ -->
     <div style="padding:0 16px;margin-bottom:14px">
+      <!-- Bouton d'arrêt de la démo : n'existe QUE pendant qu'elle tourne,
+           donc jamais visible d'un joueur. Il permet de reprendre la main
+           sans repasser par l'Espace auteur. -->
+      ${DEMO.actif?`<button onclick="demoArreter();S.ecran='menu';render()"
+        style="width:100%;min-height:44px;border-radius:13px;cursor:pointer;margin-bottom:12px;
+        background:rgba(224,85,85,0.14);border:1.5px solid rgba(224,85,85,0.5);color:#f08a8a;
+        font-family:'Cinzel',serif;font-size:12.5px;font-weight:900;letter-spacing:1px">
+        ■ ARRÊTER LA DÉMO — Mila joue à ta place</button>`:""}
       <!-- L'annonce se pose SUR la ligne « JOUER », centrée dans l'espace
            restant : la hauteur du bandeau ne change pas d'un pixel.
            Le titre garde sa place à gauche, l'annonce occupe le milieu. -->
@@ -17338,7 +17346,9 @@ function demoDemarrer(){
   try{ var o=document.getElementById("bord-panneau"); if(o) o.remove(); }catch(e){}
   _demoPanneau();
   _demoMaj();
-  try{ G.startJeu(false); }catch(e){}
+  // On rend la main au menu : Mila y choisit son mode comme un vrai joueur.
+  S.ecran="menu";
+  try{ render(); }catch(e){}
   // 400 ms : assez lent pour suivre à l'œil, assez rapide pour enchaîner
   // une partie complète en une trentaine de secondes.
   // Rythme humain : Mila ne joue pas au métronome. Chaque décision demande
@@ -17412,6 +17422,14 @@ function _demoPas(){
         return;
       }
     }
+    // Au menu, sans partie : Mila choisit son mode comme un joueur — la
+    // Campagne tant qu'il reste des Gardiens (elle rapporte plus d'XP),
+    // le Solo quand la Voie est terminée.
+    if(S.ecran==="menu"||S.ecran==="campagne"||S.ecran==="temple"){
+      try{ _demoChoisirMode(); }catch(e){}
+      _demoProchain(2000);
+      return;
+    }
     // Fin de partie : on relance.
     if(!j || S.ecran==="resultat"){
       if(S.ecran==="resultat"){
@@ -17420,7 +17438,11 @@ function _demoPas(){
         if(a==="win") DEMO.victoires++; else if(a==="lose") DEMO.defaites++; else DEMO.nulles++;
       }
       _demoMaj();
-      try{ G.startJeu(false); }catch(e){}
+      // Retour au menu : elle rechoisira son mode au tour suivant.
+      // On NE vide PAS S.jeu : des minuteurs du jeu peuvent encore tourner et
+      // liraient j.twist sur un objet nul. startJeu() le remplacera.
+      S.ecran="menu";
+      try{ render(); }catch(e){}
       _demoProchain(2600);          // souffler entre deux parties
       return;
     }
@@ -17509,6 +17531,19 @@ function _demoPas(){
 function _demoBattement(){
   if(!DEMO.actif) return;
   if(!DEMO.timer) _demoProchain(800);
+}
+// Mila choisit son mode, comme le ferait un joueur : la Campagne tant qu'il
+// reste des Gardiens à vaincre — c'est là que l'XP tombe le plus — puis le
+// Solo une fois la Voie terminée. Un peu de hasard pour varier.
+function _demoChoisirMode(){
+  var prog=(S.campagne&&S.campagne.progres)||0;
+  var total=(typeof CAMPAGNE!=="undefined" && CAMPAGNE.length)?CAMPAGNE.length:15;
+  // Garde-fou : lancerGardien() lit CAMPAGNE[i] sans vérifier la borne. Passé
+  // le dernier Gardien, l'index n'existe plus et la partie plantait.
+  if(prog>=0 && prog<total && Math.random()>0.2){
+    try{ lancerGardien(prog); return; }catch(e){}
+  }
+  try{ G.startJeu(false); }catch(e){}
 }
 function _demoPanneau(){
   var d=document.createElement("div");
