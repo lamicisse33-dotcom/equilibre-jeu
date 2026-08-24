@@ -2270,7 +2270,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v98.19";
+const BUILD_TAG="v98.23";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -2577,9 +2577,13 @@ function chargerClassementMondial(){
   // Même précaution que pour le tableau de bord : si la colonne `gardiens`
   // n'existe pas encore côté base, la requête entière est rejetée et le
   // classement resterait vide. On réessaie sans elle.
+  // Deux classements possibles : le RECORD (meilleur score d'une partie) et
+  // la PROGRESSION (XP totale). Le premier récompense celui qui joue le mieux,
+  // le second celui qui joue le plus. Chacun a son plaisir ; le joueur choisit.
+  var _tri=(S._mondialTri==="xp")?"xp":"points";
   var _lire=function(avecGardiens){
     var cols="appareil,pseudo,points,xp,parties"+(avecGardiens?",gardiens":"");
-    return fetch(SUPA.url+"/rest/v1/classement?select="+cols+"&order=points.desc&limit=50",
+    return fetch(SUPA.url+"/rest/v1/classement?select="+cols+"&order="+_tri+".desc&limit=50",
                  {headers:_supaEntetes()})
       .then(function(r){ if(!r.ok) throw new Error(r.status); return r.json(); });
   };
@@ -13440,7 +13444,8 @@ const G={
     G.checkBadges(j);
     // Classement
     S.classement.push({nom:S.nom,pts:j.s1,xp:S.xp});
-    enregistrerStat(j.s1>j.s2?"win":(j.s1<j.s2?"lose":"draw"), j.s1, j.profil);
+    S._lastRes = j.s1>j.s2?"win":(j.s1<j.s2?"lose":"draw");   // lu par le mode Démo
+    enregistrerStat(S._lastRes, j.s1, j.profil);
     _verifierAplomb(j.profil);      // exploit : les quatre piliers resserrés
     S.classement.sort((a,b)=>b.pts-a.pts);
     S.classement=S.classement.slice(0,10);
@@ -16294,6 +16299,16 @@ function renderStats(app){
   </div></div>`;
 }
 
+// Bascule entre les deux classements. On vide la liste pour forcer une
+// relecture : la base retrie côté serveur, pas côté téléphone.
+function _classementTri(t){
+  if(S._mondialTri===t) return;
+  S._mondialTri=t;
+  S._mondial=undefined;
+  S._mondialEnCours=false;
+  try{ AUDIO.sfxClickUnique&&AUDIO.sfxClickUnique(); }catch(_){}
+  render();
+}
 function renderClassement(app){
   // Première ouverture : on va chercher les vrais joueurs, puis on redessine.
   if(S._mondial===undefined && !S._mondialEnCours){
@@ -16307,6 +16322,7 @@ function renderClassement(app){
   var enCours=S._mondialEnCours;
 
   // Repli sur le classement local si la base ne répond pas.
+  var _triXP=(S._mondialTri==="xp");
   var lignes = mondial || (S.classement||[]).map(function(p,i){
     return {rang:i+1, nom:p.nom, pts:p.pts, xp:p.xp, moi:true};
   });
@@ -16321,7 +16337,9 @@ function renderClassement(app){
     ? '<div style="margin-top:14px;padding:12px 14px;border-radius:12px;border:1px dashed rgba(212,175,55,0.4);'
       +'background:rgba(10,6,20,0.5);text-align:center;font-size:11.5px;color:var(--muted)">'
       +'Tu n\'es pas encore dans les 50 premiers.<br>'
-      +'<span style="color:var(--goldL)">Ton meilleur score : '+(S.stats.meilleurScore)+' pts</span></div>'
+      +'<span style="color:var(--goldL)">'+(_triXP
+          ? 'Ton XP : '+_fmtMontant(S.xp||0)
+          : 'Ton meilleur score : '+(S.stats.meilleurScore)+' pts')+'</span></div>'
     : "";
 
   var vide = '<div style="text-align:center;border:1px dashed rgba(212,175,55,0.3);border-radius:16px;'
@@ -16337,7 +16355,20 @@ function renderClassement(app){
         <button class="btn-ghost" style="width:auto;padding:8px 14px" onclick="S.ecran='menu';render()">←</button>
         <h2 style="font-family:'Cinzel',serif;color:var(--goldL);font-size:20px">🌍 Classement</h2>
       </div>
-      <div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin:0 0 16px 54px">${sousTitre}</div>
+      <div style="font-size:10px;color:var(--muted);letter-spacing:1px;margin:0 0 10px 54px">${sousTitre}</div>
+      <!-- Deux façons de se comparer : le record d'une partie, ou l'XP totale.
+           La première récompense l'adresse, la seconde l'assiduité. -->
+      <div style="display:flex;gap:8px;margin-bottom:14px">
+        ${[["points","🏆 Records","meilleur score"],["xp","⚡ Progression","XP totale"]].map(function(o){
+          var actif=((S._mondialTri==="xp"?"xp":"points")===o[0]);
+          return '<button onclick="_classementTri(\''+o[0]+'\')" style="flex:1;min-height:46px;border-radius:13px;cursor:pointer;'
+            +'background:'+(actif?"rgba(240,208,96,0.18)":"rgba(255,255,255,0.04)")+';'
+            +'border:1.5px solid '+(actif?"rgba(240,208,96,0.55)":"rgba(255,255,255,0.10)")+';'
+            +'font-family:\'Cinzel\',serif;font-size:12px;font-weight:900;line-height:1.2;'
+            +'color:'+(actif?"var(--goldL)":"var(--muted)")+'">'
+            +o[1]+'<br><span style="font-size:8.5px;font-weight:400;opacity:0.8">'+o[2]+'</span></button>';
+        }).join("")}
+      </div>
       ${(S._mondialErr&&!enCours)?'<div style="text-align:center;margin-bottom:14px">'
         +'<button class="btn-ghost" style="width:auto;padding:9px 18px;font-size:12px" '
         +'onclick="S._mondial=undefined;S._mondialErr=false;render()">🔄 Réessayer</button></div>':""}
@@ -16362,7 +16393,12 @@ function renderClassement(app){
                  +'<span style="color:#C9A227">⚔ '+p.gardiens+'/15 gardiens</span>':"")
               +'</div>'
           +'</div>'
-          +'<div style="font-size:18px;font-weight:900;color:'+(or1?"var(--goldL)":"var(--text)")+';font-family:\'Cinzel\',serif">'+p.pts+'</div>'
+          // La colonne de droite suit l'onglet choisi : le record, ou l'XP.
+          +'<div style="text-align:right">'
+            +'<div style="font-size:18px;font-weight:900;color:'+(or1?"var(--goldL)":"var(--text)")+';font-family:\'Cinzel\',serif">'
+              +(_triXP?_fmtMontant(p.xp||0):p.pts)+'</div>'
+            +'<div style="font-size:8px;color:var(--muted);letter-spacing:1px">'+(_triXP?'XP':'PTS')+'</div>'
+          +'</div>'
           +'</div>';
       }).join("")}
       ${monRang}
@@ -17149,6 +17185,18 @@ function _rendreTableauBord(liste, souci){
           +'font-family:\'Cinzel\',serif;font-size:12px;font-weight:900">CALCULER</button>'
       +'</div>'
       +'<div id="bord-res"></div>'
+    +'</div>'
+    // ── DÉMONSTRATION IA CONTRE IA ────────────────────────────────────────
+    // Uniquement ici : derrière le mot de passe, invisible des joueurs.
+    +'<div style="margin-top:18px;border-top:1px solid rgba(255,255,255,0.08);padding-top:16px">'
+      +'<div style="font-size:10px;color:var(--gold);letter-spacing:2px;margin-bottom:6px">✦ DÉMONSTRATION</div>'
+      +'<div style="font-size:10.5px;color:var(--muted);line-height:1.55;margin-bottom:10px;'
+        +'font-family:\'Crimson Text\',Georgia,serif;font-style:italic">'
+      +'Le jeu se joue tout seul, IA contre IA. Un compteur suit les résultats en bas de l\'écran. '
+      +'Attention : ces parties comptent dans tes vraies statistiques.</div>'
+      +'<button onclick="demoBasculer()" style="width:100%;min-height:46px;border-radius:12px;cursor:pointer;'
+        +'background:rgba(240,208,96,0.14);border:1px solid rgba(240,208,96,0.45);color:var(--goldL);'
+        +'font-family:\'Cinzel\',serif;font-size:12.5px;font-weight:900">▶ LANCER LA DÉMONSTRATION</button>'
     +'</div>';
 }
 
@@ -17221,6 +17269,187 @@ function _bordCopier(){
     var s=window.getSelection(); s.removeAllRanges(); s.addRange(r);
     showToast("📋 Sélectionnée — copie-la","info",2600);
   }catch(e){}
+}
+
+// ── LA LOGIQUE DE BOLITO, RÉUTILISABLE ────────────────────────────────
+// Le raisonnement de l'IA Expert, sorti pour servir aux DEUX camps : la démo
+// joue Bolito contre Bolito, sans logique parallèle qui pourrait diverger.
+//   main   : les cartes de celui qui décide
+//   ouvert : le pilier déjà posé (null si c'est lui qui ouvre)
+function bolitoPilier(main, ouvert){
+  var cands;
+  if(ouvert){
+    var tous=PILIERS.filter(function(p){ return p!==ouvert; });
+    var jouables=tous.filter(function(p){ return main.some(function(c){return c.combo===mkCombo(ouvert,p);}); });
+    cands=jouables.length?jouables:tous;
+  } else {
+    cands=PILIERS.filter(function(p){ return main.some(function(c){return c.combo.includes(p);}); });
+    if(!cands.length) cands=PILIERS.slice();
+  }
+  var note=function(p){
+    var cs = ouvert
+      ? main.filter(function(c){ return c.combo===mkCombo(ouvert,p); })
+      : main.filter(function(c){ return c.combo.includes(p); });
+    if(!cs.length) return -1;
+    var mx=Math.max.apply(null,[0].concat(cs.map(function(c){return c.pts;})));
+    // Carte la plus forte d'abord, puis combo le plus profond : la règle de Bolito.
+    return mx*1000 + cs.length;
+  };
+  return cands.slice().sort(function(a,b){ return note(b)-note(a); })[0];
+}
+// Sa carte : la plus petite qui BAT celle d'en face, sinon la plus faible.
+function bolitoCarte(valides, carteAdverse){
+  if(!valides.length) return null;
+  var asc=valides.slice().sort(function(a,b){ return a.pts-b.pts; });
+  if(!carteAdverse) return asc[asc.length-1];
+  var gagnantes=asc.filter(function(c){ return c.pts>carteAdverse.pts; });
+  return gagnantes.length?gagnantes[0]:asc[0];
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// DÉMONSTRATION — le jeu se joue tout seul, Bolito contre Bolito.
+// Réservé à l'auteur : accessible depuis l'Espace auteur, jamais visible
+// des joueurs. Sert à observer le jeu tourner longuement — équilibrage,
+// enchaînements, cinématiques — sans avoir à jouer soi-même.
+// Le « joueur » est piloté par la même logique que l'IA : il ouvre le pilier
+// où sa main est la plus forte, puis pose la meilleure carte du combo.
+// ══════════════════════════════════════════════════════════════════════
+var DEMO={actif:false, timer:null, parties:0, victoires:0, defaites:0, nulles:0, depart:0, _sig:"", _fige:0};
+
+function demoBasculer(){
+  if(DEMO.actif) demoArreter(); else demoDemarrer();
+}
+function demoDemarrer(){
+  if(DEMO.actif) return;
+  DEMO.actif=true; DEMO.parties=0; DEMO.victoires=0; DEMO.defaites=0; DEMO.nulles=0;
+  DEMO.depart=Date.now();
+  try{ var o=document.getElementById("bord-panneau"); if(o) o.remove(); }catch(e){}
+  _demoPanneau();
+  _demoMaj();
+  try{ G.startJeu(false); }catch(e){}
+  // 400 ms : assez lent pour suivre à l'œil, assez rapide pour enchaîner
+  // une partie complète en une trentaine de secondes.
+  DEMO.timer=setInterval(_demoPas, 400);
+}
+function demoArreter(){
+  DEMO.actif=false;
+  if(DEMO.timer){ clearInterval(DEMO.timer); DEMO.timer=null; }
+  var p=document.getElementById("demo-hud"); if(p) p.remove();
+}
+// Un pas de jeu : on regarde où en est la partie et on joue le coup suivant.
+function _demoPas(){
+  if(!DEMO.actif) return;
+  try{
+    var j=S.jeu;
+    // Fin de partie : on relance.
+    if(!j || S.ecran==="resultat"){
+      if(S.ecran==="resultat"){
+        DEMO.parties++;
+        var a=S._lastRes;
+        if(a==="win") DEMO.victoires++; else if(a==="lose") DEMO.defaites++; else DEMO.nulles++;
+      }
+      _demoMaj();
+      try{ G.startJeu(false); }catch(e){}
+      return;
+    }
+    // Écrans qui attendent un geste : on les franchit.
+    var ov=document.getElementById("enc-popup")||document.getElementById("encmsg-popup")
+          ||document.getElementById("accueil-popup")||document.getElementById("reprise-popup");
+    if(ov){ ov.remove(); return; }
+    // Sélection des cartes : on garde les dix plus fortes.
+    if(!j.selValidee){
+      j.selTemp=[...j.allRepJ1].sort(function(a,b){return b.pts-a.pts;}).slice(0,10);
+      try{ G.confirmerSelection(); }catch(e){}
+      return;
+    }
+    // Tableau de Bonus à l'écran : on répond, puis on le referme. Sans la
+    // fermeture, la démo restait bloquée sur le verdict du bonus.
+    var _bo=document.getElementById("bonus-overlay");
+    if(_bo && _bo.classList.contains("active")){
+      if(typeof BONUS!=="undefined" && BONUS.current && !BONUS.answered){
+        try{ BONUS.answer(Math.floor(Math.random()*4)); }catch(e){}
+      } else {
+        try{ _bo.click(); }catch(e){}
+      }
+      return;
+    }
+    // Bonus du Sage ou du Destin : on les traverse aussi.
+    ["sage-bonus-overlay","destin-bonus-overlay","jf-overlay","joker-overlay",
+     "special-confirm-overlay","deal-overlay"].forEach(function(id){
+      var e=document.getElementById(id);
+      if(e && e.classList && e.classList.contains("active")){
+        try{ e.click(); }catch(_){}
+        try{ var bt=e.querySelector("button"); if(bt) bt.click(); }catch(_){}
+      }
+    });
+    // À nous d'ouvrir un pilier — logique de Bolito.
+    if(j.phase==="choixBase" && !j.b1 && !j.b2){
+      var choix=bolitoPilier(j.mainRepJ1, null);
+      if(choix){ try{ G.choisirBase(choix); }catch(e){} }
+      return;
+    }
+    // Bolito a ouvert : on complète le combo, même logique.
+    if(j.phase==="iaChoisitBase" && j.b2 && !j.b1){
+      var ch=bolitoPilier(j.mainRepJ1, j.b2);
+      if(ch){ try{ G.j1RepondIA(ch); }catch(e){} }
+      return;
+    }
+    // Écran de décision des jokers : la démo n'en utilise aucun et résout.
+    if(j.phase==="apresReponses"){
+      try{ G.resoudre(j.repChoisie, j.repIA, null); }catch(e){}
+      return;
+    }
+    // Fin de manche : on enchaîne.
+    if(j.phase==="fin"){
+      try{ G.mancheSuivante(); }catch(e){}
+      return;
+    }
+    // Détecteur de blocage : si l'état ne change pas pendant 8 tours, un
+    // minuteur ou une séquence attend quelque chose que la démo ne sait pas
+    // franchir. On force alors le passage à la manche suivante.
+    var _sig=S.ecran+"/"+j.phase+"/"+j.manche;
+    if(_sig===DEMO._sig){ DEMO._fige=(DEMO._fige||0)+1; }
+    else { DEMO._sig=_sig; DEMO._fige=0; }
+    if(DEMO._fige>=8){
+      DEMO._fige=0;
+      try{
+        if(G._apresInt){ clearTimeout(G._apresInt); G._apresInt=null; }
+        document.querySelectorAll(".active").forEach(function(e){ e.classList.remove("active"); });
+        if(j.manche>=j.total) G.finPartie(); else G._doMancheSuivante(j);
+      }catch(e){}
+      return;
+    }
+    // Notre carte — logique de Bolito. Si l'IA a déjà posé (c'est elle qui
+    // avait ouvert), on répond en la voyant ; sinon on pose la plus forte.
+    if(j.phase==="afficheBases" && j.cb && !j.repChoisie){
+      var v=validesAvecSpeciales(j);
+      if(!v.length) return;
+      var c2=bolitoCarte(v, (j.iaDabord && j.repIA) ? j.repIA : null);
+      if(c2){ try{ G.selRep(c2.id, true); }catch(e){} }
+      return;
+    }
+  }catch(e){}
+}
+function _demoPanneau(){
+  var d=document.createElement("div");
+  d.id="demo-hud";
+  d.style.cssText="position:fixed;left:8px;bottom:8px;z-index:99998;background:rgba(6,4,16,0.92);"
+    +"border:1px solid rgba(240,208,96,0.5);border-radius:12px;padding:9px 12px;"
+    +"font-family:monospace;font-size:11px;color:#F0D060;line-height:1.5;"
+    +"box-shadow:0 6px 20px rgba(0,0,0,0.8)";
+  d.innerHTML='<div id="demo-txt">démarrage…</div>'
+    +'<button onclick="demoArreter()" style="width:100%;margin-top:6px;padding:5px;border-radius:8px;'
+    +'cursor:pointer;background:rgba(224,85,85,0.18);border:1px solid rgba(224,85,85,0.5);'
+    +'color:#f08a8a;font-size:10px;font-weight:800">■ ARRÊTER</button>';
+  document.body.appendChild(d);
+}
+function _demoMaj(){
+  var t=document.getElementById("demo-txt"); if(!t) return;
+  var min=Math.max(1,Math.round((Date.now()-DEMO.depart)/60000));
+  var taux=DEMO.parties?Math.round(DEMO.victoires/DEMO.parties*100):0;
+  t.innerHTML="▶ DÉMO · "+DEMO.parties+" parties<br>"
+    +"V "+DEMO.victoires+" · D "+DEMO.defaites+" · N "+DEMO.nulles+"<br>"
+    +taux+" % · "+min+" min · "+Math.round(DEMO.parties/min)+"/min";
 }
 
 function _regFermer(){
