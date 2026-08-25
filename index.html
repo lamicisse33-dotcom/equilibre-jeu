@@ -2270,7 +2270,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v98.34";
+const BUILD_TAG="v98.35";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -16955,9 +16955,12 @@ function _ouvrirReglages(enPartie){
         +'style="width:100%;accent-color:#F0D060;background:transparent">'
       +'<div id="reg-vol-txt" style="font-family:\'Cinzel\',serif;font-size:12px;color:var(--goldL);font-weight:700;margin-top:4px">'+vol+' %</div>'
     +'</div>'
-    +'<button onclick="_testerSon()" style="width:100%;min-height:44px;border-radius:22px;cursor:pointer;margin-bottom:9px;'
-      +'background:rgba(240,208,96,0.10);border:1px solid rgba(240,208,96,0.45);color:var(--goldL);font-size:13px;font-weight:700">'
-      +'🔎 Tester le son</button>'
+    // Le test du son faisait doublon : bouger le volume le fait déjà entendre.
+    // Sa place sert mieux au rapport de diagnostic, la demande la plus fréquente
+    // pendant la phase de test.
+    +'<button onclick="_envoyerDiagnostic()" style="width:100%;min-height:44px;border-radius:22px;cursor:pointer;margin-bottom:9px;'
+      +'background:rgba(224,85,85,0.10);border:1px solid rgba(224,85,85,0.45);color:#f08a8a;font-size:13px;font-weight:700">'
+      +'🆘 Envoyer un rapport à KHALAM</button>'
     +'<button onclick="_regFermer()" style="width:100%;min-height:48px;border-radius:26px;border:none;cursor:pointer;margin-bottom:9px;'
       +'background:linear-gradient(135deg,#f7d9a8,#d98f3d);color:#2b1a05;font-family:\'Cinzel\',serif;font-size:14px;font-weight:900;letter-spacing:1px">'
       +'ENREGISTRER ET FERMER</button>'
@@ -17867,7 +17870,19 @@ function _diagnosticInstallation(){
       https:(location.protocol==="https:"),
       adresse:location.host||"(fichier local)",
       version:(typeof BUILD_TAG!=="undefined")?BUILD_TAG:"?",
-      sw:"—", manifeste:"—"
+      sw:"—", manifeste:"—",
+      // État du son : les joueurs signalent aussi ce problème, et le rapport
+      // doit permettre de le trancher sans échange supplémentaire.
+      son:(function(){
+        try{
+          var e=[];
+          e.push(AUDIO.ctx ? ("moteur "+(AUDIO.ctx.state==="running"?"actif":AUDIO.ctx.state)) : "moteur absent");
+          e.push(AUDIO.muted ? "COUPÉ" : "actif");
+          e.push("volume "+((typeof S.volume==="number")?Math.round(S.volume*100):100)+" %");
+          e.push("voix "+(S.voixGuide===false?"coupée":"active"));
+          return e.join(" · ");
+        }catch(_){ return "—"; }
+      })()
     };
     try{ d.sw = ("serviceWorker" in navigator)
       ? (navigator.serviceWorker.controller ? "actif" : "non actif") : "non géré"; }catch(e){}
@@ -17951,7 +17966,8 @@ function _envoyerDiagnostic(){
       +"Service worker : "+d.sw+"\n"
       +"Adresse : "+d.adresse+"\n"
       +"HTTPS : "+(d.https?"oui":"non")+"\n"
-      +"Version : "+d.version;
+      +"Version : "+d.version+"\n"
+      +"Son : "+d.son;
     try{
       if(navigator.share){ navigator.share({text:t}).catch(function(){}); return; }
     }catch(e){}
