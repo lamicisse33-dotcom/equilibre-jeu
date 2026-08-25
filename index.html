@@ -2270,7 +2270,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v98.29";
+const BUILD_TAG="v98.34";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -2508,6 +2508,124 @@ const SUPA={
   url:"https://mguiuamwggokbirxbyqc.supabase.co",
   cle:"sb_publishable_OLw3XAyqiw_cur1ATMUWqA_9H9O3BVX"
 };
+// ══════════════════════════════════════════════════════════════════════
+// MESURE D'AUDIENCE — phase de test ouvert (septembre).
+// Uniquement des informations lisibles sans rien demander au joueur :
+// aucune fenêtre d'autorisation, aucun GPS, aucune adresse.
+// La position PRÉCISE n'est PAS collectée : connaître la ville suffit à
+// situer un marché, et localiser des personnes n'est pas le sujet.
+// Tout est déclaré sur la page Confidentialité.
+// ══════════════════════════════════════════════════════════════════════
+function _estInstallee(){
+  try{
+    return window.matchMedia("(display-mode: standalone)").matches
+        || window.matchMedia("(display-mode: fullscreen)").matches
+        || window.navigator.standalone===true;
+  }catch(e){ return false; }
+}
+// Type d'appareil, déduit de la signature du navigateur.
+function _typeAppareil(){
+  try{
+    var u=navigator.userAgent||"";
+    if(/iPad/i.test(u)||(/Macintosh/.test(u)&&navigator.maxTouchPoints>1)) return "iPad";
+    if(/iPhone|iPod/i.test(u)) return "iPhone";
+    if(/Android/i.test(u)) return /Mobile/i.test(u)?"Android":"Android tablette";
+    if(/Windows/i.test(u)) return "Windows";
+    if(/Macintosh/i.test(u)) return "Mac";
+    if(/Linux/i.test(u)) return "Linux";
+    return "Autre";
+  }catch(e){ return "Autre"; }
+}
+// Pays et ville, déduits du FUSEAU HORAIRE. « Africa/Dakar » donne Sénégal
+// et Dakar. Aucune autorisation n'est demandée.
+var _PAYS_ZONE={
+  "Dakar":"Sénégal","Abidjan":"Côte d'Ivoire","Bamako":"Mali","Conakry":"Guinée",
+  "Ouagadougou":"Burkina Faso","Nouakchott":"Mauritanie","Banjul":"Gambie",
+  "Bissau":"Guinée-Bissau","Lome":"Togo","Porto-Novo":"Bénin","Niamey":"Niger",
+  "Lagos":"Nigeria","Douala":"Cameroun","Libreville":"Gabon","Kinshasa":"RD Congo",
+  "Casablanca":"Maroc","Algiers":"Algérie","Tunis":"Tunisie",
+  "Paris":"France","Brussels":"Belgique","Zurich":"Suisse","Madrid":"Espagne",
+  "Rome":"Italie","London":"Royaume-Uni","Berlin":"Allemagne","Lisbon":"Portugal",
+  "Toronto":"Canada","Montreal":"Canada","New_York":"États-Unis","Los_Angeles":"États-Unis"
+};
+function _villeZone(){
+  try{
+    var tz=Intl.DateTimeFormat().resolvedOptions().timeZone||"";
+    return tz.split("/").pop().replace(/_/g," ").slice(0,40);
+  }catch(e){ return ""; }
+}
+function _paysZone(){
+  try{
+    var tz=Intl.DateTimeFormat().resolvedOptions().timeZone||"";
+    var v=tz.split("/").pop();
+    if(_PAYS_ZONE[v]) return _PAYS_ZONE[v];
+    // À défaut : le continent, qui reste une indication utile.
+    var c=tz.split("/")[0];
+    return ({Africa:"Afrique",Europe:"Europe",America:"Amériques",Asia:"Asie",
+             Australia:"Océanie",Pacific:"Océanie",Indian:"Océan Indien"})[c] || (c||"—");
+  }catch(e){ return "—"; }
+}
+// Compteur de sessions et de temps passé. Une session = une ouverture du jeu.
+function _mesureDemarrage(){
+  try{
+    if(!localStorage.getItem("khalam_premiere")){
+      localStorage.setItem("khalam_premiere", new Date().toISOString());
+    }
+    var n=parseInt(localStorage.getItem("khalam_sessions")||"0",10)||0;
+    localStorage.setItem("khalam_sessions", String(n+1));
+    S._sessionDebut=Date.now();
+    // Le temps passé est cumulé au fil de l'eau : un joueur qui ferme
+    // brutalement l'app ne perd pas sa session.
+    setInterval(function(){
+      try{
+        if(document.visibilityState!=="visible") return;
+        var s=parseInt(localStorage.getItem("khalam_secondes")||"0",10)||0;
+        localStorage.setItem("khalam_secondes", String(s+15));
+      }catch(e){}
+    }, 15000);
+  }catch(e){}
+}
+// Signal d'OUVERTURE : envoyé dès que le jeu démarre, sans attendre une
+// partie. Sans lui, un joueur qui ouvre, regarde et repart n'apparaissait
+// nulle part — or c'est justement ce qu'une phase de test doit mesurer.
+// La ligne est créée avec un pseudo provisoire ; la première partie la
+// complétera avec le vrai pseudo et les scores.
+function _signalerOuverture(){
+  try{
+    var id=_appareilId(); if(!id) return;
+    var pseudo=String(S.nom||"").trim().slice(0,14);
+    if(pseudo.length<2) pseudo="(sans partie)";
+    var corps=[{
+      appareil:id, pseudo:pseudo,
+      points:Math.max(0,(S.stats&&S.stats.meilleurScore)||0),
+      xp:Math.max(0,S.xp||0),
+      parties:(S.stats&&S.stats.parties)||0,
+      gardiens:Math.max(0,Math.min(15,(S.campagne&&S.campagne.progres)||0)),
+      minutes:Math.max(0,Math.round(((S.stats&&S.stats.tempsJeu)||0)/60)),
+      zone:_villeZone(),
+      sessions:_mesureSessions(), secondes:_mesureSecondes(),
+      installee:_estInstallee(), appareil_type:_typeAppareil(),
+      pays:_paysZone(), premiere:_mesurePremiere(),
+      maj:new Date().toISOString()
+    }];
+    var ent=_supaEntetes(); ent["Prefer"]="resolution=merge-duplicates";
+    var envoi=function(c){
+      return fetch(SUPA.url+"/rest/v1/classement",
+        {method:"POST",headers:ent,body:JSON.stringify(c)})
+        .then(function(r){ if(!r.ok) throw new Error(r.status); return r; });
+    };
+    // Repli si les colonnes de mesure n'existent pas encore côté base.
+    envoi(corps).catch(function(){
+      return envoi([{appareil:id, pseudo:pseudo,
+        points:corps[0].points, xp:corps[0].xp, parties:corps[0].parties,
+        maj:corps[0].maj}]);
+    }).catch(function(){});
+  }catch(e){}
+}
+function _mesureSessions(){ try{ return parseInt(localStorage.getItem("khalam_sessions")||"0",10)||0; }catch(e){ return 0; } }
+function _mesureSecondes(){ try{ return parseInt(localStorage.getItem("khalam_secondes")||"0",10)||0; }catch(e){ return 0; } }
+function _mesurePremiere(){ try{ return localStorage.getItem("khalam_premiere")||null; }catch(e){ return null; } }
+
 function _appareilId(){
   try{
     var id=localStorage.getItem("khalam_appareil");
@@ -2549,6 +2667,10 @@ function envoyerScoreMondial(){
     var corps=[{appareil:id, pseudo:pseudo, points:meilleur,
                 xp:Math.max(0,S.xp||0), parties:(S.stats&&S.stats.parties)||0,
                 gardiens:gardiens, minutes:minutes, zone:zone,
+                // Mesures de la phase de test
+                sessions:_mesureSessions(), secondes:_mesureSecondes(),
+                installee:_estInstallee(), appareil_type:_typeAppareil(),
+                pays:_paysZone(), premiere:_mesurePremiere(),
                 maj:new Date().toISOString()}];
     var ent=_supaEntetes(); ent["Prefer"]="resolution=merge-duplicates";
     var _envoi=function(c){
@@ -15372,7 +15494,7 @@ function renderConfidentialite(app){
         ${sect("📊","Statistiques d'usage anonymes","Nous utilisons un outil de mesure d'audience (Google Analytics) pour connaître le nombre de visites et de joueurs, de façon <strong>anonyme et agrégée</strong>. Ces statistiques ne permettent pas de t'identifier personnellement ; elles nous aident seulement à améliorer le jeu.")}
         ${sect("🍪","Cookies","L'outil de mesure d'audience peut déposer des cookies techniques pour compter les visites. Ils ne servent qu'aux statistiques, pas à de la publicité.")}
         ${sect("🌐","Mode Duel en ligne","En Duel 1v1, une connexion directe (pair-à-pair) relie les deux téléphones le temps de la partie. Aucun contenu de jeu n'est stocké sur un serveur.")}
-        ${sect("🏆","Classement mondial","Quand tu termines une partie, ton pseudo, ton meilleur score, ton niveau, ton nombre de parties, ton avancée en Campagne, ton temps de jeu cumulé et ta région (déduite du fuseau horaire de ton téléphone, jamais du GPS) sont envoyés sur un serveur pour alimenter le classement. Dans le classement affiché aux joueurs, <strong>seul ton propre pseudo t'est visible</strong> : celui des autres est masqué. Aucune position précise, aucune adresse, aucun contact n'est collecté.")}
+        ${sect("🏆","Classement mondial","Quand tu termines une partie, ton pseudo, ton meilleur score, ton niveau, ton nombre de parties, ton avancée en Campagne, ton temps de jeu cumulé et ta région (déduite du fuseau horaire de ton téléphone, jamais du GPS) sont envoyés sur un serveur pour alimenter le classement. Pendant la phase de test ouvert, nous mesurons aussi le nombre d'ouvertures du jeu, le temps passé à l'écran, le type d'appareil, la date de première ouverture et si l'application a été installée — pour savoir comment le jeu est utilisé. <strong>Aucune position précise n'est collectée</strong> : le jeu ne demande jamais l'accès à ta localisation. Dans le classement affiché aux joueurs, <strong>seul ton propre pseudo t'est visible</strong> : celui des autres est masqué. Aucune position précise, aucune adresse, aucun contact n'est collecté.")}
         ${sect("🚫","Aucune vente de données","Nous ne vendons, ne louons et ne partageons aucune donnée personnelle. Le jeu est gratuit et sans publicité.")}
         ${sect("✉️","Contact","Une question sur tes données ? Écris au couple KHALAM via le bouton WhatsApp de la page À propos.")}
         <div style="text-align:center;font-size:10px;color:var(--muted);margin-top:8px">Dernière mise à jour : ${new Date().toLocaleDateString('fr-FR',{month:'long',year:'numeric'})} · le couple KHALAM</div>
@@ -16839,6 +16961,22 @@ function _ouvrirReglages(enPartie){
     +'<button onclick="_regFermer()" style="width:100%;min-height:48px;border-radius:26px;border:none;cursor:pointer;margin-bottom:9px;'
       +'background:linear-gradient(135deg,#f7d9a8,#d98f3d);color:#2b1a05;font-family:\'Cinzel\',serif;font-size:14px;font-weight:900;letter-spacing:1px">'
       +'ENREGISTRER ET FERMER</button>'
+    // Assistant d'installation : les demandes d'aide venaient toutes de là.
+    // Il détecte l'appareil et donne les étapes exactes, avec un diagnostic
+    // à envoyer si le joueur reste bloqué.
+    +'<button onclick="_regFermer();setTimeout(ouvrirAssistantInstall,150)" '
+      +'style="width:100%;min-height:44px;margin-top:8px;border-radius:13px;cursor:pointer;'
+      +'background:rgba(143,208,232,0.10);border:1px solid rgba(143,208,232,0.4);color:#8FD0E8;'
+      +'font-family:\'Cinzel\',serif;font-size:12px;font-weight:800">'
+      +'📲 Installer le jeu — besoin d\'aide ?</button>'
+    // Aide à l'installation : le bouton n'apparaît QUE si le jeu n'est pas
+    // encore installé — inutile de l'imposer à ceux qui l'ont déjà fait.
+    +(_estInstallee() ? '' :
+      '<button onclick="_regFermer();setTimeout(ouvrirAssistantInstall,140)" '
+      +'style="width:100%;min-height:46px;margin-top:8px;border-radius:13px;cursor:pointer;'
+      +'background:rgba(143,208,232,0.12);border:1px solid rgba(143,208,232,0.45);color:#8FD0E8;'
+      +'font-family:\'Cinzel\',serif;font-size:12.5px;font-weight:800">'
+      +'📲 INSTALLER L\'APPLICATION — besoin d\'aide ?</button>')
     // ── PORTE DÉROBÉE ────────────────────────────────────────────────────
     // Aucun texte, aucune icône : une simple bande vide au bas du panneau,
     // que rien ne distingue d'une marge. Elle ne s'ouvre qu'au bout de
@@ -17044,7 +17182,9 @@ function _chargerTableauBord(){
   // exécuté, la base rejette TOUTE la requête. On réessaie donc sans elle
   // plutôt que d'afficher un échec, et on retient la cause exacte.
   var _essai=function(avecGardiens){
-    var cols="appareil,pseudo,points,xp,parties"+(avecGardiens?",gardiens,minutes,zone":"")+",maj";
+    var cols="appareil,pseudo,points,xp,parties"
+      +(avecGardiens?",gardiens,minutes,zone,sessions,secondes,installee,appareil_type,pays,premiere":"")
+      +",maj";
     return fetch(SUPA.url+"/rest/v1/classement?select="+cols+"&order=points.desc&limit=500",
                  {headers:_supaEntetes()})
       .then(function(r){
@@ -17092,12 +17232,28 @@ function _rendreTableauBord(liste, souci){
   }
   var n=liste.length;
   var actifs7=0, actifs30=0, parties=0, gardiensMax=0, maintenant=Date.now();
+  var xpTotal=0, xpMax=0, prochesDuBut=0;
+  var _parApp={}, _parPays={}, _installees=0, _sessions=0, _secondes=0, _sansPartie=0;
   liste.forEach(function(e){
     var d=(maintenant-new Date(e.maj||0).getTime())/86400000;
     if(d<=7) actifs7++;
     if(d<=30) actifs30++;
     parties+=(e.parties||0);
     if((e.gardiens||0)>gardiensMax) gardiensMax=e.gardiens||0;
+    xpTotal+=(e.xp||0);
+    if((e.xp||0)>xpMax) xpMax=e.xp||0;
+    // Combien approchent du palier d'encaissement ? C'est le chiffre qui
+    // annonce ce que l'opération va te coûter.
+    if((e.xp||0)>=LEGENDE_XP*0.7) prochesDuBut++;
+    // Répartition du marché : appareils, pays, taux d'installation.
+    var ap=e.appareil_type||"—"; _parApp[ap]=(_parApp[ap]||0)+1;
+    var py=e.pays||"—"; _parPays[py]=(_parPays[py]||0)+1;
+    if(e.installee) _installees++;
+    _sessions+=(e.sessions||0);
+    _secondes+=(e.secondes||0);
+    // Ceux qui ont ouvert le jeu sans jamais terminer une partie : c'est le
+    // chiffre le plus parlant d'une phase de test.
+    if((e.parties||0)===0) _sansPartie++;
   });
   var vitrine=function(v,l,c){
     return '<div style="flex:1;min-width:88px;background:rgba(255,255,255,0.05);border:1px solid rgba(212,175,55,0.22);'
@@ -17146,13 +17302,40 @@ function _rendreTableauBord(liste, souci){
         +'<div style="font-size:12.5px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'
           +(_al.length?'⚠️ ':'')+esc(e.pseudo)
           +(e.zone?' <span style="font-size:9px;color:#8FD0E8;font-weight:400">· 📍 '+esc(e.zone)+'</span>':'')+'</div>'
-        +'<div style="font-size:9px;color:var(--muted)">'+(e.parties||0)+' parties · '+(e.xp||0)+' XP'
+        // L'XP est ce qui ouvre les tranches d'encaissement : elle mérite
+        // d'être lisible d'un coup d'œil, pas noyée dans la ligne grise.
+        +'<div style="font-size:9px;color:var(--muted)">'
+          +((e.parties||0)===0?'<span style="color:#f08a8a">jamais joué</span>':(e.parties+' parties'))
           +((e.gardiens||0)?' · ⚔ '+e.gardiens+'/15':'')+'</div>'
+        +'<div style="font-size:11px;color:#6fe3a0;font-weight:800;margin-top:1px">⚡ '
+          +_fmtMontant(e.xp||0)+' XP</div>'
         +'<div style="font-size:9px;color:var(--muted)">⏱ '+duree+' de jeu · 📅 '+dateTxt+'</div>'
+        // Mesures de la phase de test : appareil, installation, sessions,
+        // temps passé, première ouverture et pays.
+        +(function(){
+          var app=e.appareil_type||"—";
+          var ic=({iPhone:"📱",iPad:"📱","Android":"🤖","Android tablette":"🤖",
+                   Windows:"💻",Mac:"💻",Linux:"💻"})[app]||"❓";
+          var inst=e.installee?'<span style="color:#6fe3a0">✅ installée</span>'
+                             :'<span style="color:var(--muted)">navigateur</span>';
+          var sess=e.sessions||0;
+          var sec=e.secondes||0;
+          var tps = sec>=3600 ? Math.floor(sec/3600)+" h "+String(Math.floor((sec%3600)/60)).padStart(2,"0")
+                  : sec>=60   ? Math.floor(sec/60)+" min"
+                  : sec+" s";
+          var prem="—";
+          try{ if(e.premiere) prem=new Date(e.premiere).toLocaleDateString("fr-FR",{day:"2-digit",month:"short"}); }catch(_){}
+          return '<div style="font-size:9px;color:#8FD0E8;margin-top:2px">'
+            +ic+' '+esc(app)+' · '+inst+'</div>'
+            +'<div style="font-size:9px;color:var(--muted)">'
+            +'🔄 '+sess+' ouverture'+(sess>1?'s':'')+' · ⌛ '+tps+' à l\'écran · 🎬 depuis le '+prem
+            +(e.pays?' · 🌍 '+esc(e.pays):'')+'</div>';
+        })()
         +(_al.length?'<div style="font-size:9px;color:#f08a8a;margin-top:3px;line-height:1.4">⚠️ '+_al.join(' · ')+'</div>':'')
       +'</div>'
       +'<div style="text-align:right">'
         +'<div style="font-size:14px;font-weight:900;color:var(--goldL);font-family:\'Cinzel\',serif">'+(e.points||0)+'</div>'
+        +'<div style="font-size:7.5px;color:var(--muted);letter-spacing:1px">PTS</div>'
         +'<div style="font-size:8.5px;color:'+(frais?"#45c97a":"var(--muted)")+'">'+(isNaN(j)?"—":(j===0?"aujourd\'hui":j+" j"))+'</div>'
       +'</div></div>';
   }).join("");
@@ -17164,12 +17347,41 @@ function _rendreTableauBord(liste, souci){
       +vitrine(parties,"PARTIES TOTALES")+vitrine(gardiensMax+"/15","MEILLEURE CAMPAGNE")
       +vitrine(n?Math.round(parties/n):0,"PARTIES / JOUEUR")
     +'</div>'
+    // Ligne consacrée à l'XP : c'est elle qui décide des encaissements.
+    +'<div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:16px">'
+      +vitrine(_fmtMontant(xpMax),"MEILLEURE XP","#6fe3a0")
+      +vitrine(n?_fmtMontant(Math.round(xpTotal/n)):0,"XP MOYENNE")
+      +vitrine(prochesDuBut,"À 70 % DU PALIER",prochesDuBut?"#F0D060":"var(--muted)")
+    +'</div>'
     // Bandeau de vigilance : n'apparaît que s'il y a matière à regarder.
     +(_suspects?'<div style="border:1px solid rgba(224,85,85,0.45);background:rgba(224,85,85,0.08);'
       +'border-radius:12px;padding:11px 13px;margin-bottom:14px;font-size:11px;color:#f08a8a;line-height:1.55">'
       +'⚠️ <strong>'+_suspects+' profil'+(_suspects>1?'s':'')+' à vérifier</strong> avant toute récompense.<br>'
       +'<span style="color:var(--muted);font-size:10px">Les scores ne sont pas contrôlés côté serveur : '
       +'n\'importe qui peut en envoyer un faux. Ces repères signalent ce qui mérite un coup d\'œil — ils ne prouvent rien.</span></div>':"")
+    // ── SYNTHÈSE DE LA PHASE DE TEST ────────────────────────────────────
+    +'<div style="border:1px solid rgba(143,208,232,0.3);background:rgba(143,208,232,0.05);'
+      +'border-radius:12px;padding:11px 13px;margin-bottom:14px">'
+      +'<div style="font-size:9.5px;color:#8FD0E8;letter-spacing:2px;margin-bottom:7px">✦ PHASE DE TEST</div>'
+      +'<div style="font-size:11px;color:#cbbfd8;line-height:1.7">'
+      +'📲 <strong style="color:#6fe3a0">'+_installees+'</strong> / '+n+' ont installé l\'app'
+        +' <span style="color:var(--muted)">('+(n?Math.round(_installees/n*100):0)+' %)</span><br>'
+      +'🚪 <strong style="color:'+(_sansPartie?'#f08a8a':'#6fe3a0')+'">'+_sansPartie+'</strong>'
+        +' ont ouvert sans jouer'
+        +' <span style="color:var(--muted)">('+(n?Math.round(_sansPartie/n*100):0)+' %)</span><br>'
+      +'🔄 <strong style="color:var(--goldL)">'+_sessions+'</strong> ouvertures'
+        +' · <span style="color:var(--muted)">'+(n?Math.round(_sessions/n*10)/10:0)+' par joueur</span><br>'
+      +'⌛ <strong style="color:var(--goldL)">'+Math.round(_secondes/3600)+' h</strong> à l\'écran au total'
+        +' · <span style="color:var(--muted)">'+(n?Math.round(_secondes/n/60):0)+' min par joueur</span>'
+      +'</div>'
+      // Répartition par appareil et par pays : la vraie photo du marché.
+      +'<div style="margin-top:9px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.10);'
+        +'font-size:10.5px;color:#cbbfd8;line-height:1.7">'
+      +'📱 '+Object.keys(_parApp).sort(function(a,b){return _parApp[b]-_parApp[a];})
+          .map(function(k){ return esc(k)+' <strong style="color:var(--goldL)">'+_parApp[k]+'</strong>'; }).join(' · ')
+      +'<br>🌍 '+Object.keys(_parPays).sort(function(a,b){return _parPays[b]-_parPays[a];})
+          .map(function(k){ return esc(k)+' <strong style="color:var(--goldL)">'+_parPays[k]+'</strong>'; }).join(' · ')
+      +'</div></div>'
     +'<div style="font-size:10px;color:var(--gold);letter-spacing:2px;margin:0 2px 8px">✦ TOUS LES JOUEURS · du meilleur score au plus faible</div>'
     +(n?lignes:'<div style="text-align:center;color:var(--muted);font-size:12px;padding:26px">Aucun joueur enregistré pour l\'instant.</div>')
     +'<div style="text-align:center;margin-top:14px">'
@@ -17587,6 +17799,166 @@ function _demoMaj(){
     +'<span style="color:#8FD0E8">reste ~'+eta+"</span>";
 }
 
+// ══════════════════════════════════════════════════════════════════════
+// ASSISTANT D'INSTALLATION
+// Les demandes d'aide venaient toutes de la même chose : les étapes diffèrent
+// selon le téléphone, et personne ne sait où cliquer. L'assistant détecte
+// l'appareil et n'affiche que les étapes du joueur.
+// Le partage d'écran n'est PAS possible : getDisplayMedia est bloqué sur iOS
+// et Android. Le diagnostic le remplace avantageusement — il dit POURQUOI
+// ça bloque, ce qu'une image ne montre pas.
+// ══════════════════════════════════════════════════════════════════════
+function _navigateurJoueur(){
+  try{
+    var u=navigator.userAgent||"";
+    if(/CriOS/i.test(u)) return "Chrome iOS";
+    if(/FxiOS/i.test(u)) return "Firefox iOS";
+    if(/SamsungBrowser/i.test(u)) return "Samsung Internet";
+    if(/OPR|Opera/i.test(u)) return "Opera";
+    if(/Edg/i.test(u)) return "Edge";
+    if(/Firefox/i.test(u)) return "Firefox";
+    if(/Chrome/i.test(u)) return "Chrome";
+    if(/Safari/i.test(u)) return "Safari";
+    return "Autre";
+  }catch(e){ return "Autre"; }
+}
+// Les étapes exactes, selon l'appareil ET le navigateur.
+function _etapesInstallation(){
+  var app=_typeAppareil(), nav=_navigateurJoueur();
+  if(app==="iPhone"||app==="iPad"){
+    if(nav!=="Safari"){
+      return {ok:false, titre:"Ouvre le jeu dans Safari",
+        etapes:["Sur iPhone, seul <strong>Safari</strong> permet d'installer une application.",
+                "Copie l'adresse <strong>tonequilibre.khalam.app</strong>",
+                "Ouvre <strong>Safari</strong> et colle-la",
+                "Reviens ici : l'assistant t'indiquera la suite"]};
+    }
+    return {ok:true, titre:"Installer sur iPhone",
+      etapes:["Touche le bouton <strong>Partager</strong> en bas de Safari — le carré avec une flèche vers le haut",
+              "Fais défiler et choisis <strong>Sur l'écran d'accueil</strong>",
+              "Touche <strong>Ajouter</strong> en haut à droite",
+              "L'icône ⚖️ apparaît sur ton écran d'accueil"]};
+  }
+  if(app==="Android"||app==="Android tablette"){
+    if(nav==="Samsung Internet"){
+      return {ok:true, titre:"Installer sur Samsung Internet",
+        etapes:["Touche le menu <strong>☰</strong> en bas à droite",
+                "Choisis <strong>Ajouter la page à</strong>",
+                "Puis <strong>Écran d'accueil</strong>"]};
+    }
+    return {ok:true, titre:"Installer sur Android",
+      etapes:["Touche les <strong>trois points ⋮</strong> en haut à droite de Chrome",
+              "Choisis <strong>Installer l'application</strong> — ou <strong>Ajouter à l'écran d'accueil</strong>",
+              "Confirme avec <strong>Installer</strong>",
+              "L'icône ⚖️ apparaît sur ton écran d'accueil"]};
+  }
+  return {ok:true, titre:"Installer sur ordinateur",
+    etapes:["Dans la barre d'adresse, cherche l'icône <strong>⊕</strong> à droite",
+            "Ou ouvre les <strong>trois points ⋮</strong> → <strong>Installer ÉQUILIBRE</strong>",
+            "Confirme avec <strong>Installer</strong>"]};
+}
+// Diagnostic : ce que le jeu peut vérifier lui-même.
+function _diagnosticInstallation(){
+  return new Promise(function(resolve){
+    var d={
+      appareil:_typeAppareil(), navigateur:_navigateurJoueur(),
+      installee:_estInstallee(),
+      invite:!!window.__deferredInstall,
+      https:(location.protocol==="https:"),
+      adresse:location.host||"(fichier local)",
+      version:(typeof BUILD_TAG!=="undefined")?BUILD_TAG:"?",
+      sw:"—", manifeste:"—"
+    };
+    try{ d.sw = ("serviceWorker" in navigator)
+      ? (navigator.serviceWorker.controller ? "actif" : "non actif") : "non géré"; }catch(e){}
+    // Le manifeste : on vérifie qu'il se charge vraiment.
+    fetch("manifest.json",{cache:"no-store"})
+      .then(function(r){ d.manifeste = r.ok ? "chargé" : ("erreur "+r.status); })
+      .catch(function(){ d.manifeste="introuvable"; })
+      .then(function(){ resolve(d); });
+  });
+}
+function ouvrirAssistantInstall(){
+  var anc=document.getElementById("aide-install"); if(anc) anc.remove();
+  var e=_etapesInstallation();
+  var deja=_estInstallee();
+  var ov=document.createElement("div");
+  ov.id="aide-install";
+  ov.style.cssText="position:fixed;inset:0;z-index:9700;overflow-y:auto;"
+    +"background:rgba(4,3,10,0.94);padding:22px 18px 40px;"
+    +"-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)";
+  ov.innerHTML='<div style="max-width:360px;margin:0 auto;'
+    +'background:linear-gradient(150deg,#1a0f38,#0a0620);border:2px solid rgba(240,208,96,0.5);'
+    +'border-radius:20px;padding:22px 20px;box-shadow:0 18px 50px rgba(0,0,0,0.9)">'
+    +'<div style="text-align:center;font-size:30px;margin-bottom:4px">📲</div>'
+    +(deja
+      ? '<div style="text-align:center;font-family:\'Cinzel\',serif;font-size:16px;font-weight:900;color:#6fe3a0;margin-bottom:8px">Déjà installée</div>'
+        +'<div style="text-align:center;font-size:12.5px;color:#cbbfd8;line-height:1.6">Tu joues depuis l\'application. Rien à faire.</div>'
+      : '<div style="text-align:center;font-family:\'Cinzel\',serif;font-size:16px;font-weight:900;color:var(--goldL);margin-bottom:3px">'+e.titre+'</div>'
+        +'<div style="text-align:center;font-size:10px;color:var(--muted);margin-bottom:14px">'
+          +esc(_typeAppareil())+' · '+esc(_navigateurJoueur())+'</div>'
+        +e.etapes.map(function(t,i){
+          return '<div style="display:flex;gap:10px;align-items:flex-start;padding:9px 11px;margin-bottom:7px;'
+            +'border-radius:11px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.08)">'
+            +'<span style="font-family:\'Cinzel\',serif;font-size:14px;font-weight:900;color:var(--goldL);flex-shrink:0">'+(i+1)+'</span>'
+            +'<span style="font-size:12px;color:#cbbfd8;line-height:1.5">'+t+'</span></div>';
+        }).join("")
+        // Bouton direct quand le navigateur le permet : un geste au lieu de quatre.
+        +(window.__deferredInstall
+          ? '<button onclick="_assistInstallerMaintenant()" style="width:100%;min-height:50px;margin-top:8px;'
+            +'border-radius:14px;cursor:pointer;border:none;background:linear-gradient(135deg,#F6E4A0,#F0D060 30%,#D4AF37 60%,#B8912E);'
+            +'color:#241703;font-family:\'Cinzel\',serif;font-size:14px;font-weight:900;letter-spacing:1px">'
+            +'⚡ INSTALLER MAINTENANT</button>'
+          : ''))
+    +'<div style="margin-top:14px;padding-top:12px;border-top:1px solid rgba(255,255,255,0.12)">'
+      +'<div style="font-size:11px;color:var(--muted);line-height:1.55;margin-bottom:9px">'
+      +'Ça ne fonctionne toujours pas ? Envoie-nous un rapport : il nous dira précisément où ça bloque.</div>'
+      +'<button onclick="_envoyerDiagnostic()" style="width:100%;min-height:44px;border-radius:12px;cursor:pointer;'
+        +'background:rgba(69,201,122,0.14);border:1px solid rgba(69,201,122,0.45);color:#6fe3a0;'
+        +'font-family:\'Cinzel\',serif;font-size:12.5px;font-weight:800">🆘 ENVOYER UN RAPPORT À KHALAM</button>'
+    +'</div>'
+    +'<button onclick="document.getElementById(\'aide-install\').remove()" '
+      +'style="width:100%;min-height:40px;margin-top:8px;border-radius:12px;cursor:pointer;'
+      +'background:transparent;border:1px solid rgba(255,255,255,0.14);color:var(--muted);font-size:12px">Fermer</button>'
+    +'</div>';
+  document.body.appendChild(ov);
+}
+function _assistInstallerMaintenant(){
+  try{
+    var d=window.__deferredInstall;
+    if(!d){ showToast("Passe par le menu de ton navigateur","info",3000); return; }
+    d.prompt();
+    d.userChoice.then(function(r){
+      window.__deferredInstall=null;
+      if(r&&r.outcome==="accepted"){
+        var o=document.getElementById("aide-install"); if(o) o.remove();
+        showToast("✅ Installation lancée !","win",3000);
+      }
+    }).catch(function(){});
+  }catch(e){}
+}
+// Le rapport part par WhatsApp, déjà rédigé : le joueur n'a qu'à envoyer.
+function _envoyerDiagnostic(){
+  showToast("🔎 Analyse en cours…","info",1600);
+  _diagnosticInstallation().then(function(d){
+    var t="🆘 ÉQUILIBRE — problème d'installation\n\n"
+      +"Pseudo : "+String(S.nom||"—")+"\n"
+      +"Appareil : "+d.appareil+"\n"
+      +"Navigateur : "+d.navigateur+"\n"
+      +"Déjà installée : "+(d.installee?"oui":"non")+"\n"
+      +"Invite disponible : "+(d.invite?"oui":"non")+"\n"
+      +"Manifeste : "+d.manifeste+"\n"
+      +"Service worker : "+d.sw+"\n"
+      +"Adresse : "+d.adresse+"\n"
+      +"HTTPS : "+(d.https?"oui":"non")+"\n"
+      +"Version : "+d.version;
+    try{
+      if(navigator.share){ navigator.share({text:t}).catch(function(){}); return; }
+    }catch(e){}
+    window.open("https://wa.me/221773728383?text="+encodeURIComponent(t),"_blank");
+  });
+}
+
 function _regFermer(){
   // Le pseudo saisi sans passer par OK est tout de même conservé.
   try{
@@ -17857,6 +18229,20 @@ function verifierPartieEnCours(){
       }
     }
   }catch(e){}
+  try{ _mesureDemarrage(); }catch(e){}
+  // Signal d'ouverture, après un court délai pour laisser la sauvegarde se
+  // charger — sinon le pseudo et l'XP ne seraient pas encore lus.
+  setTimeout(function(){ try{ _signalerOuverture(); }catch(e){} }, 2500);
+  // Rafraîchi toutes les 2 minutes tant que le joueur reste : le temps passé
+  // à l'écran monte même s'il ne termine aucune partie.
+  setInterval(function(){
+    try{ if(document.visibilityState==="visible") _signalerOuverture(); }catch(e){}
+  }, 120000);
+  // Et une dernière fois quand il quitte l'écran, pour ne pas perdre la fin
+  // de sa session.
+  document.addEventListener("visibilitychange",function(){
+    try{ if(document.visibilityState==="hidden") _signalerOuverture(); }catch(e){}
+  });
   try{ _verifierParrainage(); }catch(e){}
   try{ _accueilNouveau(); }catch(e){}
 }
@@ -18688,6 +19074,9 @@ function renderJeu(app){
   var deferred=null;
   window.addEventListener("beforeinstallprompt",function(e){
     e.preventDefault(); deferred=e;
+    // Rendue accessible à l'assistant d'installation des Réglages : sans ça,
+    // le bouton « Installer » ne pourrait pas la déclencher depuis là.
+    window.__deferredInstall=e;
     if(estStandalone()||dejaVu()) return;
     setTimeout(function(){ banniere(
       '<div style="font-size:26px">📲</div>'
