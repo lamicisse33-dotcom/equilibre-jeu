@@ -2270,7 +2270,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v98.37";
+const BUILD_TAG="v98.40";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -2606,6 +2606,7 @@ function _signalerOuverture(){
       sessions:_mesureSessions(), secondes:_mesureSecondes(),
       installee:_estInstallee(), appareil_type:_typeAppareil(),
       pays:_paysZone(), premiere:_mesurePremiere(),
+      version:(typeof BUILD_TAG!=="undefined")?BUILD_TAG:null,
       maj:new Date().toISOString()
     }];
     var ent=_supaEntetes(); ent["Prefer"]="resolution=merge-duplicates";
@@ -2671,6 +2672,7 @@ function envoyerScoreMondial(){
                 sessions:_mesureSessions(), secondes:_mesureSecondes(),
                 installee:_estInstallee(), appareil_type:_typeAppareil(),
                 pays:_paysZone(), premiere:_mesurePremiere(),
+                version:(typeof BUILD_TAG!=="undefined")?BUILD_TAG:null,
                 maj:new Date().toISOString()}];
     var ent=_supaEntetes(); ent["Prefer"]="resolution=merge-duplicates";
     var _envoi=function(c){
@@ -17176,7 +17178,7 @@ function _chargerTableauBord(){
   // plutôt que d'afficher un échec, et on retient la cause exacte.
   var _essai=function(avecGardiens){
     var cols="appareil,pseudo,points,xp,parties"
-      +(avecGardiens?",gardiens,minutes,zone,sessions,secondes,installee,appareil_type,pays,premiere":"")
+      +(avecGardiens?",gardiens,minutes,zone,sessions,secondes,installee,appareil_type,pays,premiere,version":"")
       +",maj";
     return fetch(SUPA.url+"/rest/v1/classement?select="+cols+"&order=points.desc&limit=500",
                  {headers:_supaEntetes()})
@@ -17226,7 +17228,7 @@ function _rendreTableauBord(liste, souci){
   var n=liste.length;
   var actifs7=0, actifs30=0, parties=0, gardiensMax=0, maintenant=Date.now();
   var xpTotal=0, xpMax=0, prochesDuBut=0;
-  var _parApp={}, _parPays={}, _installees=0, _sessions=0, _secondes=0, _sansPartie=0;
+  var _parApp={}, _parPays={}, _parVer={}, _installees=0, _sessions=0, _secondes=0, _sansPartie=0, _abandons=0, _ancienneVer=0;
   liste.forEach(function(e){
     var d=(maintenant-new Date(e.maj||0).getTime())/86400000;
     if(d<=7) actifs7++;
@@ -17239,14 +17241,22 @@ function _rendreTableauBord(liste, souci){
     // annonce ce que l'opération va te coûter.
     if((e.xp||0)>=LEGENDE_XP*0.7) prochesDuBut++;
     // Répartition du marché : appareils, pays, taux d'installation.
-    var ap=e.appareil_type||"—"; _parApp[ap]=(_parApp[ap]||0)+1;
-    var py=e.pays||"—"; _parPays[py]=(_parPays[py]||0)+1;
+    // On ne compte que ce qu'on sait vraiment : un « — » fausserait la
+    // photo du marché en se mêlant aux vrais appareils.
+    if(e.appareil_type){ _parApp[e.appareil_type]=(_parApp[e.appareil_type]||0)+1; }
+    if(e.pays){ _parPays[e.pays]=(_parPays[e.pays]||0)+1; }
+    // Répartition des versions : elle explique la plupart des lignes vides.
+    var vv=e.version||"antérieure"; _parVer[vv]=(_parVer[vv]||0)+1;
+    if(!e.appareil_type && !e.sessions) _ancienneVer++;
     if(e.installee) _installees++;
     _sessions+=(e.sessions||0);
     _secondes+=(e.secondes||0);
     // Ceux qui ont ouvert le jeu sans jamais terminer une partie : c'est le
     // chiffre le plus parlant d'une phase de test.
-    if((e.parties||0)===0) _sansPartie++;
+    if((e.parties||0)===0){
+      if((e.xp||0)>0) _abandons++;      // a joué des manches sans finir
+      else _sansPartie++;               // n'a jamais lancé de partie
+    }
   });
   var vitrine=function(v,l,c){
     return '<div style="flex:1;min-width:88px;background:rgba(255,255,255,0.05);border:1px solid rgba(212,175,55,0.22);'
@@ -17262,13 +17272,19 @@ function _rendreTableauBord(liste, souci){
   var _analyser=function(e){
     var d=[];
     var pts=e.points||0, parties=e.parties||0, min=e.minutes||0, xp=e.xp||0;
+    // Un joueur resté sur une version antérieure n'envoie ni temps de jeu ni
+    // mesures : le signaler serait une fausse alerte, pas une tricherie.
+    var mesure=!!(e.version || e.appareil_type || e.sessions);
     // Un score se construit : peu de parties pour un gros score est suspect.
     if(pts>=500 && parties<=2) d.push("gros score en "+parties+" partie"+(parties>1?"s":""));
-    // Une partie dure 2 à 5 minutes. Moins d'une minute par partie est impossible.
-    if(parties>=3 && min>0 && (min/parties)<1) d.push("moins d'1 min par partie");
-    // Temps nul avec des parties enregistrées : score envoyé sans jouer.
-    if(parties>=3 && min===0) d.push("aucun temps de jeu");
-    // L'XP suit les parties : ~100 à 400 par partie. Un écart énorme trahit.
+    // Une partie humaine dure 2 à 5 min. En dessous de 30 s, c'est impossible
+    // à la main — le seuil d'1 min signalait aussi les parties rapides et le
+    // mode Démo, qui joue légitimement vite.
+    if(mesure && parties>=5 && min>0 && (min/parties)<0.5) d.push("moins de 30 s par partie");
+    // Temps nul avec des parties enregistrées — uniquement si la version
+    // mesure bien le temps de jeu.
+    if(mesure && parties>=3 && min===0) d.push("aucun temps de jeu");
+    // L'XP suit les parties : ~340 par partie. Un écart énorme trahit.
     if(parties>=1 && xp>parties*1500) d.push("XP disproportionnée");
     // Le maximum théorique : 10 manches, pot max 60, doublements et jokers.
     if(pts>1200) d.push("score au-dessus du maximum plausible");
@@ -17298,33 +17314,50 @@ function _rendreTableauBord(liste, souci){
         // L'XP est ce qui ouvre les tranches d'encaissement : elle mérite
         // d'être lisible d'un coup d'œil, pas noyée dans la ligne grise.
         +'<div style="font-size:9px;color:var(--muted)">'
-          +((e.parties||0)===0?'<span style="color:#f08a8a">jamais joué</span>':(e.parties+' parties'))
+          // Trois cas distincts : n'a jamais lancé de partie, en a lancé une
+          // sans la finir (l'XP monte à chaque manche, le compteur de parties
+          // seulement à la fin), ou a terminé des parties.
+          +((e.parties||0)>0
+              ? (e.parties+' parties')
+              : ((e.xp||0)>0
+                  ? '<span style="color:#e8a33d">partie abandonnée</span>'
+                  : '<span style="color:#f08a8a">jamais lancé de partie</span>'))
           +((e.gardiens||0)?' · ⚔ '+e.gardiens+'/15':'')+'</div>'
         +'<div style="font-size:11px;color:#6fe3a0;font-weight:800;margin-top:1px">⚡ '
           +_fmtMontant(e.xp||0)+' XP</div>'
         +'<div style="font-size:9px;color:var(--muted)">⏱ '+duree+' de jeu · 📅 '+dateTxt+'</div>'
-        // Mesures de la phase de test : appareil, installation, sessions,
-        // temps passé, première ouverture et pays.
+        // Mesures de la phase de test, présentées en deux lignes claires :
+        // l'appareil et l'état d'installation, puis l'usage réel.
         +(function(){
-          var app=e.appareil_type||"—";
+          var v=e.version||null;
+          // Sans version ET sans aucune mesure : joueur resté sur une version
+          // antérieure. On le dit au lieu d'afficher des zéros trompeurs.
+          if(!v && !e.appareil_type && !e.sessions && !e.premiere){
+            return '<div style="font-size:9px;color:#8a7fb0;margin-top:3px;font-style:italic">'
+              +'↺ version antérieure · mesures indisponibles</div>';
+          }
+          var app=e.appareil_type||"appareil inconnu";
           var ic=({iPhone:"📱",iPad:"📱","Android":"🤖","Android tablette":"🤖",
-                   Windows:"💻",Mac:"💻",Linux:"💻"})[app]||"❓";
-          var inst=e.installee?'<span style="color:#6fe3a0">✅ installée</span>'
-                             :'<span style="color:var(--muted)">navigateur</span>';
-          var sess=e.sessions||0;
-          var sec=e.secondes||0;
+                   Windows:"💻",Mac:"💻",Linux:"💻"})[e.appareil_type]||"❓";
+          var inst=e.installee?'<span style="color:#6fe3a0">installée</span>'
+                             :'<span style="color:#e8a33d">navigateur</span>';
+          var sess=e.sessions||0, sec=e.secondes||0;
           var tps = sec>=3600 ? Math.floor(sec/3600)+" h "+String(Math.floor((sec%3600)/60)).padStart(2,"0")
-                  : sec>=60   ? Math.floor(sec/60)+" min"
-                  : sec+" s";
-          var prem="—";
+                  : sec>=60   ? Math.floor(sec/60)+" min" : sec+" s";
+          var prem="";
           try{ if(e.premiere) prem=new Date(e.premiere).toLocaleDateString("fr-FR",{day:"2-digit",month:"short"}); }catch(_){}
-          return '<div style="font-size:9px;color:#8FD0E8;margin-top:2px">'
-            +ic+' '+esc(app)+' · '+inst+'</div>'
+          // La version : en vert si c'est la dernière, en orange sinon.
+          var actuelle=(typeof BUILD_TAG!=="undefined")?BUILD_TAG:null;
+          var vTxt = v
+            ? '<span style="color:'+((actuelle&&v===actuelle)?"#6fe3a0":"#e8a33d")+'">'+esc(v)+'</span>'
+            : '<span style="color:#8a7fb0">version inconnue</span>';
+          return '<div style="font-size:9px;color:#8FD0E8;margin-top:3px">'
+              +ic+' '+esc(app)+' · '+inst+' · '+vTxt+'</div>'
             +'<div style="font-size:9px;color:var(--muted)">'
-            +'🔄 '+sess+' ouverture'+(sess>1?'s':'')+' · ⌛ '+tps+' à l\'écran · 🎬 depuis le '+prem
-            +(e.pays?' · 🌍 '+esc(e.pays):'')+'</div>';
+              +'🔄 '+sess+' ouverture'+(sess>1?'s':'')+' · ⌛ '+tps+' à l\'écran'
+              +(prem?' · 🎬 depuis le '+prem:'')
+              +(e.pays?' · 🌍 '+esc(e.pays):'')+'</div>';
         })()
-        +(_al.length?'<div style="font-size:9px;color:#f08a8a;margin-top:3px;line-height:1.4">⚠️ '+_al.join(' · ')+'</div>':'')
       +'</div>'
       +'<div style="text-align:right">'
         +'<div style="font-size:14px;font-weight:900;color:var(--goldL);font-family:\'Cinzel\',serif">'+(e.points||0)+'</div>'
@@ -17360,8 +17393,11 @@ function _rendreTableauBord(liste, souci){
       +'📲 <strong style="color:#6fe3a0">'+_installees+'</strong> / '+n+' ont installé l\'app'
         +' <span style="color:var(--muted)">('+(n?Math.round(_installees/n*100):0)+' %)</span><br>'
       +'🚪 <strong style="color:'+(_sansPartie?'#f08a8a':'#6fe3a0')+'">'+_sansPartie+'</strong>'
-        +' ont ouvert sans jouer'
+        +' ont ouvert sans lancer de partie'
         +' <span style="color:var(--muted)">('+(n?Math.round(_sansPartie/n*100):0)+' %)</span><br>'
+      +'⏸️ <strong style="color:'+(_abandons?'#e8a33d':'#6fe3a0')+'">'+_abandons+'</strong>'
+        +' ont abandonné en cours de partie'
+        +' <span style="color:var(--muted)">('+(n?Math.round(_abandons/n*100):0)+' %)</span><br>'
       +'🔄 <strong style="color:var(--goldL)">'+_sessions+'</strong> ouvertures'
         +' · <span style="color:var(--muted)">'+(n?Math.round(_sessions/n*10)/10:0)+' par joueur</span><br>'
       +'⌛ <strong style="color:var(--goldL)">'+Math.round(_secondes/3600)+' h</strong> à l\'écran au total'
@@ -17370,10 +17406,19 @@ function _rendreTableauBord(liste, souci){
       // Répartition par appareil et par pays : la vraie photo du marché.
       +'<div style="margin-top:9px;padding-top:8px;border-top:1px solid rgba(255,255,255,0.10);'
         +'font-size:10.5px;color:#cbbfd8;line-height:1.7">'
+      +(_ancienneVer?'<div style="font-size:10px;color:#8a7fb0;margin-bottom:5px;font-style:italic">'
+        +'↺ '+_ancienneVer+' joueur'+(_ancienneVer>1?'s':'')+' sur une version antérieure — non comptés ci-dessous</div>':'')
       +'📱 '+Object.keys(_parApp).sort(function(a,b){return _parApp[b]-_parApp[a];})
           .map(function(k){ return esc(k)+' <strong style="color:var(--goldL)">'+_parApp[k]+'</strong>'; }).join(' · ')
       +'<br>🌍 '+Object.keys(_parPays).sort(function(a,b){return _parPays[b]-_parPays[a];})
           .map(function(k){ return esc(k)+' <strong style="color:var(--goldL)">'+_parPays[k]+'</strong>'; }).join(' · ')
+      // Qui tourne sur quelle version : indispensable pour savoir si un
+      // problème vient du jeu ou d'un cache qui n'a pas été renouvelé.
+      +'<br>🏷 '+Object.keys(_parVer).sort(function(a,b){return _parVer[b]-_parVer[a];})
+          .map(function(k){
+            var act=(typeof BUILD_TAG!=="undefined" && k===BUILD_TAG);
+            return '<span style="color:'+(act?"#6fe3a0":(k==="antérieure"?"#8a7fb0":"#e8a33d"))+'">'
+              +esc(k)+'</span> <strong style="color:var(--goldL)">'+_parVer[k]+'</strong>'; }).join(' · ')
       +'</div></div>'
     +'<div style="font-size:10px;color:var(--gold);letter-spacing:2px;margin:0 2px 8px">✦ TOUS LES JOUEURS · du meilleur score au plus faible</div>'
     +(n?lignes:'<div style="text-align:center;color:var(--muted);font-size:12px;padding:26px">Aucun joueur enregistré pour l\'instant.</div>')
