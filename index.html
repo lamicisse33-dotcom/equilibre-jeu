@@ -2270,7 +2270,7 @@ document.addEventListener("visibilitychange",function(){
 // ════════════════════════════════════════════════
 // DONNÉES
 // ════════════════════════════════════════════════
-const BUILD_TAG="v98.40";
+const BUILD_TAG="v98.43";
 
 /* ── Bonus du Destin — « Le Verdict de la Balance » ──────────────
    Interrupteur global. false = le mini-jeu n'est JAMAIS déclenché
@@ -2593,6 +2593,18 @@ function _mesureDemarrage(){
 function _signalerOuverture(){
   try{
     var id=_appareilId(); if(!id) return;
+    // ── GARDE-FOU CONTRE L'ÉCRASEMENT ───────────────────────────────────
+    // L'écriture se fait en « merge-duplicates » : les valeurs envoyées
+    // REMPLACENT celles de la base. Si la sauvegarde ne s'est pas chargée
+    // (corruption, stockage plein, navigation privée), on enverrait des zéros
+    // qui effaceraient la vraie progression du joueur. C'est exactement ce qui
+    // a fait disparaître la Campagne d'une joueuse : 1/15 remis à 0.
+    // Une sauvegarde existe mais l'état est vide → on n'envoie RIEN.
+    var brut=null;
+    try{ brut=localStorage.getItem("equilibre_save"); }catch(_){}
+    var vide=((S.xp||0)===0 && ((S.stats&&S.stats.parties)||0)===0
+              && ((S.campagne&&S.campagne.progres)||0)===0);
+    if(brut && brut.length>20 && vide) return;   // sauvegarde non lue : on se tait
     var pseudo=String(S.nom||"").trim().slice(0,14);
     if(pseudo.length<2) pseudo="(sans partie)";
     var corps=[{
@@ -17277,13 +17289,18 @@ function _rendreTableauBord(liste, souci){
     var mesure=!!(e.version || e.appareil_type || e.sessions);
     // Un score se construit : peu de parties pour un gros score est suspect.
     if(pts>=500 && parties<=2) d.push("gros score en "+parties+" partie"+(parties>1?"s":""));
-    // Une partie humaine dure 2 à 5 min. En dessous de 30 s, c'est impossible
-    // à la main — le seuil d'1 min signalait aussi les parties rapides et le
-    // mode Démo, qui joue légitimement vite.
-    if(mesure && parties>=5 && min>0 && (min/parties)<0.5) d.push("moins de 30 s par partie");
-    // Temps nul avec des parties enregistrées — uniquement si la version
-    // mesure bien le temps de jeu.
-    if(mesure && parties>=3 && min===0) d.push("aucun temps de jeu");
+    // ── ATTENTION AUX COMPTEURS DÉCALÉS ─────────────────────────────────
+    // `parties` compte depuis toujours ; `minutes` seulement depuis que le
+    // chronomètre existe (v97.79). Un ancien compte affiche donc beaucoup de
+    // parties pour peu de minutes, sans avoir triché. Le temps passé à
+    // l'écran (`secondes`), lui, est fiable : on s'appuie dessus.
+    var ecran=e.secondes||0;
+    // Vraiment suspect : beaucoup de parties, et une présence à l'écran
+    // dérisoire. Quelqu'un qui a passé 11 min dans le jeu a bien joué.
+    if(mesure && parties>=5 && ecran>0 && (ecran/parties)<10)
+      d.push("moins de 10 s à l'écran par partie");
+    if(mesure && parties>=3 && min===0 && ecran===0)
+      d.push("aucun temps de jeu ni présence à l'écran");
     // L'XP suit les parties : ~340 par partie. Un écart énorme trahit.
     if(parties>=1 && xp>parties*1500) d.push("XP disproportionnée");
     // Le maximum théorique : 10 manches, pot max 60, doublements et jokers.
@@ -17323,8 +17340,13 @@ function _rendreTableauBord(liste, souci){
                   ? '<span style="color:#e8a33d">partie abandonnée</span>'
                   : '<span style="color:#f08a8a">jamais lancé de partie</span>'))
           +((e.gardiens||0)?' · ⚔ '+e.gardiens+'/15':'')+'</div>'
-        +'<div style="font-size:11px;color:#6fe3a0;font-weight:800;margin-top:1px">⚡ '
-          +_fmtMontant(e.xp||0)+' XP</div>'
+        // L'XP et les parties : ce qui bouge vraiment quand un joueur joue.
+      // Le score à droite est un record figé ; ces deux-là racontent l'usage.
+      +'<div style="font-size:11px;color:#6fe3a0;font-weight:800;margin-top:1px">⚡ '
+          +_fmtMontant(e.xp||0)+' XP'
+          +((e.parties||0)>0?'<span style="font-size:9px;color:var(--muted);font-weight:400"> · '
+             +Math.round((e.xp||0)/e.parties)+' XP/partie</span>':'')
+          +'</div>'
         +'<div style="font-size:9px;color:var(--muted)">⏱ '+duree+' de jeu · 📅 '+dateTxt+'</div>'
         // Mesures de la phase de test, présentées en deux lignes claires :
         // l'appareil et l'état d'installation, puis l'usage réel.
@@ -17351,8 +17373,14 @@ function _rendreTableauBord(liste, souci){
           var vTxt = v
             ? '<span style="color:'+((actuelle&&v===actuelle)?"#6fe3a0":"#e8a33d")+'">'+esc(v)+'</span>'
             : '<span style="color:#8a7fb0">version inconnue</span>';
+          // Le chronomètre de partie n'existe que depuis la v97.79 : un compte
+          // plus ancien affiche des parties non chronométrées. On le dit, pour
+          // qu'un « 0 min de jeu » ne passe pas pour une anomalie.
+          var partiel = (e.parties||0)>=3 && (e.minutes||0)*60 < (e.parties||0)*30 && (e.secondes||0)>60;
           return '<div style="font-size:9px;color:#8FD0E8;margin-top:3px">'
               +ic+' '+esc(app)+' · '+inst+' · '+vTxt+'</div>'
+            +(partiel?'<div style="font-size:8.5px;color:#8a7fb0;font-style:italic">'
+              +'⏱ parties anciennes non chronométrées</div>':'')
             +'<div style="font-size:9px;color:var(--muted)">'
               +'🔄 '+sess+' ouverture'+(sess>1?'s':'')+' · ⌛ '+tps+' à l\'écran'
               +(prem?' · 🎬 depuis le '+prem:'')
@@ -17361,7 +17389,10 @@ function _rendreTableauBord(liste, souci){
       +'</div>'
       +'<div style="text-align:right">'
         +'<div style="font-size:14px;font-weight:900;color:var(--goldL);font-family:\'Cinzel\',serif">'+(e.points||0)+'</div>'
-        +'<div style="font-size:7.5px;color:var(--muted);letter-spacing:1px">PTS</div>'
+        // « PTS » laissait croire à un cumul : c'est le MEILLEUR score d'une
+        // seule partie. Il ne bouge que si le joueur bat son propre record,
+        // même après cinquante parties.
+        +'<div style="font-size:7px;color:var(--muted);letter-spacing:0.5px;line-height:1.2">RECORD<br>1 PARTIE</div>'
         +'<div style="font-size:8.5px;color:'+(frais?"#45c97a":"var(--muted)")+'">'+(isNaN(j)?"—":(j===0?"aujourd\'hui":j+" j"))+'</div>'
       +'</div></div>';
   }).join("");
